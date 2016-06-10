@@ -1,7 +1,7 @@
 [run]
 branch = True
-source = shablona/*
-include = shablona/*
+source = xrft/*
+include = xrft/*
 omit = */setup.py
 [report]
-include = shablona/*
+include = xrft/*
