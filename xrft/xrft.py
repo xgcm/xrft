@@ -1,6 +1,5 @@
 import numpy as np
 import xarray as xr
-from .due import due, Doi
 
 __all__ = ["dft"]
 
@@ -66,13 +65,14 @@ def dft(da, dim=None, shift=True, remove_mean=True, density=False):
         spectral_volume = reduce(lambda x, y: x*y, dk)
         f /= spectral_volume
 
-    # set up new dimensions for dataarray
-    k_names = ['freq_'+d for d in dim]
+    # set up new coordinates for dataarray
+    prefix = 'freq_'
+    k_names = [prefix + d for d in dim]
     k_coords = { key: val for (key,val) in zip(k_names, k)}
 
     newdims = list(da.dims)
     for anum, d in zip(axis_num, dim):
-        newdims[anum] = 'freq_' + d
+        newdims[anum] = prefix + d
 
     newcoords = {}
     for d in newdims:
@@ -82,4 +82,6 @@ def dft(da, dim=None, shift=True, remove_mean=True, density=False):
             newcoords[d] = k_coords[d]
 
     for this_dk, d in zip(dk, dim):
-        newcoords['freq_' + d + '_spacing'] = this_dk
+        newcoords[prefix + d + '_spacing'] = this_dk
+
+    return xr.DataArray(f, dims=newdims, coords=newcoords)
