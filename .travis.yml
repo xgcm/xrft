@@ -3,6 +3,9 @@ language: python
 # sudo false implies containerized builds, so we can use cacheing
 sudo: false
 
+notifications:
+  email: false
+
 # deploy:
 #   provider: pypi
 #   user: arokem
