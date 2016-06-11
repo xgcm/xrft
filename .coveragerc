@@ -3,5 +3,8 @@ branch = True
 source = xrft/*
 include = xrft/*
 omit = */setup.py
+       */version.py
+       xrft/tests/*
+       */__init__.py
 [report]
 include = xrft/*
