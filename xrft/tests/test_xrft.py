@@ -43,3 +43,21 @@ def test_dft_1d():
     ft = xrft.dft(da, remove_mean=False)
     ft_data_expected = np.fft.fftshift(np.fft.fft(da))
     npt.assert_allclose(ft_data_expected, ft.values)
+
+    # modify data to be non-evenly spaced
+    da['x'][-1] *= 2
+    with pytest.raises(ValueError):
+        ft = xrft.dft(da)
+
+def test_dft_1d_time():
+    """Test the discrete Fourier transform function on timeseries data."""
+    time = pd.date_range('2000-01-01', '2001-01-01', closed='left')
+    Nt = len(time)
+    da = xr.DataArray(np.random.rand(Nt), coords=[time], dims=['time'])
+
+    ft = xrft.dft(da)
+
+    # check that frequencies are correct
+    dt = (time[1] - time[0]).total_seconds()
+    freq_time_expected = np.fft.fftshift(np.fft.fftfreq(Nt, dt))
+    npt.assert_allclose(ft['freq_time'], freq_time_expected)

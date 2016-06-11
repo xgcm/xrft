@@ -1,5 +1,6 @@
 import numpy as np
 import xarray as xr
+import pandas as pd
 
 __all__ = ["dft"]
 
@@ -41,11 +42,16 @@ def dft(da, dim=None, shift=True, remove_mean=True, density=False):
     # verify even spacing of input coordinates
     delta_x = []
     for d in dim:
-        diff = np.diff(da[d])
+        coord = da[d]
+        diff = np.diff(coord)
+        if pd.core.common.is_timedelta64_dtype(diff):
+            # convert to seconds so we get hertz
+            diff = diff.astype('timedelta64[s]').astype('f8')
+        delta = diff[0]
         if not np.allclose(diff, diff[0]):
             raise ValueError("Can't take Fourier transform because"
                              "coodinate %s is not evenly spaced" % d)
-        delta_x.append(diff[0])
+        delta_x.append(delta)
     # calculate frequencies from coordinates
     k = [ np.fft.fftfreq(Nx, dx) for (Nx, dx) in zip(N, delta_x)]
 
