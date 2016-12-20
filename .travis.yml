@@ -25,7 +25,6 @@ env:
 
 before_install:
 - export MINICONDA=$HOME/miniconda
-- export PATH="$MINICONDA/bin:$PATH"
 #- command -v conda >/dev/null || { wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
 #   bash miniconda.sh -b -f -p $MINICONDA; }
 - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
@@ -33,7 +32,8 @@ before_install:
   else
     wget http://repo.continuum.io/miniconda/Miniconda3-3.16.0-Linux-x86_64.sh -O miniconda.sh;
   fi
-- bash miniconda.sh -b -p $HOME/miniconda
+- bash miniconda.sh -b -f -p $MINICONDA
+- export PATH="$MINICONDA/bin:$PATH"
 - export PATH="$HOME/miniconda/bin:$PATH"
 - hash -r
 # Install conda only if necessary
