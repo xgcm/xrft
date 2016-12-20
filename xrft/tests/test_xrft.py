@@ -45,7 +45,10 @@ def test_dft_1d():
     npt.assert_allclose(ft_data_expected, ft.values)
 
     # modify data to be non-evenly spaced
-    da['x'][-1] *= 2
+    da['x'].values[-1] *= 2
+    #xnew = da['x'].reset_coords()
+    #print(xnew)
+    #da = da.update(xnew)
     with pytest.raises(ValueError):
         ft = xrft.dft(da)
 
