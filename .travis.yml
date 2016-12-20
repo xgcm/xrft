@@ -29,7 +29,7 @@ before_install:
     else
       wget http://repo.continuum.io/miniconda/Miniconda3-3.16.0-Linux-x86_64.sh -O miniconda.sh;
     fi
-  - bash miniconda.sh -b -p $HOME/miniconda
+  - bash miniconda.sh -b -f -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
@@ -49,14 +49,3 @@ script:
 
 after_success:
 - codecov
-
-before_cache:
-# clean unused packages & installed files from conda cache
-# this makes the cache rebuilt less frequently
-- conda clean --tarballs --packages --index-cache
-- rm -rf $HOME/miniconda/pkgs/cache
-- xargs rm <installed_files.txt
-
-cache:
-  directories:
-    - $HOME/miniconda
