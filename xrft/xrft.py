@@ -1,6 +1,7 @@
 import numpy as np
 import xarray as xr
 import pandas as pd
+import dask.array as dsar
 
 __all__ = ["dft"]
 
@@ -59,7 +60,15 @@ def dft(da, dim=None, shift=True, remove_mean=True, density=False):
         da = da - da.mean(dim=dim)
 
     # the hard work
-    f = np.fft.fftn(da.values, axes=axis_num)
+    #f = np.fft.fftn(da.values, axes=axis_num)
+    # need special path for dask
+    # is this the best way to check for dask?
+    data = da.data
+    if hasattr(data, 'dask'):
+        assert len(axis_num)==1
+        f = dsar.fft.fft(data, axis=axis_num[0])
+    else: 
+        f = np.fft.fftn(data, axes=axis_num)
 
     if shift:
         f = np.fft.fftshift(f, axes=axis_num)
