@@ -21,7 +21,7 @@ python:
   - 3.5
 
 env:
-  - CONDA_DEPS="pip flake8 pytest coverage numpy pandas xarray" PIP_DEPS="codecov pytest-cov"
+  - CONDA_DEPS="pip flake8 pytest coverage numpy pandas xarray dask" PIP_DEPS="codecov pytest-cov"
 
 before_install:
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
