@@ -1,6 +1,7 @@
 import numpy as np
 import xarray as xr
 import pandas as pd
+import functools as ft
 import dask.array as dsar
 
 __all__ = ["dft"]
@@ -67,7 +68,7 @@ def dft(da, dim=None, shift=True, remove_mean=True, density=False):
     if hasattr(data, 'dask'):
         assert len(axis_num)==1
         f = dsar.fft.fft(data, axis=axis_num[0])
-    else: 
+    else:
         f = np.fft.fftn(data, axes=axis_num)
 
     if shift:
@@ -77,7 +78,10 @@ def dft(da, dim=None, shift=True, remove_mean=True, density=False):
     dk = [l[1] - l[0] for l in k]
 
     if density:
-        spectral_volume = reduce(lambda x, y: x*y, dk)
+        try:
+            spectral_volume = reduce(lambda x, y: x*y, dk)
+        except:
+            spectral_volume = ft.reduce(lambda x, y: x*y, dk)
         f /= spectral_volume
 
     # set up new coordinates for dataarray
