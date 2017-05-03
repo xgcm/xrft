@@ -7,7 +7,8 @@ import dask.array as dsar
 __all__ = ["dft"]
 
 
-def dft(da, dim=None, shift=True, remove_mean=True, density=False):
+def dft(da, dim=None, shift=True, remove_mean=True, density=False,
+        iso=False, nbins=64):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
     specified dimensions.
@@ -26,6 +27,10 @@ def dft(da, dim=None, shift=True, remove_mean=True, density=False):
         before calculating the Fourier transform.
     density : bool (optional)
         If `True`, the output will be normalized to give spectral density.
+    iso : bool (optional)
+        If `True`, the isotropic spectra will be calculated.
+    bins : integer
+        Defines the number of radial bins to take the azimuthal average over.
 
     Returns
     -------
@@ -84,10 +89,30 @@ def dft(da, dim=None, shift=True, remove_mean=True, density=False):
             spectral_volume = ft.reduce(lambda x, y: x*y, dk)
         f /= spectral_volume
 
+        if iso:
+            kk, ll = np.meshgrid(np.asarray(k[0]),
+                                np.asarray(k[1]))
+            K = np.sqrt(kk**2 + ll**2)
+            ki = np.linspace(0., np.asarray(k).max(), nbins)
+            # if k.max() > l.max():
+            #     ki = np.linspace(0., l.max(), nbins)
+            # else:
+            #     ki = np.linspace(0., k.max(), nbins)
+            kidx = np.digitize(K.ravel(), ki)
+            invalid = kidx[-1]
+            area = np.bincount(kidx)
+
+            kr = np.ma.masked_invalid(np.bincount(kidx,
+                                                weights=K.ravel()) / area)
+            iso_f = np.ma.masked_invalid(np.bincount(kidx,
+                                                    weights=np.real(f
+                                                    *np.conj(f)).ravel())
+                                                    / area) * kr
+
     # set up new coordinates for dataarray
     prefix = 'freq_'
     k_names = [prefix + d for d in dim]
-    k_coords = { key: val for (key,val) in zip(k_names, k)}
+    k_coords = {key: val for (key,val) in zip(k_names, k)}
 
     newdims = list(da.dims)
     for anum, d in zip(axis_num, dim):
@@ -103,4 +128,9 @@ def dft(da, dim=None, shift=True, remove_mean=True, density=False):
     for this_dk, d in zip(dk, dim):
         newcoords[prefix + d + '_spacing'] = this_dk
 
-    return xr.DataArray(f, dims=newdims, coords=newcoords)
+    if density:
+        return xr.DataArray(f, dims=newdims, coords=newcoords),\
+            xr.DataArray(iso_f, dims=['freq_kr'],
+                        coords={'freq_kr':kr})
+    else:
+        return xr.DataArray(f, dims=newdims, coords=newcoords)
