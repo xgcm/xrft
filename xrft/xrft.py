@@ -4,7 +4,8 @@ import pandas as pd
 import functools as ft
 import dask.array as dsar
 
-__all__ = ["dft","power_spectrum","cross_spectrum","isotropic_spectrum",
+__all__ = ["dft","power_spectrum","cross_spectrum",
+            "isotropic_powerspectrum","isotropic_crossspectrum",
             "fit_loglog"]
 
 
@@ -115,6 +116,10 @@ def power_spectrum(da, dim=None, shift=True, remove_mean=True, density=True):
     density : list (optional)
         If true, it will normalize the spectrum to spectral density
 
+    Returns
+    -------
+    ps : `xarray.DataArray`
+        Two-dimensional power spectrum
     """
     if dim is None:
         dim = da.dims
@@ -177,6 +182,10 @@ def cross_spectrum(da1, da2, a1=1., a2=1., dim=None,
     density : list (optional)
         If true, it will normalize the spectrum to spectral density
 
+    Returns
+    -------
+    cs : `xarray.DataArray`
+        Two-dimensional cross spectrum
     """
     if dim is None:
         dim = da1.dims
@@ -219,7 +228,31 @@ def cross_spectrum(da1, da2, a1=1., a2=1., dim=None,
 
     return xr.DataArray(cs, coords=daft.coords, dims=daft.dims)
 
-def isotropic_spectrum(da, dim=None, shift=True, remove_mean=True,
+def _azimuthal_avg(k, l, f, nbins=64):
+    """
+    Takes the azimuthal average of a given field.
+    """
+
+    kk, ll = np.meshgrid(k, l)
+    K = np.sqrt(kk**2 + ll**2)
+    if k.max() > l.max():
+        ki = np.linspace(0., l.max(), nbins)
+    else:
+        ki = np.linspace(0., k.max(), nbins)
+
+    kidx = np.digitize(K.ravel(), ki)
+    area = np.bincount(kidx)
+
+    kr = np.ma.masked_invalid(np.bincount(kidx,
+                                          weights=K.ravel()) / area
+                                         )
+    iso_f = np.ma.masked_invalid(np.bincount(kidx,
+                                            weights=f.values.ravel())
+                                            / area
+                                            ) * kr
+    return kr, iso_f
+
+def isotropic_powerspectrum(da, dim=None, shift=True, remove_mean=True,
                        density=True, nbins=64):
     """
     Calculates the isotropic spectrum from the
@@ -239,6 +272,11 @@ def isotropic_spectrum(da, dim=None, shift=True, remove_mean=True,
         before calculating the Fourier transform.
     density : list (optional)
         If true, it will normalize the spectrum to spectral density
+
+    Returns
+    -------
+    iso_ps : `xarray.DataArray`
+        Isotropic power spectrum
     """
 
     if dim is None:
@@ -252,30 +290,80 @@ def isotropic_spectrum(da, dim=None, shift=True, remove_mean=True,
     k = ps[ps.dims[0]].values
     l = ps[ps.dims[1]].values
 
-    kk, ll = np.meshgrid(k, l)
-    K = np.sqrt(kk**2 + ll**2)
-    if k.max() > l.max():
-        ki = np.linspace(0., l.max(), nbins)
-    else:
-        ki = np.linspace(0., k.max(), nbins)
-    kidx = np.digitize(K.ravel(), ki)
-    invalid = kidx[-1]
-    area = np.bincount(kidx)
-
-    kr = np.ma.masked_invalid(np.bincount(kidx,
-                                          weights=K.ravel()) / area
-                                         )
-    iso_ps = np.ma.masked_invalid(np.bincount(kidx,
-                                            weights=ps.values.ravel())
-                                            / area
-                                            ) * kr
+    kr, iso_ps = _azimuthal_avg(k, l, ps, nbins=nbins)
 
     return xr.DataArray(iso_ps, dims=['freq_r'],
+                        coords={'freq_r':kr})
+
+def isotropic_crossspectrum(da1, da2, a1=1., a2=1.,
+                        dim=None, shift=True, remove_mean=True,
+                        density=True, nbins=64):
+    """
+    Calculates the isotropic spectrum from the
+    two-dimensional power spectrum.
+
+    Parameters
+    ----------
+    da1 : `xarray.DataArray`
+        The data to be transformed
+    da2 : `xarray.DataArray`
+        The data to be transformed
+    a1 : float64
+        Coefficient of da1
+    a2 : float64
+        Coefficient of da2
+    dim : list (optional)
+        The dimensions along which to take the transformation. If `None`, all
+        dimensions will be transformed.
+    shift : bool (optional)
+        Whether to shift the fft output.
+    remove_mean : bool (optional)
+        If `True`, the mean across the transform dimensions will be subtracted
+        before calculating the Fourier transform.
+    density : list (optional)
+        If true, it will normalize the spectrum to spectral density
+
+    Returns
+    -------
+    iso_cs : `xarray.DataArray`
+        Isotropic cross spectrum
+    """
+
+    if dim is None:
+        dim = da.dims
+
+    cs = cross_spectrum(da1, da2, a1=a1, a2=a2, dim=dim, shift=shift,
+                       remove_mean=remove_mean, density=density)
+    if len(ps.dims) > 2:
+        raise ValueError('The data set has too many dimensions')
+
+    k = ps[ps.dims[0]].values
+    l = ps[ps.dims[1]].values
+
+    kr, iso_cs = _azimuthal_avg(k, l, cs, nbins=nbins)
+
+    return xr.DataArray(iso_cs, dims=['freq_r'],
                         coords={'freq_r':kr})
 
 def fit_loglog(x, y):
     """
     Fit a line to isotropic spectra in log-log space
+
+    Parameters
+    ----------
+    x : `numpy.array`
+        Coordinate of the data
+    y : `numpy.array`
+        data
+
+    Returns
+    -------
+    y_fit : `numpy.array`
+        The linear fit
+    a : float64
+        Slope of the fit
+    b : float64
+        Intercept of the fit
     """
     # fig log vs log
     p = np.polyfit(np.log2(x), np.log2(y), 1)

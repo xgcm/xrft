@@ -158,7 +158,7 @@ def test_dft_2d_slope(N=512, dL=1., amp=1e1, s=-3.):
     theta = synthetic_field(N, dL, amp, s)
     theta = xr.DataArray(theta, dims=['k', 'l'],
                         coords={'k':range(N), 'l':range(N)})
-    iso_f = xrft.isotropic_spectrum(theta, remove_mean=True,
+    iso_f = xrft.isotropic_powerspectrum(theta, remove_mean=True,
                   density=True)
     y_fit, a, b = xrft.fit_loglog(iso_f.freq_r.values[4:],
                             iso_f.values[4:])
