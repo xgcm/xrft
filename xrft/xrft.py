@@ -198,9 +198,9 @@ def cross_spectrum(da1, da2, a1=1., a2=1., dim=None,
 
     N = [da1.shape[n] for n in axis_num]
 
-    daft1 = dft(da1, dims=dims,
+    daft1 = dft(da1, dim=dim,
                 shift=shift, remove_mean=remove_mean)
-    daft2 = dft(da2, dims=dims,
+    daft2 = dft(da2, dim=dim,
                 shift=shift, remove_mean=remove_mean)
     coord = list(daft1.coords)
 
@@ -208,7 +208,7 @@ def cross_spectrum(da1, da2, a1=1., a2=1., dim=None,
     if density:
         cs /= (np.asarray(N).prod())**2
         for i in range(int(len(dim))):
-            cs /= daft[coord[-i-1]].values
+            cs /= daft1[coord[-i-1]].values
 
     if density:
         delta_x = []
@@ -222,11 +222,11 @@ def cross_spectrum(da1, da2, a1=1., a2=1., dim=None,
             delta_x.append(delta)
         np.testing.assert_almost_equal(cs.sum()
                                        / (np.asarray(delta_x).prod()
-                                          * (a1*a2*da1*da2).sum()
+                                          * (a1*a2*da1.values*da2.values).sum()
                                          ), 1., decimal=5
                                       )
 
-    return xr.DataArray(cs, coords=daft.coords, dims=daft.dims)
+    return xr.DataArray(cs, coords=daft1.coords, dims=daft1.dims)
 
 def _azimuthal_avg(k, l, f, nbins=64):
     """
@@ -340,8 +340,8 @@ def isotropic_crossspectrum(da1, da2, a1=1., a2=1.,
     if len(cs.dims) > 2:
         raise ValueError('The data set has too many dimensions')
 
-    k = ps[cs.dims[0]].values
-    l = ps[cs.dims[1]].values
+    k = cs[cs.dims[0]].values
+    l = cs[cs.dims[1]].values
 
     kr, iso_cs = _azimuthal_avg(k, l, cs, nbins=nbins)
 
