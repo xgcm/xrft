@@ -153,25 +153,14 @@ def synthetic_field(N, dL, amp, s):
     theta = np.fft.ifft2(np.fft.ifftshift(F_theta))
     return np.real(theta)
 
-def fit_loglog(x, y):
-    """Fit a line to isotropic spectra in log-log space"""
-    # fig log vs log
-    p = np.polyfit(np.log2(x), np.log2(y), 1)
-    y_fit = 2**(np.log2(x)*p[0] + p[1])
-    #A = np.vstack([np.log2(x), np.ones(len(x))]).T
-    #a, b = np.linalg.lstsq(A, np.log2(y))[0]
-    #y_fit = 2**(np.log2(x)*a + b)
-
-    return y_fit, p[0], p[1]
-
 def test_dft_2d_slope(N=512, dL=1., amp=1e1, s=-3.):
     """Test the spectral slope of synthetic data."""
     theta = synthetic_field(N, dL, amp, s)
     theta = xr.DataArray(theta, dims=['k', 'l'],
                         coords={'k':range(N), 'l':range(N)})
-    f, iso_f = xrft.dft(theta, remove_mean=True,
-                  density=True, iso=True)
-    y_fit, a, b = fit_loglog(iso_f.freq_kr.values[4:],
+    iso_f = xrft.isotropic_spectrum(theta, remove_mean=True,
+                  density=True)
+    y_fit, a, b = xrft.fit_loglog(iso_f.freq_r.values[4:],
                             iso_f.values[4:])
 
     npt.assert_allclose(a, s, atol=.1)
