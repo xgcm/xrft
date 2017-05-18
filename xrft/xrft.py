@@ -330,15 +330,18 @@ def isotropic_crossspectrum(da1, da2, a1=1., a2=1.,
     """
 
     if dim is None:
-        dim = da.dims
+        dim = da1.dims
+        dim2 = da2.dims
+        if len(dim) != len(dim2):
+            raise ValueError('The two datasets have different dimensions')
 
     cs = cross_spectrum(da1, da2, a1=a1, a2=a2, dim=dim, shift=shift,
                        remove_mean=remove_mean, density=density)
-    if len(ps.dims) > 2:
+    if len(cs.dims) > 2:
         raise ValueError('The data set has too many dimensions')
 
-    k = ps[ps.dims[0]].values
-    l = ps[ps.dims[1]].values
+    k = ps[cs.dims[0]].values
+    l = ps[cs.dims[1]].values
 
     kr, iso_cs = _azimuthal_avg(k, l, cs, nbins=nbins)
 
