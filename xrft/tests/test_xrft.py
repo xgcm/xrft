@@ -62,6 +62,44 @@ def test_dft_1d_time():
     freq_time_expected = np.fft.fftshift(np.fft.fftfreq(Nt, dt))
     npt.assert_allclose(ft['freq_time'], freq_time_expected)
 
+def test_parseval():
+    """Test whether the Parseval's relation is satisfied."""
+
+    N = 64
+    da = xr.DataArray(np.random.rand(N,N),
+                    dims=['x','y'], coords={'x':range(N), 'y':range(N)})
+    da2 = xr.DataArray(np.random.rand(N,N),
+                    dims=['x','y'], coords={'x':range(N), 'y':range(N)})
+
+    dim = da.dims
+    delta_x = []
+    for d in dim:
+        coord = da[d]
+        diff = np.diff(coord)
+        if pd.core.common.is_timedelta64_dtype(diff):
+            # convert to seconds so we get hertz
+            diff = diff.astype('timedelta64[s]').astype('f8')
+        delta = diff[0]
+        delta_x.append(delta)
+
+    window = np.hanning(N) * np.hanning(N)[:, np.newaxis]
+    ps = xrft.power_spectrum(da, window=True)
+    da_prime = (da - da.mean(dim=dim)).values
+    np.testing.assert_almost_equal(ps.values.sum()
+                                   / (np.asarray(delta_x).prod()
+                                      * ((da_prime*window)**2).sum()
+                                     ), 1., decimal=5
+                                  )
+
+    cs = xrft.cross_spectrum(da, da2, window=True)
+    da2_prime = (da2 - da2.mean(dim=dim)).values
+    np.testing.assert_almost_equal(cs.values.sum()
+                                   / (np.asarray(delta_x).prod()
+                                      * ((da_prime*window)
+                                      * (da2_prime*window)).sum()
+                                     ), 1., decimal=5
+                                  )
+
 def synthetic_field(N, dL, amp, s):
     """
     Generate a synthetic series of size N by N

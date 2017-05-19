@@ -9,10 +9,42 @@ __all__ = ["dft","power_spectrum","cross_spectrum",
             "fit_loglog"]
 
 
-def dft(da, dim=None, shift=True, remove_mean=True):
+def _hanning(da, N):
+    """Apply Hanning window"""
+
+    window = np.hanning(N[-1]) * np.hanning(N[-2])[:, np.newaxis]
+
+    dim = da.dims
+    coord = da.coords
+
+    if len(dim) == 3:
+        N1 = da.shape[0]
+        if da[0].shape != window.shape:
+            raise ValueError('The spatial dimensions do not match up')
+        for i in range(N1):
+            da[i] *= window
+    elif len(dim) == 4:
+        N1, N2 = da.shape[:2]
+        if da[0,0].shape != window.shape:
+            raise ValueError('The spatial dimensions do not match up')
+        for j in range(N1):
+            for i in range(N2):
+                da[j,i] *= window
+    elif len(dim) == 2:
+        da *= window
+    else:
+        raise ValueError('Data has too many dimensions')
+
+    return da
+
+def dft(da, dim=None, shift=True, remove_mean=True, window=False):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
     specified dimensions.
+
+    .. math::
+
+     daft = \mathbb{F}(da - \overline{da})
 
     Parameters
     ----------
@@ -55,10 +87,13 @@ def dft(da, dim=None, shift=True, remove_mean=True):
                              "coodinate %s is not evenly spaced" % d)
         delta_x.append(delta)
     # calculate frequencies from coordinates
-    k = [ np.fft.fftfreq(Nx, dx) for (Nx, dx) in zip(N, delta_x)]
+    k = [ np.fft.fftfreq(Nx, dx) for (Nx, dx) in zip(N, delta_x) ]
 
     if remove_mean:
         da = da - da.mean(dim=dim)
+
+    if window:
+        da = _hanning(da, N)
 
     # the hard work
     #f = np.fft.fftn(da.values, axes=axis_num)
@@ -97,9 +132,15 @@ def dft(da, dim=None, shift=True, remove_mean=True):
 
     return xr.DataArray(f, dims=newdims, coords=newcoords)
 
-def power_spectrum(da, dim=None, shift=True, remove_mean=True, density=True):
+def power_spectrum(da, dim=None, shift=True, remove_mean=True, density=True,
+                window=False):
     """
     Calculates the power spectrum of da.
+
+    .. math::
+
+     da' = da - \overline{da}
+     ps = \mathbb{F}(da') * {\mathbb{F}(da')}^*
 
     Parameters
     ----------
@@ -121,6 +162,7 @@ def power_spectrum(da, dim=None, shift=True, remove_mean=True, density=True):
     ps : `xarray.DataArray`
         Two-dimensional power spectrum
     """
+
     if dim is None:
         dim = da.dims
 
@@ -129,37 +171,29 @@ def power_spectrum(da, dim=None, shift=True, remove_mean=True, density=True):
 
     N = [da.shape[n] for n in axis_num]
 
-    daft = dft(da, dim=dim, shift=shift, remove_mean=remove_mean)
+    daft = dft(da,
+            dim=dim, shift=shift, remove_mean=remove_mean,
+            window=window)
+
     coord = list(daft.coords)
 
     ps = np.real(daft*np.conj(daft))
     if density:
         ps /= (np.asarray(N).prod())**2
-        for i in range(int(len(dim))):
+        for i in range(len(dim)):
             ps /= daft[coord[-i-1]].values
-
-    if density:
-        delta_x = []
-        for d in dim:
-            coord = da[d]
-            diff = np.diff(coord)
-            if pd.core.common.is_timedelta64_dtype(diff):
-                # convert to seconds so we get hertz
-                diff = diff.astype('timedelta64[s]').astype('f8')
-            delta = diff[0]
-            delta_x.append(delta)
-        np.testing.assert_almost_equal(ps.sum()
-                                       / (np.asarray(delta_x).prod()
-                                          * (da.values**2).sum()
-                                         ), 1., decimal=5
-                                      )
 
     return xr.DataArray(ps, coords=daft.coords, dims=daft.dims)
 
-def cross_spectrum(da1, da2, a1=1., a2=1., dim=None,
-                   shift=True, remove_mean=True, density=True):
+def cross_spectrum(da1, da2, dim=None,
+                   shift=True, remove_mean=True, density=True, window=False):
     """
     Calculates the cross spectra of da1 and da2.
+
+    .. math::
+
+     da1' = da1 - \overline{da1}; da2' = da2 - \overline{da2}
+     cs = \mathbb{F}(da1') * {\mathbb{F}(da2')}^*
 
     Parameters
     ----------
@@ -167,10 +201,6 @@ def cross_spectrum(da1, da2, a1=1., a2=1., dim=None,
         The data to be transformed
     da2 : `xarray.DataArray`
         The data to be transformed
-    a1 : float64
-        Coefficient of da1
-    a2 : float64
-        Coefficient of da2
     dim : list (optional)
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
@@ -187,10 +217,11 @@ def cross_spectrum(da1, da2, a1=1., a2=1., dim=None,
     cs : `xarray.DataArray`
         Two-dimensional cross spectrum
     """
+
     if dim is None:
         dim = da1.dims
         dim2 = da2.dims
-        if len(dim) != len(dim2):
+        if dim != dim2:
             raise ValueError('The two datasets have different dimensions')
 
     # the axes along which to take ffts
@@ -199,32 +230,17 @@ def cross_spectrum(da1, da2, a1=1., a2=1., dim=None,
     N = [da1.shape[n] for n in axis_num]
 
     daft1 = dft(da1, dim=dim,
-                shift=shift, remove_mean=remove_mean)
+                shift=shift, remove_mean=remove_mean, window=window)
     daft2 = dft(da2, dim=dim,
-                shift=shift, remove_mean=remove_mean)
+                shift=shift, remove_mean=remove_mean, window=window)
+
     coord = list(daft1.coords)
 
-    cs = np.real(a1*daft1 * a2*np.conj(daft2))
+    cs = np.real(daft1 * np.conj(daft2))
     if density:
         cs /= (np.asarray(N).prod())**2
         for i in range(int(len(dim))):
             cs /= daft1[coord[-i-1]].values
-
-    if density:
-        delta_x = []
-        for d in dim:
-            coord = da1[d]
-            diff = np.diff(coord)
-            if pd.core.common.is_timedelta64_dtype(diff):
-                # convert to seconds so we get hertz
-                diff = diff.astype('timedelta64[s]').astype('f8')
-            delta = diff[0]
-            delta_x.append(delta)
-        np.testing.assert_almost_equal(cs.sum()
-                                       / (np.asarray(delta_x).prod()
-                                          * (a1*a2*da1.values*da2.values).sum()
-                                         ), 1., decimal=5
-                                      )
 
     return xr.DataArray(cs, coords=daft1.coords, dims=daft1.dims)
 
@@ -253,10 +269,15 @@ def _azimuthal_avg(k, l, f, nbins=64):
     return kr, iso_f
 
 def isotropic_powerspectrum(da, dim=None, shift=True, remove_mean=True,
-                       density=True, nbins=64):
+                       density=True, window=False, nbins=64):
     """
     Calculates the isotropic spectrum from the
-    two-dimensional power spectrum.
+    two-dimensional power spectrum by taking the
+    azimuthal average.
+
+    ..math::
+
+     iso_ps = k_r \frac{1}{N_{\theta}} \sum_{N_{\theta}} |\mathbb{F}(da')|^2
 
     Parameters
     ----------
@@ -283,7 +304,8 @@ def isotropic_powerspectrum(da, dim=None, shift=True, remove_mean=True,
         dim = da.dims
 
     ps = power_spectrum(da, dim=dim, shift=shift,
-                       remove_mean=remove_mean, density=density)
+                       remove_mean=remove_mean, density=density,
+                       window=window)
     if len(ps.dims) > 2:
         raise ValueError('The data set has too many dimensions')
 
@@ -295,12 +317,18 @@ def isotropic_powerspectrum(da, dim=None, shift=True, remove_mean=True,
     return xr.DataArray(iso_ps, dims=['freq_r'],
                         coords={'freq_r':kr})
 
-def isotropic_crossspectrum(da1, da2, a1=1., a2=1.,
+def isotropic_crossspectrum(da1, da2,
                         dim=None, shift=True, remove_mean=True,
-                        density=True, nbins=64):
+                        density=True, window=False, nbins=64):
     """
     Calculates the isotropic spectrum from the
-    two-dimensional power spectrum.
+    two-dimensional power spectrumby taking the
+    azimuthal average.
+
+    ..math::
+
+     iso_ps = k_r \frac{1}{N_{\theta}} \sum_{N_{\theta}} \\
+            (\mathbb{F}(da1') \times {\mathbb{F}(da2')}^* )
 
     Parameters
     ----------
@@ -308,10 +336,6 @@ def isotropic_crossspectrum(da1, da2, a1=1., a2=1.,
         The data to be transformed
     da2 : `xarray.DataArray`
         The data to be transformed
-    a1 : float64
-        Coefficient of da1
-    a2 : float64
-        Coefficient of da2
     dim : list (optional)
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
@@ -332,11 +356,12 @@ def isotropic_crossspectrum(da1, da2, a1=1., a2=1.,
     if dim is None:
         dim = da1.dims
         dim2 = da2.dims
-        if len(dim) != len(dim2):
+        if dim != dim2:
             raise ValueError('The two datasets have different dimensions')
 
-    cs = cross_spectrum(da1, da2, a1=a1, a2=a2, dim=dim, shift=shift,
-                       remove_mean=remove_mean, density=density)
+    cs = cross_spectrum(da1, da2, dim=dim, shift=shift,
+                       remove_mean=remove_mean, density=density,
+                       window=window)
     if len(cs.dims) > 2:
         raise ValueError('The data set has too many dimensions')
 
