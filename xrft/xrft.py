@@ -64,6 +64,8 @@ def dft(da, dim=None, shift=True, remove_mean=True, window=False):
     daft : `xarray.DataArray`
         The output of the Fourier transformation, with appropriate dimensions.
     """
+    if np.isnan(da.values).any():
+        raise ValueError("Data cannot take Nans")
 
     if dim is None:
         dim = da.dims
