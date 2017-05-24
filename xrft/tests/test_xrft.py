@@ -94,6 +94,18 @@ def test_power_spectrum():
                     window=True)
     npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
 
+    ### Normalized
+    dim = da.dims
+    ps = xrft.power_spectrum(da, window=True, density=True)
+    coord = list(daft.coords)
+    daft = xrft.dft(da,
+                    dim=None, shift=True, remove_mean=True,
+                    window=True)
+    test = np.real(daft*np.conj(daft))/N**4
+    for i in range(len(dim)):
+        test /= daft[coord[-i-1]].values
+    npt.assert_almost_equal(ps.values, test)
+
 def test_cross_spectrum():
     """Test the cross spectrum function"""
     N = 16
@@ -135,20 +147,20 @@ def test_parseval():
     window = np.hanning(N) * np.hanning(N)[:, np.newaxis]
     ps = xrft.power_spectrum(da, window=True)
     da_prime = (da - da.mean(dim=dim)).values
-    np.testing.assert_almost_equal(ps.values.sum()
-                                   / (np.asarray(delta_x).prod()
-                                      * ((da_prime*window)**2).sum()
-                                     ), 1., decimal=5
-                                  )
+    npt.assert_almost_equal(ps.values.sum(),
+                            (np.asarray(delta_x).prod()
+                            * ((da_prime*window)**2).sum()
+                            ), decimal=5
+                            )
 
     cs = xrft.cross_spectrum(da, da2, window=True)
     da2_prime = (da2 - da2.mean(dim=dim)).values
-    np.testing.assert_almost_equal(cs.values.sum()
-                                   / (np.asarray(delta_x).prod()
-                                      * ((da_prime*window)
-                                      * (da2_prime*window)).sum()
-                                     ), 1., decimal=5
-                                  )
+    npt.assert_almost_equal(cs.values.sum(),
+                            (np.asarray(delta_x).prod()
+                            * ((da_prime*window)
+                            * (da2_prime*window)).sum()
+                            ), decimal=5
+                            )
 
 def synthetic_field(N, dL, amp, s):
     """
