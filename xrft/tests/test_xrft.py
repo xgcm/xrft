@@ -45,6 +45,11 @@ def test_dft_1d():
     npt.assert_allclose(ft_data_expected, ft.values)
 
     # modify data to be non-evenly spaced
+    da2 = da.copy()
+    da2[-1] = np.nan
+    with pytest.raises(ValueError):
+        ft = xrft.dft(da2)
+
     da['x'].values[-1] *= 2
     with pytest.raises(ValueError):
         ft = xrft.dft(da)
@@ -61,6 +66,51 @@ def test_dft_1d_time():
     dt = (time[1] - time[0]).total_seconds()
     freq_time_expected = np.fft.fftshift(np.fft.fftfreq(Nt, dt))
     npt.assert_allclose(ft['freq_time'], freq_time_expected)
+
+def test_dft_2d():
+    """Test the discrete Fourier transform on 2D data"""
+    N = 16
+    da = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
+                    coords={'x':range(N),'y':range(N)}
+                     )
+    ft = xrft.dft(da, shift=False, remove_mean=False)
+    npt.assert_almost_equal(ft.values, np.fft.fftn(da.values))
+
+    ft = xrft.dft(da, shift=False, window=True)
+    dim = da.dims
+    window = np.hanning(N) * np.hanning(N)[:, np.newaxis]
+    da_prime = (da - da.mean(dim=dim)).values
+    npt.assert_almost_equal(ft.values, np.fft.fftn(da_prime*window))
+
+def test_power_spectrum():
+    """Test the power spectrum function"""
+    N = 16
+    da = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
+                    coords={'x':range(N),'y':range(N)}
+                     )
+    ps = xrft.power_spectrum(da, window=True, density=False)
+    daft = xrft.dft(da,
+                    dim=None, shift=True, remove_mean=True,
+                    window=True)
+    npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
+
+def test_cross_spectrum():
+    """Test the cross spectrum function"""
+    N = 16
+    da = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
+                    coords={'x':range(N),'y':range(N)}
+                     )
+    da2 = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
+                    coords={'x':range(N),'y':range(N)}
+                     )
+    cs = xrft.cross_spectrum(da, da2, window=True, density=False)
+    daft = xrft.dft(da,
+                    dim=None, shift=True, remove_mean=True,
+                    window=True)
+    daft2 = xrft.dft(da2,
+                    dim=None, shift=True, remove_mean=True,
+                    window=True)
+    npt.assert_almost_equal(cs.values, np.real(daft*np.conj(daft2)))
 
 def test_parseval():
     """Test whether the Parseval's relation is satisfied."""
@@ -194,8 +244,8 @@ def synthetic_field(N, dL, amp, s):
 def test_dft_2d_slope(N=512, dL=1., amp=1e1, s=-3.):
     """Test the spectral slope of synthetic data."""
     theta = synthetic_field(N, dL, amp, s)
-    theta = xr.DataArray(theta, dims=['k', 'l'],
-                        coords={'k':range(N), 'l':range(N)})
+    theta = xr.DataArray(theta, dims=['x', 'y'],
+                        coords={'x':range(N), 'y':range(N)})
     iso_f = xrft.isotropic_powerspectrum(theta, remove_mean=True,
                   density=True)
     y_fit, a, b = xrft.fit_loglog(iso_f.freq_r.values[4:],
