@@ -73,14 +73,24 @@ def test_dft_2d():
     da = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
                     coords={'x':range(N),'y':range(N)}
                      )
-    ft = xrft.dft(da, shift=False, remove_mean=False)
-    npt.assert_almost_equal(ft.values, np.fft.fftn(da.values))
+    daft = xrft.dft(da, shift=False, remove_mean=False)
+    npt.assert_almost_equal(daft.values, np.fft.fftn(da.values))
 
-    ft = xrft.dft(da, shift=False, window=True)
+    daft = xrft.dft(da, shift=False, window=True)
     dim = da.dims
     window = np.hanning(N) * np.hanning(N)[:, np.newaxis]
     da_prime = (da - da.mean(dim=dim)).values
-    npt.assert_almost_equal(ft.values, np.fft.fftn(da_prime*window))
+    npt.assert_almost_equal(daft.values, np.fft.fftn(da_prime*window))
+
+def test_dft_3d():
+    """Test the discrete Fourier transform on 3D dask array data"""
+    N=16
+    da = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
+                      coords={'time':range(2),'x':range(N),
+                              'y':range(N)}).chunk({'time': 1}
+                     )
+    daft = xrft.dft(da, dim=['x','y'], shift=False, remove_mean=False)
+    npt.assert_almost_equal(daft.values, np.fft.fftn(da.values, axes=[1,2]))
 
 def test_power_spectrum():
     """Test the power spectrum function"""
@@ -150,7 +160,7 @@ def test_parseval():
 
     window = np.hanning(N) * np.hanning(N)[:, np.newaxis]
     ps = xrft.power_spectrum(da, window=True)
-    da_prime = da.values - da.mean(dim=dim).values
+    da_prime = (da - da.mean(dim=dim)).values
     npt.assert_almost_equal(ps.values.sum(),
                             (np.asarray(delta_x).prod()
                             * ((da_prime*window)**2).sum()
@@ -158,7 +168,7 @@ def test_parseval():
                             )
 
     cs = xrft.cross_spectrum(da, da2, window=True)
-    da2_prime = da2.values - da2.mean(dim=dim).values
+    da2_prime = (da2 - da2.mean(dim=dim)).values
     npt.assert_almost_equal(cs.values.sum(),
                             (np.asarray(delta_x).prod()
                             * ((da_prime*window)
