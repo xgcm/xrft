@@ -96,7 +96,7 @@ def test_power_spectrum():
 
     ### Normalized
     dim = da.dims
-    ps = xrft.power_spectrum(da, window=True, density=True)
+    ps = xrft.power_spectrum(da, window=True)
     coord = list(daft.coords)
     daft = xrft.dft(da,
                     dim=None, shift=True, remove_mean=True,
@@ -105,6 +105,8 @@ def test_power_spectrum():
     for i in range(len(dim)):
         test /= daft[coord[-i-1]].values
     npt.assert_almost_equal(ps.values, test)
+
+    npt.assert_almost_equal((np.isnan(ps).values*1).sum(), 0.)
 
 def test_cross_spectrum():
     """Test the cross spectrum function"""
@@ -124,10 +126,12 @@ def test_cross_spectrum():
                     window=True)
     npt.assert_almost_equal(cs.values, np.real(daft*np.conj(daft2)))
 
+    npt.assert_almost_equal((np.isnan(cs).values*1).sum(), 0.)
+
 def test_parseval():
     """Test whether the Parseval's relation is satisfied."""
 
-    N = 64
+    N = 16
     da = xr.DataArray(np.random.rand(N,N),
                     dims=['x','y'], coords={'x':range(N), 'y':range(N)})
     da2 = xr.DataArray(np.random.rand(N,N),
@@ -138,15 +142,15 @@ def test_parseval():
     for d in dim:
         coord = da[d]
         diff = np.diff(coord)
-        if pd.core.common.is_timedelta64_dtype(diff):
-            # convert to seconds so we get hertz
-            diff = diff.astype('timedelta64[s]').astype('f8')
+        # if pd.core.common.is_timedelta64_dtype(diff):
+        #     # convert to seconds so we get hertz
+        #     diff = diff.astype('timedelta64[s]').astype('f8')
         delta = diff[0]
         delta_x.append(delta)
 
     window = np.hanning(N) * np.hanning(N)[:, np.newaxis]
     ps = xrft.power_spectrum(da, window=True)
-    da_prime = (da - da.mean(dim=dim)).values
+    da_prime = da.values - da.mean(dim=dim).values
     npt.assert_almost_equal(ps.values.sum(),
                             (np.asarray(delta_x).prod()
                             * ((da_prime*window)**2).sum()
@@ -154,7 +158,7 @@ def test_parseval():
                             )
 
     cs = xrft.cross_spectrum(da, da2, window=True)
-    da2_prime = (da2 - da2.mean(dim=dim)).values
+    da2_prime = da2.values - da2.mean(dim=dim).values
     npt.assert_almost_equal(cs.values.sum(),
                             (np.asarray(delta_x).prod()
                             * ((da_prime*window)
