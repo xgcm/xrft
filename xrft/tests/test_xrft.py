@@ -93,6 +93,7 @@ def test_power_spectrum():
                     dim=None, shift=True, remove_mean=True,
                     window=True)
     npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
+    npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
     ### Normalized
     dim = da.dims
@@ -105,7 +106,6 @@ def test_power_spectrum():
     for i in range(len(dim)):
         test /= daft[coord[-i-1]].values
     npt.assert_almost_equal(ps.values, test)
-
     npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
 def test_cross_spectrum():
