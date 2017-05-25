@@ -106,7 +106,7 @@ def test_power_spectrum():
         test /= daft[coord[-i-1]].values
     npt.assert_almost_equal(ps.values, test)
 
-    npt.assert_almost_equal((np.isnan(ps).values*1).sum(), 0.)
+    npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
 def test_cross_spectrum():
     """Test the cross spectrum function"""
@@ -126,7 +126,7 @@ def test_cross_spectrum():
                     window=True)
     npt.assert_almost_equal(cs.values, np.real(daft*np.conj(daft2)))
 
-    npt.assert_almost_equal((np.isnan(cs).values*1).sum(), 0.)
+    npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.)
 
 def test_parseval():
     """Test whether the Parseval's relation is satisfied."""
