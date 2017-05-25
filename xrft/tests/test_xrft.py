@@ -180,7 +180,8 @@ def synthetic_field(N, dL, amp, s):
     ########
     # amplitude
     ########
-    r_kl = np.ma.masked_invalid(np.sqrt(amp*.5*(np.pi)**(-1)*K**(s-1.))).filled(0.)
+    r_kl = np.ma.masked_invalid(np.sqrt(amp*.5*(np.pi)**(-1)
+                                *K**(s-1.))).filled(0.)
     #r = np.ma.masked_invalid(np.abs(k)**(-slope/2.)).filled(0.)
     ########
     # phase
@@ -257,14 +258,43 @@ def synthetic_field(N, dL, amp, s):
     theta = np.fft.ifft2(np.fft.ifftshift(F_theta))
     return np.real(theta)
 
-def test_dft_2d_slope(N=512, dL=1., amp=1e1, s=-3.):
-    """Test the spectral slope of synthetic data."""
-    theta = synthetic_field(N, dL, amp, s)
-    theta = xr.DataArray(theta, dims=['x', 'y'],
+def test_isotropic_ps_slope(N=512, dL=1., amp=1e1, s=-3.):
+    """Test the spectral slope of isotropic power spectrum."""
+
+    theta = xr.DataArray(synthetic_field(N, dL, amp, s),
+                        dims=['x', 'y'],
                         coords={'x':range(N), 'y':range(N)})
-    iso_f = xrft.isotropic_powerspectrum(theta, remove_mean=True,
-                  density=True)
-    y_fit, a, b = xrft.fit_loglog(iso_f.freq_r.values[4:],
-                            iso_f.values[4:])
+    iso_ps = xrft.isotropic_powerspectrum(theta, remove_mean=True,
+                                        density=True)
+    npt.assert_almost_equal(np.ma.masked_invalid(iso_ps[1:]).mask.sum(), 0.)
+    y_fit, a, b = xrft.fit_loglog(iso_ps.freq_r.values[4:],
+                                iso_ps.values[4:])
 
     npt.assert_allclose(a, s, atol=.1)
+
+def test_isotropic_cs():
+    """Test isotropic cross spectrum"""
+    N = 16
+    da = xr.DataArray(np.random.rand(N,N),
+                    dims=['x','y'], coords={'x':range(N), 'y':range(N)})
+    da2 = xr.DataArray(np.random.rand(N,N),
+                    dims=['x','y'], coords={'x':range(N), 'y':range(N)})
+
+    dim = da.dims
+    delta_x = []
+    for d in dim:
+        coord = da[d]
+        diff = np.diff(coord)
+        # if pd.core.common.is_timedelta64_dtype(diff):
+        #     # convert to seconds so we get hertz
+        #     diff = diff.astype('timedelta64[s]').astype('f8')
+        delta = diff[0]
+        delta_x.append(delta)
+
+    iso_cs = xrft.isotropic_crossspectrum(da, da2, window=True, nbins=int(N/4))
+    npt.assert_almost_equal(np.ma.masked_invalid(iso_cs[1:]).mask.sum(), 0.)
+
+    da2 = xr.DataArray(np.random.rand(N,N),
+                    dims=['lon','lat'], coords={'lon':range(N), 'lat':range(N)})
+    with pytest.raises(ValueError):
+        xrft.isotropic_crossspectrum(da, da2)

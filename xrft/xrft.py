@@ -14,26 +14,27 @@ def _hanning(da, N):
 
     window = np.hanning(N[-1]) * np.hanning(N[-2])[:, np.newaxis]
 
-    dim = da.dims
-    coord = da.coords
+    # dim = da.dims
+    # coord = da.coords
 
-    if len(dim) == 3:
-        N1 = da.shape[0]
-        if da[0].shape != window.shape:
-            raise ValueError('The spatial dimensions do not match up')
-        for i in range(N1):
-            da[i] *= window
-    elif len(dim) == 4:
-        N1, N2 = da.shape[:2]
-        if da[0,0].shape != window.shape:
-            raise ValueError('The spatial dimensions do not match up')
-        for j in range(N1):
-            for i in range(N2):
-                da[j,i] *= window
-    elif len(dim) == 2:
-        da *= window
-    else:
-        raise ValueError('Data has too many dimensions')
+    # if len(dim) == 3:
+    #     N1 = da.shape[0]
+    #     if da[0].shape != window.shape:
+    #         raise ValueError('The spatial dimensions do not match up')
+    #     for i in range(N1):
+    #         da[i] *= window
+    # elif len(dim) == 4:
+    #     N1, N2 = da.shape[:2]
+    #     if da[0,0].shape != window.shape:
+    #         raise ValueError('The spatial dimensions do not match up')
+    #     for j in range(N1):
+    #         for i in range(N2):
+    #             da[j,i] *= window
+    # elif len(dim) == 2:
+    #     da *= window
+    # else:
+    #     raise ValueError('Data has too many dimensions')
+    da *= window
 
     return da
 
