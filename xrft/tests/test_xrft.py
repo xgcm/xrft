@@ -112,10 +112,10 @@ def test_power_spectrum():
     ### Normalized
     dim = da.dims
     ps = xrft.power_spectrum(da, window=True)
-    coord = list(daft.coords)
     daft = xrft.dft(da,
                     dim=None, shift=True, remove_mean=True,
                     window=True)
+    coord = list(daft.coords)
     test = np.real(daft*np.conj(daft))/N**4
     for i in range(len(dim)):
         test /= daft[coord[-i-1]].values
@@ -125,29 +125,23 @@ def test_power_spectrum():
 def test_power_spectrum_dask():
     """Test the power spectrum function on dask data"""
     N = 16
+    dim = ['x','y']
     da = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
                       coords={'time':range(2),'x':range(N),
                               'y':range(N)}).chunk({'time': 1}
                      )
-    ps = xrft.power_spectrum(da, dim=['x','y'], density=False)
+    ps = xrft.power_spectrum(da, dim=dim, density=False)
     daft = xrft.dft(da, dim=['x','y'])
     npt.assert_almost_equal(ps.values, (daft * np.conj(daft)).real.values)
 
-def test_cross_spectrum_dask():
-    """Test the power spectrum function on dask data"""
-    N = 16
-    da = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
-                      coords={'time':range(2),'x':range(N),
-                              'y':range(N)}).chunk({'time': 1}
-                     )
-    da2 = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
-                      coords={'time':range(2),'x':range(N),
-                              'y':range(N)}).chunk({'time': 1}
-                     )
-    cs = xrft.cross_spectrum(da, da2, dim=['x','y'], density=False)
-    daft = xrft.dft(da, dim=['x','y'])
-    daft2 = xrft.dft(da2, dim=['x','y'])
-    npt.assert_almost_equal(cs.values, (daft * np.conj(daft2)).real.values)
+    ps = xrft.power_spectrum(da, dim=dim, window=True)
+    daft = xrft.dft(da, dim=dim, window=True)
+    coord = list(daft.coords)
+    test = (daft * np.conj(daft)).real/N**4
+    for i in range(len(dim)):
+        test /= daft[coord[-i-1]].values
+    npt.assert_almost_equal(ps.values, test)
+    npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
 def test_cross_spectrum():
     """Test the cross spectrum function"""
@@ -166,7 +160,33 @@ def test_cross_spectrum():
                     dim=None, shift=True, remove_mean=True,
                     window=True)
     npt.assert_almost_equal(cs.values, np.real(daft*np.conj(daft2)))
+    npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.)
 
+def test_cross_spectrum_dask():
+    """Test the power spectrum function on dask data"""
+    N = 16
+    dim = ['x','y']
+    da = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
+                      coords={'time':range(2),'x':range(N),
+                              'y':range(N)}).chunk({'time': 1}
+                     )
+    da2 = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
+                      coords={'time':range(2),'x':range(N),
+                              'y':range(N)}).chunk({'time': 1}
+                     )
+    cs = xrft.cross_spectrum(da, da2, dim=dim, density=False)
+    daft = xrft.dft(da, dim=dim)
+    daft2 = xrft.dft(da2, dim=dim)
+    npt.assert_almost_equal(cs.values, (daft * np.conj(daft2)).real.values)
+
+    cs = xrft.cross_spectrum(da, da2, dim=dim, window=True)
+    daft = xrft.dft(da, dim=dim, window=True)
+    daft2 = xrft.dft(da2, dim=dim, window=True)
+    coord = list(daft.coords)
+    test = (daft * np.conj(daft2)).real/N**4
+    for i in range(len(dim)):
+        test /= daft[coord[-i-1]].values
+    npt.assert_almost_equal(cs.values, test)
     npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.)
 
 def test_parseval():
@@ -332,7 +352,7 @@ def test_isotropic_cs():
         delta = diff[0]
         delta_x.append(delta)
 
-    iso_cs = xrft.isotropic_crossspectrum(da, da2, window=True, nbins=int(N/4))
+    iso_cs = xrft.isotropic_crossspectrum(da, da2, window=True)
     npt.assert_almost_equal(np.ma.masked_invalid(iso_cs[1:]).mask.sum(), 0.)
 
     da2 = xr.DataArray(np.random.rand(N,N),
