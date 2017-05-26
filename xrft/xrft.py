@@ -248,13 +248,14 @@ def cross_spectrum(da1, da2, dim=None,
 
     return cs
 
-def _azimuthal_avg(k, l, f, nbins=64):
+def _azimuthal_avg(k, l, f, N, nfactor):
     """
     Takes the azimuthal average of a given field.
     """
 
     kk, ll = np.meshgrid(k, l)
     K = np.sqrt(kk**2 + ll**2)
+    nbins = int(N/nfactor)
     if k.max() > l.max():
         ki = np.linspace(0., l.max(), nbins)
     else:
@@ -273,7 +274,7 @@ def _azimuthal_avg(k, l, f, nbins=64):
     return kr, iso_f
 
 def isotropic_powerspectrum(da, dim=None, shift=True, remove_mean=True,
-                       density=True, window=False, nbins=64):
+                       density=True, window=False, nfactor=4):
     """
     Calculates the isotropic spectrum from the
     two-dimensional power spectrum by taking the
@@ -316,14 +317,15 @@ def isotropic_powerspectrum(da, dim=None, shift=True, remove_mean=True,
     k = ps[ps.dims[0]].values
     l = ps[ps.dims[1]].values
 
-    kr, iso_ps = _azimuthal_avg(k, l, ps, nbins=nbins)
+    N = da.shape[0]
+    kr, iso_ps = _azimuthal_avg(k, l, ps, N, nfactor)
 
     return xr.DataArray(iso_ps, dims=['freq_r'],
                         coords={'freq_r':kr})
 
 def isotropic_crossspectrum(da1, da2,
                         dim=None, shift=True, remove_mean=True,
-                        density=True, window=False, nbins=64):
+                        density=True, window=False, nfactor=4):
     """
     Calculates the isotropic spectrum from the
     two-dimensional power spectrumby taking the
@@ -350,6 +352,10 @@ def isotropic_crossspectrum(da1, da2,
         before calculating the Fourier transform.
     density : list (optional)
         If true, it will normalize the spectrum to spectral density
+    window : bool (optional)
+        Whether to apply a Hann window to the data before FFTing
+    nfactor : int (optional)
+        The ratio of the data size and bins of taking the aximuthal averaging
 
     Returns
     -------
@@ -372,7 +378,8 @@ def isotropic_crossspectrum(da1, da2,
     k = cs[cs.dims[0]].values
     l = cs[cs.dims[1]].values
 
-    kr, iso_cs = _azimuthal_avg(k, l, cs, nbins=nbins)
+    N = da1.shape[0]
+    kr, iso_cs = _azimuthal_avg(k, l, cs, N, nfactor)
 
     return xr.DataArray(iso_cs, dims=['freq_r'],
                         coords={'freq_r':kr})

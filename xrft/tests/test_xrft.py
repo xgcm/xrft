@@ -301,7 +301,7 @@ def test_isotropic_cs():
         delta = diff[0]
         delta_x.append(delta)
 
-    iso_cs = xrft.isotropic_crossspectrum(da, da2, window=True, nbins=int(N/4))
+    iso_cs = xrft.isotropic_crossspectrum(da, da2, window=True)
     npt.assert_almost_equal(np.ma.masked_invalid(iso_cs[1:]).mask.sum(), 0.)
 
     da2 = xr.DataArray(np.random.rand(N,N),
