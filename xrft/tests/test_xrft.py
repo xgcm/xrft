@@ -82,6 +82,16 @@ def test_dft_2d():
     da_prime = (da - da.mean(dim=dim)).values
     npt.assert_almost_equal(ft.values, np.fft.fftn(da_prime*window))
 
+def test_dft_3d():
+    """Test the discrete Fourier transform on 3D dask array data"""
+    N=16
+    da = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
+                      coords={'time':range(2),'x':range(N),
+                              'y':range(N)}).chunk({'time': 1}
+                     )
+    daft = xrft.dft(da, dim=['x','y'], shift=False, remove_mean=False)
+    npt.assert_almost_equal(daft.values, np.fft.fftn(da.values, axes=[1,2]))
+
 def test_power_spectrum():
     """Test the power spectrum function"""
     N = 16
@@ -291,7 +301,7 @@ def test_isotropic_cs():
         delta = diff[0]
         delta_x.append(delta)
 
-    iso_cs = xrft.isotropic_crossspectrum(da, da2, window=True, nbins=int(N/4))
+    iso_cs = xrft.isotropic_crossspectrum(da, da2, window=True)
     npt.assert_almost_equal(np.ma.masked_invalid(iso_cs[1:]).mask.sum(), 0.)
 
     da2 = xr.DataArray(np.random.rand(N,N),
