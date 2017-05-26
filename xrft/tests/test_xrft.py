@@ -82,6 +82,16 @@ def test_dft_2d():
     da_prime = (da - da.mean(dim=dim)).values
     npt.assert_almost_equal(ft.values, np.fft.fftn(da_prime*window))
 
+def test_dft_3d():
+    """Test the discrete Fourier transform on 3D dask array data"""
+    N=16
+    da = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
+                      coords={'time':range(2),'x':range(N),
+                              'y':range(N)}).chunk({'time': 1}
+                     )
+    daft = xrft.dft(da, dim=['x','y'], shift=False, remove_mean=False)
+    npt.assert_almost_equal(daft.values, np.fft.fftn(da.values, axes=[1,2]))
+
 def test_power_spectrum():
     """Test the power spectrum function"""
     N = 16
