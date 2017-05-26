@@ -82,6 +82,20 @@ def test_dft_2d():
     da_prime = (da - da.mean(dim=dim)).values
     npt.assert_almost_equal(ft.values, np.fft.fftn(da_prime*window))
 
+def test_dft_3d_dask():
+    """Test the discrete Fourier transform on 3D dask array data"""
+    N=16
+    da = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
+                      coords={'time':range(2),'x':range(N),
+                              'y':range(N)}).chunk({'time': 1}
+                     )
+    daft = xrft.dft(da, dim=['x','y'], shift=False, remove_mean=False)
+    assert hasattr(daft.data, 'dask')
+    npt.assert_almost_equal(daft.values, np.fft.fftn(da.values, axes=[1,2]))
+
+    with pytest.raises(ValueError):
+        xrft.dft(da.chunk({'time': 1, 'x': 1}), dim=['x'])
+
 def test_power_spectrum():
     """Test the power spectrum function"""
     N = 16
@@ -107,6 +121,33 @@ def test_power_spectrum():
         test /= daft[coord[-i-1]].values
     npt.assert_almost_equal(ps.values, test)
     npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
+
+def test_power_spectrum_dask():
+    """Test the power spectrum function on dask data"""
+    N = 16
+    da = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
+                      coords={'time':range(2),'x':range(N),
+                              'y':range(N)}).chunk({'time': 1}
+                     )
+    ps = xrft.power_spectrum(da, dim=['x','y'], density=False)
+    daft = xrft.dft(da, dim=['x','y'])
+    npt.assert_almost_equal(ps.values, (daft * np.conj(daft)).real.values)
+
+def test_cross_spectrum_dask():
+    """Test the power spectrum function on dask data"""
+    N = 16
+    da = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
+                      coords={'time':range(2),'x':range(N),
+                              'y':range(N)}).chunk({'time': 1}
+                     )
+    da2 = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
+                      coords={'time':range(2),'x':range(N),
+                              'y':range(N)}).chunk({'time': 1}
+                     )
+    cs = xrft.cross_spectrum(da, da2, dim=['x','y'], density=False)
+    daft = xrft.dft(da, dim=['x','y'])
+    daft2 = xrft.dft(da2, dim=['x','y'])
+    npt.assert_almost_equal(cs.values, (daft * np.conj(daft2)).real.values)
 
 def test_cross_spectrum():
     """Test the cross spectrum function"""

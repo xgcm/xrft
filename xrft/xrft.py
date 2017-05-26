@@ -104,8 +104,7 @@ def dft(da, dim=None, shift=True, remove_mean=True, window=False):
     # is this the best way to check for dask?
     data = da.data
     if hasattr(data, 'dask'):
-        assert len(axis_num)==1
-        f = dsar.fft.fft(data, axis=axis_num[0])
+        f = dsar.fft.fftn(data, axes=axis_num)
     else:
         f = np.fft.fftn(data, axes=axis_num)
 
@@ -125,7 +124,7 @@ def dft(da, dim=None, shift=True, remove_mean=True, window=False):
     newcoords = {}
     for d in newdims:
         if d in da.coords:
-            newcoords[d] = da.coords[d]
+            newcoords[d] = da.coords[d].values
         else:
             newcoords[d] = k_coords[d]
 
@@ -180,13 +179,14 @@ def power_spectrum(da, dim=None, shift=True, remove_mean=True, density=True,
 
     coord = list(daft.coords)
 
-    ps = np.real(daft*np.conj(daft))
+    ps = (daft * np.conj(daft)).real
+
     if density:
         ps /= (np.asarray(N).prod())**2
         for i in range(len(dim)):
             ps /= daft[coord[-i-1]].values
 
-    return xr.DataArray(ps, coords=daft.coords, dims=daft.dims)
+    return ps
 
 def cross_spectrum(da1, da2, dim=None,
                    shift=True, remove_mean=True, density=True, window=False):
@@ -239,13 +239,14 @@ def cross_spectrum(da1, da2, dim=None,
 
     coord = list(daft1.coords)
 
-    cs = np.real(daft1 * np.conj(daft2))
+    cs = (daft1 * np.conj(daft2)).real
+
     if density:
         cs /= (np.asarray(N).prod())**2
         for i in range(int(len(dim))):
             cs /= daft1[coord[-i-1]].values
 
-    return xr.DataArray(cs, coords=daft1.coords, dims=daft1.dims)
+    return cs
 
 def _azimuthal_avg(k, l, f, nbins=64):
     """
