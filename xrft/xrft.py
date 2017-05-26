@@ -190,7 +190,7 @@ def power_spectrum(da, dim=None, shift=True, remove_mean=True, density=True,
     if density:
         ps /= (np.asarray(N).prod())**2
         for i in range(len(dim)):
-            ps /= daft[coord[-i-1]].values
+            ps /= (daft[coord[-i-1]].values * 1.)
 
     return ps
 
@@ -253,7 +253,7 @@ def cross_spectrum(da1, da2, dim=None,
     if density:
         cs /= (np.asarray(N).prod())**2
         for i in range(int(len(dim))):
-            cs /= daft1[coord[-i-1]].values
+            cs /= (daft1[coord[-i-1]].values * 1.)
 
     return cs
 
