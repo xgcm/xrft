@@ -147,8 +147,8 @@ def test_power_spectrum_dask():
     daft = xrft.dft(da, dim=dim, window=True)
     coord = list(daft.coords)
     test = (daft * np.conj(daft)).real/N**4
-    for i in range(len(dim)):
-        test /= daft[coord[-i-1]].values
+    for i in dim:
+        test /= daft['freq_' + i + '_spacing']
     npt.assert_almost_equal(ps.values, test)
     npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
@@ -193,8 +193,8 @@ def test_cross_spectrum_dask():
     daft2 = xrft.dft(da2, dim=dim, window=True)
     coord = list(daft.coords)
     test = (daft * np.conj(daft2)).real/N**4
-    for i in range(len(dim)):
-        test /= daft[coord[-i-1]].values
+    for i in dim:
+        test /= daft['freq_' + i + '_spacing']
     npt.assert_almost_equal(cs.values, test)
     npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.)
 
