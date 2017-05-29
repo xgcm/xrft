@@ -227,6 +227,20 @@ def test_parseval():
                             ), decimal=5
                             )
 
+    # da = xr.DataArray(np.random.rand(5,2,20,30),
+    #               dims=['time', 'z', 'y', 'x'],
+    #               coords={'time': np.arange(5),'z':range(2),
+    #                     'y': np.arange(20),
+    #                     'x': np.arange(30)}).chunk({'z':1})
+    # dim = ['y','x']
+    # ps = xrft.power_spectrum(da, dim=dim, window=True)
+    # da_prime = da.values - da.mean(dim=dim).values
+    # npt.assert_almost_equal(ps.values.sum(),
+    #                         (np.asarray(delta_x).prod()
+    #                         * ((da_prime*window)**2).sum()
+    #                         ), decimal=5
+    #                         )
+
     cs = xrft.cross_spectrum(da, da2, window=True)
     da2_prime = da2.values - da2.mean(dim=dim).values
     npt.assert_almost_equal(cs.values.sum(),
@@ -357,6 +371,15 @@ def test_isotropic_ps():
                         'y': np.arange(20),
                         'x': np.arange(30)}).chunk({'z':1})
     iso_ps = xrft.isotropic_powerspectrum(da, dim=['y','x'])
+    npt.assert_almost_equal(np.ma.masked_invalid(iso_ps[:,:,1:]).mask.sum(),
+                            0.)
+
+    da = xr.DataArray(np.random.rand(5,24,20,30),
+                  dims=['time', 'z', 'y', 'x'],
+                  coords={'time': np.arange(5),'z':range(24),
+                        'y': np.arange(20),
+                        'x': np.arange(30)}).chunk({'y':10})
+    iso_ps = xrft.isotropic_powerspectrum(da, dim=['z','x'])
     npt.assert_almost_equal(np.ma.masked_invalid(iso_ps[:,:,1:]).mask.sum(),
                             0.)
 
