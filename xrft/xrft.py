@@ -290,19 +290,19 @@ def _azimuthal_avg(k, l, f, fftdim, N, nfactor):
                                     weights=f.data.ravel())
                                     / area) * kr
     elif f.ndim == 3:
-        iso_f = np.zeros((M,nbins+1))
+        iso_f = np.zeros((M[0],nbins+1))
         if n_dim == 0:
-            for i in range(M):
+            for i in range(M[0]):
                 iso_f[i] = np.ma.masked_invalid(np.bincount(kidx,
                                                 weights=f.data[i].ravel())
                                                 / area) * kr
         elif n_dim == 1:
-            for i in range(M):
+            for i in range(M[0]):
                 iso_f[i] = np.ma.masked_invalid(np.bincount(kidx,
                                                 weights=f.data[:,i].ravel())
                                                 / area) * kr
         else:
-            for i in range(M):
+            for i in range(M[0]):
                 iso_f[i] = np.ma.masked_invalid(np.bincount(kidx,
                                                 weights=f.data[:,:,i].ravel())
                                                 / area) * kr
