@@ -112,14 +112,23 @@ def test_power_spectrum():
     ### Normalized
     dim = da.dims
     ps = xrft.power_spectrum(da, window=True)
-    daft = xrft.dft(da,
-                    dim=None, shift=True, remove_mean=True,
-                    window=True)
+    daft = xrft.dft(da, window=True)
     coord = list(daft.coords)
     test = np.real(daft*np.conj(daft))/N**4
     for i in range(len(dim)):
         test /= daft[coord[-i-1]].values
     npt.assert_almost_equal(ps.values, test)
+    npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
+
+    da = xr.DataArray(np.random.rand(5,20,30),
+                  dims=['time', 'y', 'x'],
+                  coords={'time': np.arange(5),
+                        'y': np.arange(20), 'x': np.arange(30)})
+    ps = xrft.power_spectrum(da, dim=['y', 'x'],
+                            window=True, density=False
+                            )
+    daft = xrft.dft(da, dim=['y','x'], window=True)
+    npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
     npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
 def test_power_spectrum_dask():
@@ -227,7 +236,7 @@ def test_parseval():
                             ), decimal=5
                             )
 
-def synthetic_field(N, dL, amp, s):
+def _synthetic_field(N, dL, amp, s):
     """
     Generate a synthetic series of size N by N
     with a spectral slope of s.
@@ -322,9 +331,9 @@ def synthetic_field(N, dL, amp, s):
 def test_isotropic_ps_slope(N=512, dL=1., amp=1e1, s=-3.):
     """Test the spectral slope of isotropic power spectrum."""
 
-    theta = xr.DataArray(synthetic_field(N, dL, amp, s),
-                        dims=['x', 'y'],
-                        coords={'x':range(N), 'y':range(N)})
+    theta = xr.DataArray(_synthetic_field(N, dL, amp, s),
+                        dims=['y', 'x'],
+                        coords={'y':range(N), 'x':range(N)})
     iso_ps = xrft.isotropic_powerspectrum(theta, remove_mean=True,
                                         density=True)
     npt.assert_almost_equal(np.ma.masked_invalid(iso_ps[1:]).mask.sum(), 0.)
@@ -333,13 +342,31 @@ def test_isotropic_ps_slope(N=512, dL=1., amp=1e1, s=-3.):
 
     npt.assert_allclose(a, s, atol=.1)
 
+def test_isotropic_ps():
+    """Test data with extra coordinates"""
+    da = xr.DataArray(np.random.rand(5,20,30),
+                  dims=['time', 'y', 'x'],
+                  coords={'time': np.arange(5), 'y': np.arange(20),
+                          'x': np.arange(30)})
+    iso_ps = xrft.isotropic_powerspectrum(da, dim=['y','x'])
+    npt.assert_almost_equal(np.ma.masked_invalid(iso_ps[:,1:]).mask.sum(), 0.)
+
+    da = xr.DataArray(np.random.rand(5,2,20,30),
+                  dims=['time', 'z', 'y', 'x'],
+                  coords={'time': np.arange(5),'z':range(2),
+                        'y': np.arange(20),
+                        'x': np.arange(30)}).chunk({'z':1})
+    iso_ps = xrft.isotropic_powerspectrum(da, dim=['y','x'])
+    npt.assert_almost_equal(np.ma.masked_invalid(iso_ps[:,:,1:]).mask.sum(),
+                            0.)
+
 def test_isotropic_cs():
     """Test isotropic cross spectrum"""
     N = 16
     da = xr.DataArray(np.random.rand(N,N),
-                    dims=['x','y'], coords={'x':range(N), 'y':range(N)})
+                    dims=['y','x'], coords={'y':range(N),'x':range(N)})
     da2 = xr.DataArray(np.random.rand(N,N),
-                    dims=['x','y'], coords={'x':range(N), 'y':range(N)})
+                    dims=['y','x'], coords={'y':range(N),'x':range(N)})
 
     dim = da.dims
     delta_x = []
@@ -356,6 +383,18 @@ def test_isotropic_cs():
     npt.assert_almost_equal(np.ma.masked_invalid(iso_cs[1:]).mask.sum(), 0.)
 
     da2 = xr.DataArray(np.random.rand(N,N),
-                    dims=['lon','lat'], coords={'lon':range(N), 'lat':range(N)})
+                    dims=['lat','lon'],
+                    coords={'lat':range(N),'lon':range(N)})
     with pytest.raises(ValueError):
         xrft.isotropic_crossspectrum(da, da2)
+
+    da = xr.DataArray(np.random.rand(5,20,30),
+                  dims=['time', 'y', 'x'],
+                  coords={'time': np.arange(5), 'y': np.arange(20),
+                          'x': np.arange(30)}).chunk({'time':1})
+    da2 = xr.DataArray(np.random.rand(5,20,30),
+                  dims=['time', 'y', 'x'],
+                  coords={'time': np.arange(5), 'y': np.arange(20),
+                          'x': np.arange(30)}).chunk({'time':1})
+    iso_cs = xrft.isotropic_crossspectrum(da, da2, dim=['y','x'], window=True)
+    npt.assert_almost_equal(np.ma.masked_invalid(iso_cs[:,1:]).mask.sum(), 0.)

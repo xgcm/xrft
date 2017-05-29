@@ -257,11 +257,11 @@ def cross_spectrum(da1, da2, dim=None,
 
     return cs
 
-def _azimuthal_avg(k, l, f, N, nfactor):
+def _azimuthal_avg(k, l, f, fftdim, N, nfactor):
     """
     Takes the azimuthal average of a given field.
     """
-
+    k = k.values; l = l.values
     kk, ll = np.meshgrid(k, l)
     K = np.sqrt(kk**2 + ll**2)
     nbins = int(N/nfactor)
@@ -270,16 +270,62 @@ def _azimuthal_avg(k, l, f, N, nfactor):
     else:
         ki = np.linspace(0., k.max(), nbins)
 
-    kidx = np.digitize(K.ravel(), ki)
+    kidx = np.digitize(np.ravel(K), ki)
     area = np.bincount(kidx)
 
-    kr = np.ma.masked_invalid(np.bincount(kidx,
-                                          weights=K.ravel()) / area
-                                         )
-    iso_f = np.ma.masked_invalid(np.bincount(kidx,
-                                            weights=f.values.ravel())
-                                            / area
-                                            ) * kr
+    kr = np.bincount(kidx, weights=K.ravel()) / area
+
+    axis_num = [f.get_axis_num(d) for d in fftdim]
+    M = np.zeros(f.ndim-len(axis_num), dtype=int)
+    n_dim = np.zeros(f.ndim-len(axis_num), dtype=int)
+    j = 0
+    for i in range(f.ndim):
+        if i not in axis_num:
+            n_dim[j] = i
+            M[j] = f.shape[i]
+            j += 1
+
+    if f.ndim == 2:
+        iso_f = np.ma.masked_invalid(np.bincount(kidx,
+                                    weights=f.data.ravel())
+                                    / area) * kr
+    elif f.ndim == 3:
+        iso_f = np.zeros((M,nbins+1))
+        if n_dim == 0:
+            for i in range(M):
+                iso_f[i] = np.ma.masked_invalid(np.bincount(kidx,
+                                                weights=f.data[i].ravel())
+                                                / area) * kr
+        elif n_dim == 1:
+            for i in range(M):
+                iso_f[i] = np.ma.masked_invalid(np.bincount(kidx,
+                                                weights=f.data[:,i].ravel())
+                                                / area) * kr
+        else:
+            for i in range(M):
+                iso_f[i] = np.ma.masked_invalid(np.bincount(kidx,
+                                                weights=f.data[:,:,i].ravel())
+                                                / area) * kr
+    elif f.ndim == 4:
+        iso_f = np.zeros((M[0],M[1],nbins+1))
+        if n_dim.sum() == 1:
+            for j in range(M[0]):
+                for i in range(M[1]):
+                    iso_f[j,i] = np.ma.masked_invalid(np.bincount(kidx,
+                                                weights=f.data[j,i].ravel())
+                                                    / area) * kr
+        elif n_dim.sum() == 2:
+            for j in range(M[0]):
+                for i in range(M[1]):
+                    iso_f[j,i] = np.ma.masked_invalid(np.bincount(kidx,
+                                                weights=f.data[j,:,i].ravel())
+                                                    / area) * kr
+        else:
+            for j in range(M[0]):
+                for i in range(M[1]):
+                    iso_f[j,i] = np.ma.masked_invalid(np.bincount(kidx,
+                                                weights=f.data[j,:,:,i].ravel())
+                                                    / area) * kr
     return kr, iso_f
 
 def isotropic_powerspectrum(da, dim=None, shift=True, remove_mean=True,
@@ -322,22 +368,41 @@ def isotropic_powerspectrum(da, dim=None, shift=True, remove_mean=True,
 
     if dim is None:
         dim = da.dims
+    if len(dim) != 2:
+        raise ValueError('The Fourier transform should be two dimensional')
 
     ps = power_spectrum(da, dim=dim, shift=shift,
                        remove_mean=remove_mean, density=density,
                        window=window)
-    if len(ps.dims) > 2:
-        raise ValueError('The data set has too many dimensions')
 
-    k = ps[ps.dims[0]].values
-    l = ps[ps.dims[1]].values
+    fftdim = ['freq_' + d for d in dim]
+    k = ps[fftdim[1]]
+    l = ps[fftdim[0]]
 
     axis_num = [da.get_axis_num(d) for d in dim]
     N = [da.shape[n] for n in axis_num]
-    kr, iso_ps = _azimuthal_avg(k, l, ps, N[0], nfactor)
+    kr, iso_ps = _azimuthal_avg(k, l, ps, fftdim, N[0], nfactor)
 
-    return xr.DataArray(iso_ps, dims=['freq_r'],
-                        coords={'freq_r':kr})
+    k_coords = {'freq_r': kr}
+
+    newdims = []
+    for i in range(ps.ndim-1):
+        if i not in axis_num:
+            newdims.append(ps.dims[i])
+    newdims.append('freq_r')
+
+    newcoords = {}
+    for d in newdims:
+        if d in da.coords:
+            newcoords[d] = da.coords[d].values
+        else:
+            newcoords[d] = k_coords[d]
+
+    # dk = [l[1] - l[0] for l in kr]
+    # for this_dk, d in zip(dk, dim):
+    #     newcoords[prefix + d + '_spacing'] = this_dk
+
+    return xr.DataArray(iso_ps, dims=newdims, coords=newcoords)
 
 def isotropic_crossspectrum(da1, da2,
                         dim=None, shift=True, remove_mean=True,
@@ -386,22 +451,39 @@ def isotropic_crossspectrum(da1, da2,
         dim2 = da2.dims
         if dim != dim2:
             raise ValueError('The two datasets have different dimensions')
+    if len(dim) != 2:
+        raise ValueError('The Fourier transform should be two dimensional')
 
     cs = cross_spectrum(da1, da2, dim=dim, shift=shift,
                        remove_mean=remove_mean, density=density,
                        window=window)
-    if len(cs.dims) > 2:
-        raise ValueError('The data set has too many dimensions')
+    # if len(cs.dims) > 2:
+    #     raise ValueError('The data set has too many dimensions')
 
-    k = cs[cs.dims[0]].values
-    l = cs[cs.dims[1]].values
+    fftdim = ['freq_' + d for d in dim]
+    k = cs[fftdim[1]]
+    l = cs[fftdim[0]]
 
     axis_num = [da1.get_axis_num(d) for d in dim]
     N = [da1.shape[n] for n in axis_num]
-    kr, iso_cs = _azimuthal_avg(k, l, cs, N[0], nfactor)
+    kr, iso_cs = _azimuthal_avg(k, l, cs, fftdim, N[0], nfactor)
 
-    return xr.DataArray(iso_cs, dims=['freq_r'],
-                        coords={'freq_r':kr})
+    k_coords = {'freq_r': kr}
+
+    newdims = []
+    for i in range(cs.ndim-1):
+        if i not in axis_num:
+            newdims.append(cs.dims[i])
+    newdims.append('freq_r')
+
+    newcoords = {}
+    for d in newdims:
+        if d in da1.coords:
+            newcoords[d] = da1.coords[d].values
+        else:
+            newcoords[d] = k_coords[d]
+
+    return xr.DataArray(iso_cs, dims=newdims, coords=newcoords)
 
 def fit_loglog(x, y):
     """
