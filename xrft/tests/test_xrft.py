@@ -362,26 +362,12 @@ def test_isotropic_ps():
                   dims=['time', 'y', 'x'],
                   coords={'time': np.arange(5), 'y': np.arange(20),
                           'x': np.arange(30)})
-    iso_ps = xrft.isotropic_powerspectrum(da, dim=['y','x'])
+    with pytest.raises(ValueError):
+        xrft.isotropic_powerspectrum(da, dim=['y','x'])
+    iso_ps = np.zeros((5, int(20/4)+1))
+    for t in range(5):
+        iso_ps[t] = xrft.isotropic_powerspectrum(da[t], dim=['y','x']).values
     npt.assert_almost_equal(np.ma.masked_invalid(iso_ps[:,1:]).mask.sum(), 0.)
-
-    da = xr.DataArray(np.random.rand(5,2,20,30),
-                  dims=['time', 'z', 'y', 'x'],
-                  coords={'time': np.arange(5),'z':range(2),
-                        'y': np.arange(20),
-                        'x': np.arange(30)}).chunk({'z':1})
-    iso_ps = xrft.isotropic_powerspectrum(da, dim=['y','x'])
-    npt.assert_almost_equal(np.ma.masked_invalid(iso_ps[:,:,1:]).mask.sum(),
-                            0.)
-
-    da = xr.DataArray(np.random.rand(5,24,20,30),
-                  dims=['time', 'z', 'y', 'x'],
-                  coords={'time': np.arange(5),'z':range(24),
-                        'y': np.arange(20),
-                        'x': np.arange(30)}).chunk({'y':10})
-    iso_ps = xrft.isotropic_powerspectrum(da, dim=['z','x'])
-    npt.assert_almost_equal(np.ma.masked_invalid(iso_ps[:,:,1:]).mask.sum(),
-                            0.)
 
 def test_isotropic_cs():
     """Test isotropic cross spectrum"""
@@ -419,5 +405,10 @@ def test_isotropic_cs():
                   dims=['time', 'y', 'x'],
                   coords={'time': np.arange(5), 'y': np.arange(20),
                           'x': np.arange(30)}).chunk({'time':1})
-    iso_cs = xrft.isotropic_crossspectrum(da, da2, dim=['y','x'], window=True)
+    with pytest.raises(ValueError):
+        xrft.isotropic_crossspectrum(da, da2, dim=['y','x'], window=True)
+    iso_cs = np.zeros((5,int(20/4)+1))
+    for t in range(5):
+        iso_cs[t] = xrft.isotropic_crossspectrum(da[t], da2[t], dim=['y','x'],
+                                                window=True).values
     npt.assert_almost_equal(np.ma.masked_invalid(iso_cs[:,1:]).mask.sum(), 0.)
