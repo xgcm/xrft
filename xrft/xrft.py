@@ -276,56 +276,72 @@ def _azimuthal_avg(k, l, f, fftdim, N, nfactor):
     kr = np.bincount(kidx, weights=K.ravel()) / area
 
     axis_num = [f.get_axis_num(d) for d in fftdim]
-    M = np.zeros(f.ndim-len(axis_num), dtype=int)
-    n_dim = np.zeros(f.ndim-len(axis_num), dtype=int)
-    j = 0
-    for i in range(f.ndim):
-        if i not in axis_num:
-            n_dim[j] = i
-            M[j] = f.shape[i]
-            j += 1
 
     if f.ndim == 2:
+        # the given data is 2D and the azimuthal avg
+        # is simply taken over the two dimensions.
         iso_f = np.ma.masked_invalid(np.bincount(kidx,
                                     weights=f.data.ravel())
                                     / area) * kr
-    elif f.ndim == 3:
-        iso_f = np.zeros((M[0],nbins+1))
-        if n_dim == 0:
-            for i in range(M[0]):
-                iso_f[i] = np.ma.masked_invalid(np.bincount(kidx,
-                                                weights=f.data[i].ravel())
-                                                / area) * kr
-        elif n_dim == 1:
-            for i in range(M[0]):
-                iso_f[i] = np.ma.masked_invalid(np.bincount(kidx,
-                                                weights=f.data[:,i].ravel())
-                                                / area) * kr
-        else:
-            for i in range(M[0]):
-                iso_f[i] = np.ma.masked_invalid(np.bincount(kidx,
+    else:
+        # the data has more dimensions than two.
+        # get the two dimensions to take the aximuthal avg over
+        M = np.zeros(f.ndim-len(axis_num), dtype=int)
+        n_dim = np.zeros(f.ndim-len(axis_num), dtype=int)
+        j = 0
+        for i in range(f.ndim):
+            if i not in axis_num:
+                n_dim[j] = i
+                M[j] = f.shape[i]
+                j += 1
+        if f.ndim == 3:
+            # data is 3D
+            iso_f = np.zeros((M[0],nbins+1))
+            if n_dim == 0:
+                for i in range(M[0]):
+                    iso_f[i] = np.ma.masked_invalid(np.bincount(kidx,
+                                                    weights=f.data[i].ravel())
+                                                    / area) * kr
+            elif n_dim == 1:
+                for i in range(M[0]):
+                    iso_f[i] = np.ma.masked_invalid(np.bincount(kidx,
+                                                    weights=f.data[:,i].ravel())
+                                                    / area) * kr
+            else:
+                for i in range(M[0]):
+                    iso_f[i] = np.ma.masked_invalid(np.bincount(kidx,
                                                 weights=f.data[:,:,i].ravel())
-                                                / area) * kr
-    elif f.ndim == 4:
-        iso_f = np.zeros((M[0],M[1],nbins+1))
-        if n_dim.sum() == 1:
-            for j in range(M[0]):
-                for i in range(M[1]):
-                    iso_f[j,i] = np.ma.masked_invalid(np.bincount(kidx,
-                                                weights=f.data[j,i].ravel())
                                                     / area) * kr
-        elif n_dim.sum() == 2:
-            for j in range(M[0]):
-                for i in range(M[1]):
-                    iso_f[j,i] = np.ma.masked_invalid(np.bincount(kidx,
+        elif f.ndim == 4:
+            # data is 4D
+            M = np.zeros(f.ndim-len(axis_num), dtype=int)
+            n_dim = np.zeros(f.ndim-len(axis_num), dtype=int)
+            j = 0
+            for i in range(f.ndim):
+                if i not in axis_num:
+                    # get the axes to take the azimuthal avg to take over
+                    n_dim[j] = i
+                    M[j] = f.shape[i]
+                    j += 1
+            iso_f = np.zeros((M[0],M[1],nbins+1))
+            if n_dim.sum() == 1:
+                for j in range(M[0]):
+                    for i in range(M[1]):
+                        iso_f[j,i] = np.ma.masked_invalid(np.bincount(kidx,
+                                                    weights=f.data[j,i].ravel())
+                                                        / area) * kr
+            elif n_dim.sum() == 2:
+                for j in range(M[0]):
+                    for i in range(M[1]):
+                        iso_f[j,i] = np.ma.masked_invalid(np.bincount(kidx,
                                                 weights=f.data[j,:,i].ravel())
-                                                    / area) * kr
-        else:
-            for j in range(M[0]):
-                for i in range(M[1]):
-                    iso_f[j,i] = np.ma.masked_invalid(np.bincount(kidx,
+                                                        / area) * kr
+            else:
+                for j in range(M[0]):
+                    for i in range(M[1]):
+                        iso_f[j,i] = np.ma.masked_invalid(np.bincount(kidx,
                                                 weights=f.data[j,:,:,i].ravel())
-                                                    / area) * kr
+                                                        / area) * kr
     return kr, iso_f
 
 def isotropic_powerspectrum(da, dim=None, shift=True, remove_mean=True,
@@ -381,7 +397,8 @@ def isotropic_powerspectrum(da, dim=None, shift=True, remove_mean=True,
 
     axis_num = [da.get_axis_num(d) for d in dim]
     N = [da.shape[n] for n in axis_num]
-    kr, iso_ps = _azimuthal_avg(k, l, ps, fftdim, N[0], nfactor)
+    kr, iso_ps = _azimuthal_avg(k, l, ps, fftdim,
+                                np.asarray(N).min(), nfactor)
 
     k_coords = {'freq_r': kr}
 
@@ -466,7 +483,8 @@ def isotropic_crossspectrum(da1, da2,
 
     axis_num = [da1.get_axis_num(d) for d in dim]
     N = [da1.shape[n] for n in axis_num]
-    kr, iso_cs = _azimuthal_avg(k, l, cs, fftdim, N[0], nfactor)
+    kr, iso_cs = _azimuthal_avg(k, l, cs, fftdim,
+                                np.asarray(N).min(), nfactor)
 
     k_coords = {'freq_r': kr}
 
