@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import numpy.testing as npt
+import scipy.signal as sig
 import pytest
 import xrft
 
@@ -24,7 +25,7 @@ def test_dft_1d():
     da = xr.DataArray(np.random.rand(Nx), coords=[x], dims=['x'])
 
     # defaults with no keyword args
-    ft = xrft.dft(da)
+    ft = xrft.dft(da, detrend='constant')
     # check that the frequency dimension was created properly
     assert ft.dims == ('freq_x',)
     # check that the coords are correct
@@ -40,9 +41,15 @@ def test_dft_1d():
     npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
 
     # redo without removing mean
-    ft = xrft.dft(da, remove_mean=False)
+    ft = xrft.dft(da)
     ft_data_expected = np.fft.fftshift(np.fft.fft(da))
     npt.assert_allclose(ft_data_expected, ft.values)
+
+    # redo with detrending linear least-square fit
+    ft = xrft.dft(da, detrend='linear')
+    da_prime = sig.detrend(da.values)
+    ft_data_expected = np.fft.fftshift(np.fft.fft(da_prime))
+    npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
 
     # modify data to be non-evenly spaced
     da2 = da.copy()
@@ -73,28 +80,40 @@ def test_dft_2d():
     da = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
                     coords={'x':range(N),'y':range(N)}
                      )
-    ft = xrft.dft(da, shift=False, remove_mean=False)
+    ft = xrft.dft(da, shift=False)
     npt.assert_almost_equal(ft.values, np.fft.fftn(da.values))
 
-    ft = xrft.dft(da, shift=False, window=True)
+    ft = xrft.dft(da, shift=False, window=True, detrend='constant')
     dim = da.dims
     window = np.hanning(N) * np.hanning(N)[:, np.newaxis]
     da_prime = (da - da.mean(dim=dim)).values
     npt.assert_almost_equal(ft.values, np.fft.fftn(da_prime*window))
 
+    with pytest.raises(ValueError):
+        xrft.dft(da, shift=False, window=True, detrend='linear')
+
 def test_dft_3d_dask():
     """Test the discrete Fourier transform on 3D dask array data"""
     N=16
-    da = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
-                      coords={'time':range(2),'x':range(N),
-                              'y':range(N)}).chunk({'time': 1}
+    da = xr.DataArray(np.random.rand(N,N,N), dims=['time','x','y'],
+                      coords={'time':range(N),'x':range(N),
+                              'y':range(N)}
                      )
-    daft = xrft.dft(da, dim=['x','y'], shift=False, remove_mean=False)
+    daft = xrft.dft(da.chunk({'time': 1}), dim=['x','y'], shift=False)
     assert hasattr(daft.data, 'dask')
-    npt.assert_almost_equal(daft.values, np.fft.fftn(da.values, axes=[1,2]))
+    npt.assert_almost_equal(daft.values,
+                        np.fft.fftn(da.chunk({'time': 1}).values, axes=[1,2])
+                           )
 
     with pytest.raises(ValueError):
         xrft.dft(da.chunk({'time': 1, 'x': 1}), dim=['x'])
+
+    daft = xrft.dft(da.chunk({'x': 1}), dim=['time'],
+                    shift=False, detrend='linear')
+    da_prime = sig.detrend(da.chunk({'x': 1}), axis=0)
+    npt.assert_almost_equal(daft.values,
+                        np.fft.fftn(da_prime, axes=[0])
+                           )
 
 def test_power_spectrum():
     """Test the power spectrum function"""
@@ -102,17 +121,18 @@ def test_power_spectrum():
     da = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
                     coords={'x':range(N),'y':range(N)}
                      )
-    ps = xrft.power_spectrum(da, window=True, density=False)
+    ps = xrft.power_spectrum(da, window=True, density=False,
+                            detrend='constant')
     daft = xrft.dft(da,
-                    dim=None, shift=True, remove_mean=True,
+                    dim=None, shift=True, detrend='constant',
                     window=True)
     npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
     npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
     ### Normalized
     dim = da.dims
-    ps = xrft.power_spectrum(da, window=True)
-    daft = xrft.dft(da, window=True)
+    ps = xrft.power_spectrum(da, window=True, detrend='constant')
+    daft = xrft.dft(da, window=True, detrend='constant')
     coord = list(daft.coords)
     test = np.real(daft*np.conj(daft))/N**4
     for i in range(len(dim)):
@@ -120,14 +140,27 @@ def test_power_spectrum():
     npt.assert_almost_equal(ps.values, test)
     npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
+    ### Remove mean
     da = xr.DataArray(np.random.rand(5,20,30),
                   dims=['time', 'y', 'x'],
                   coords={'time': np.arange(5),
                         'y': np.arange(20), 'x': np.arange(30)})
     ps = xrft.power_spectrum(da, dim=['y', 'x'],
-                            window=True, density=False
+                            window=True, density=False, detrend='constant'
                             )
-    daft = xrft.dft(da, dim=['y','x'], window=True)
+    daft = xrft.dft(da, dim=['y','x'], window=True, detrend='constant')
+    npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
+    npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
+
+    ### Remove least-square fit
+    da_prime = np.zeros_like(da.values)
+    for t in range(5):
+        da_prime[t] = xrft.detrend(da[t].values)
+    da_prime = xr.DataArray(da_prime, dims=da.dims, coords=da.coords)
+    ps = xrft.power_spectrum(da_prime, dim=['y', 'x'],
+                            window=True, density=False, detrend='constant'
+                            )
+    daft = xrft.dft(da_prime, dim=['y','x'], window=True, detrend='constant')
     npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
     npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
@@ -143,8 +176,8 @@ def test_power_spectrum_dask():
     daft = xrft.dft(da, dim=['x','y'])
     npt.assert_almost_equal(ps.values, (daft * np.conj(daft)).real.values)
 
-    ps = xrft.power_spectrum(da, dim=dim, window=True)
-    daft = xrft.dft(da, dim=dim, window=True)
+    ps = xrft.power_spectrum(da, dim=dim, window=True, detrend='constant')
+    daft = xrft.dft(da, dim=dim, window=True, detrend='constant')
     coord = list(daft.coords)
     test = (daft * np.conj(daft)).real/N**4
     for i in dim:
@@ -161,12 +194,13 @@ def test_cross_spectrum():
     da2 = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
                     coords={'x':range(N),'y':range(N)}
                      )
-    cs = xrft.cross_spectrum(da, da2, window=True, density=False)
+    cs = xrft.cross_spectrum(da, da2, window=True, density=False,
+                            detrend='constant')
     daft = xrft.dft(da,
-                    dim=None, shift=True, remove_mean=True,
+                    dim=None, shift=True, detrend='constant',
                     window=True)
     daft2 = xrft.dft(da2,
-                    dim=None, shift=True, remove_mean=True,
+                    dim=None, shift=True, detrend='constant',
                     window=True)
     npt.assert_almost_equal(cs.values, np.real(daft*np.conj(daft2)))
     npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.)
@@ -188,11 +222,11 @@ def test_cross_spectrum_dask():
     daft2 = xrft.dft(da2, dim=dim)
     npt.assert_almost_equal(cs.values, (daft * np.conj(daft2)).real.values)
 
-    cs = xrft.cross_spectrum(da, da2, dim=dim, window=True)
-    daft = xrft.dft(da, dim=dim, window=True)
-    daft2 = xrft.dft(da2, dim=dim, window=True)
+    cs = xrft.cross_spectrum(da, da2, dim=dim, window=True, detrend='constant')
+    daft = xrft.dft(da, dim=dim, window=True, detrend='constant')
+    daft2 = xrft.dft(da2, dim=dim, window=True, detrend='constant')
     coord = list(daft.coords)
-    test = (daft * np.conj(daft2)).real/N**4
+    test = (daft * np.conj(daft2)).real.values/N**4
     for i in dim:
         test /= daft['freq_' + i + '_spacing']
     npt.assert_almost_equal(cs.values, test)
@@ -219,7 +253,7 @@ def test_parseval():
         delta_x.append(delta)
 
     window = np.hanning(N) * np.hanning(N)[:, np.newaxis]
-    ps = xrft.power_spectrum(da, window=True)
+    ps = xrft.power_spectrum(da, window=True, detrend='constant')
     da_prime = da.values - da.mean(dim=dim).values
     npt.assert_almost_equal(ps.values.sum(),
                             (np.asarray(delta_x).prod()
@@ -241,7 +275,7 @@ def test_parseval():
     #                         ), decimal=5
     #                         )
 
-    cs = xrft.cross_spectrum(da, da2, window=True)
+    cs = xrft.cross_spectrum(da, da2, window=True, detrend='constant')
     da2_prime = da2.values - da2.mean(dim=dim).values
     npt.assert_almost_equal(cs.values.sum(),
                             (np.asarray(delta_x).prod()
@@ -348,7 +382,7 @@ def test_isotropic_ps_slope(N=512, dL=1., amp=1e1, s=-3.):
     theta = xr.DataArray(_synthetic_field(N, dL, amp, s),
                         dims=['y', 'x'],
                         coords={'y':range(N), 'x':range(N)})
-    iso_ps = xrft.isotropic_powerspectrum(theta, remove_mean=True,
+    iso_ps = xrft.isotropic_powerspectrum(theta, detrend='constant',
                                         density=True)
     npt.assert_almost_equal(np.ma.masked_invalid(iso_ps[1:]).mask.sum(), 0.)
     y_fit, a, b = xrft.fit_loglog(iso_ps.freq_r.values[4:],

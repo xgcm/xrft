@@ -3,8 +3,11 @@ import xarray as xr
 import pandas as pd
 import functools as ft
 import dask.array as dsar
+import scipy.signal as sig
+import scipy.linalg as lin
+import warnings
 
-__all__ = ["dft","power_spectrum","cross_spectrum",
+__all__ = ["detrend","dft","power_spectrum","cross_spectrum",
             "isotropic_powerspectrum","isotropic_crossspectrum",
             "fit_loglog"]
 
@@ -38,7 +41,39 @@ def _hanning(da, N):
 
     return da
 
-def dft(da, dim=None, shift=True, remove_mean=True, window=False):
+def detrend(da):
+    """
+    Detrend a 2D field by subtracting out the least-square plane fit.
+
+    Parameters
+    ----------
+    da : `numpy.array`
+        The data to be detrended
+
+    Returns
+    -------
+    da : `numpy.array`
+        The detrended input data
+    """
+
+    if da.ndim > 2:
+        raise ValueError('The data should only have two dimensions')
+    ny, nx = da.shape
+    d_obs = np.reshape(da, (ny*nx,1))
+
+    G = np.ones((ny*nx,3))
+    for i in range(ny):
+        G[nx*i:nx*i+nx, 0] = i+1
+        G[nx*i:nx*i+nx, 1] = np.arange(1, nx+1)
+    m_est = np.dot(np.dot(lin.inv(np.dot(G.T, G)), G.T), d_obs)
+    d_est = np.dot(G, m_est)
+    lin_trend = np.reshape(d_est, (ny,nx))
+
+    da -= lin_trend
+
+    return da
+
+def dft(da, dim=None, shift=True, detrend=None, window=False):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
     specified dimensions.
@@ -56,9 +91,11 @@ def dft(da, dim=None, shift=True, remove_mean=True, window=False):
         dimensions will be transformed.
     shift : bool (optional)
         Whether to shift the fft output.
-    remove_mean : bool (optional)
-        If `True`, the mean across the transform dimensions will be subtracted
-        before calculating the Fourier transform.
+    detrend : str (optional)
+        If `constant`, the mean across the transform dimensions will be
+        subtracted before calculating the Fourier transform (FT).
+        If `linear`, the linear least-square fit will be subtracted before
+        the FT.
     window : bool (optional)
         Whether to apply a Hann window to the data before the Fourier
         transform is taken
@@ -95,8 +132,19 @@ def dft(da, dim=None, shift=True, remove_mean=True, window=False):
     # calculate frequencies from coordinates
     k = [ np.fft.fftfreq(Nx, dx) for (Nx, dx) in zip(N, delta_x) ]
 
-    if remove_mean:
+    if detrend == 'constant':
         da = da - da.mean(dim=dim)
+    elif detrend == 'linear':
+        if len(axis_num) == 1:
+            da = xr.DataArray(sig.detrend(da.values, axis=axis_num[0],
+                                        type=detrend),
+                            dims=da.dims, coords=da.coords)
+        else:
+            raise ValueError('The input data has more than one dimension to'
+                            'detrend over, which is not supported by'
+                            '`scipy.signal.detrend()`.' 
+                            'The user should apply `xrft.detrend()`'
+                            'to the data before taking the Fourier transform.')
 
     if window:
         da = _hanning(da, N)
@@ -137,7 +185,7 @@ def dft(da, dim=None, shift=True, remove_mean=True, window=False):
 
     return xr.DataArray(f, dims=newdims, coords=newcoords)
 
-def power_spectrum(da, dim=None, shift=True, remove_mean=True, density=True,
+def power_spectrum(da, dim=None, shift=True, detrend=None, density=True,
                 window=False):
     """
     Calculates the power spectrum of da.
@@ -156,9 +204,11 @@ def power_spectrum(da, dim=None, shift=True, remove_mean=True, density=True,
         dimensions will be transformed.
     shift : bool (optional)
         Whether to shift the fft output.
-    remove_mean : bool (optional)
-        If `True`, the mean across the transform dimensions will be subtracted
-        before calculating the Fourier transform.
+    detrend : str (optional)
+        If `constant`, the mean across the transform dimensions will be
+        subtracted before calculating the Fourier transform (FT).
+        If `linear`, the linear least-square fit will be subtracted before
+        the FT.
     density : list (optional)
         If true, it will normalize the spectrum to spectral density
     window : bool (optional)
@@ -180,7 +230,7 @@ def power_spectrum(da, dim=None, shift=True, remove_mean=True, density=True,
     N = [da.shape[n] for n in axis_num]
 
     daft = dft(da,
-            dim=dim, shift=shift, remove_mean=remove_mean,
+            dim=dim, shift=shift, detrend=detrend,
             window=window)
 
     coord = list(daft.coords)
@@ -195,7 +245,7 @@ def power_spectrum(da, dim=None, shift=True, remove_mean=True, density=True,
     return ps
 
 def cross_spectrum(da1, da2, dim=None,
-                   shift=True, remove_mean=True, density=True, window=False):
+                   shift=True, detrend=None, density=True, window=False):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -215,9 +265,12 @@ def cross_spectrum(da1, da2, dim=None,
         dimensions will be transformed.
     shift : bool (optional)
         Whether to shift the fft output.
-    remove_mean : bool (optional)
-        If `True`, the mean across the transform dimensions will be subtracted
-        before calculating the Fourier transform.
+    detrend : str (optional)
+        If `constant`, the mean across the transform dimensions will be
+        subtracted before calculating the Fourier transform (FT).
+        If `linear`, the linear least-square fit along one axis will be
+        subtracted before the FT. It will give an error if the length of
+        `dim` is longer than one.
     density : list (optional)
         If true, it will normalize the spectrum to spectral density
     window : bool (optional)
@@ -242,9 +295,9 @@ def cross_spectrum(da1, da2, dim=None,
     N = [da1.shape[n] for n in axis_num]
 
     daft1 = dft(da1, dim=dim,
-                shift=shift, remove_mean=remove_mean, window=window)
+                shift=shift, detrend=detrend, window=window)
     daft2 = dft(da2, dim=dim,
-                shift=shift, remove_mean=remove_mean, window=window)
+                shift=shift, detrend=detrend, window=window)
 
     coord = list(daft1.coords)
 
@@ -286,7 +339,7 @@ def _azimuthal_avg(k, l, f, fftdim, N, nfactor):
 
     return kr, iso_f
 
-def isotropic_powerspectrum(da, dim=None, shift=True, remove_mean=True,
+def isotropic_powerspectrum(da, dim=None, shift=True, detrend=None,
                        density=True, window=False, nfactor=4):
     """
     Calculates the isotropic spectrum from the
@@ -306,9 +359,11 @@ def isotropic_powerspectrum(da, dim=None, shift=True, remove_mean=True,
         dimensions will be transformed.
     shift : bool (optional)
         Whether to shift the fft output.
-    remove_mean : bool (optional)
-        If `True`, the mean across the transform dimensions will be subtracted
-        before calculating the Fourier transform.
+    detrend : str (optional)
+        If `constant`, the mean across the transform dimensions will be
+        subtracted before calculating the Fourier transform (FT).
+        If `linear`, the linear least-square fit will be subtracted before
+        the FT.
     density : list (optional)
         If true, it will normalize the spectrum to spectral density
     window : bool (optional)
@@ -330,7 +385,7 @@ def isotropic_powerspectrum(da, dim=None, shift=True, remove_mean=True,
         raise ValueError('The Fourier transform should be two dimensional')
 
     ps = power_spectrum(da, dim=dim, shift=shift,
-                       remove_mean=remove_mean, density=density,
+                       detrend=detrend, density=density,
                        window=window)
 
     fftdim = ['freq_' + d for d in dim]
@@ -364,7 +419,7 @@ def isotropic_powerspectrum(da, dim=None, shift=True, remove_mean=True,
     return xr.DataArray(iso_ps, dims=newdims, coords=newcoords)
 
 def isotropic_crossspectrum(da1, da2,
-                        dim=None, shift=True, remove_mean=True,
+                        dim=None, shift=True, detrend=None,
                         density=True, window=False, nfactor=4):
     """
     Calculates the isotropic spectrum from the
@@ -387,9 +442,11 @@ def isotropic_crossspectrum(da1, da2,
         dimensions will be transformed.
     shift : bool (optional)
         Whether to shift the fft output.
-    remove_mean : bool (optional)
-        If `True`, the mean across the transform dimensions will be subtracted
-        before calculating the Fourier transform.
+    detrend : str (optional)
+        If `constant`, the mean across the transform dimensions will be
+        subtracted before calculating the Fourier transform (FT).
+        If `linear`, the linear least-square fit will be subtracted before
+        the FT.
     density : list (optional)
         If true, it will normalize the spectrum to spectral density
     window : bool (optional)
@@ -414,7 +471,7 @@ def isotropic_crossspectrum(da1, da2,
         raise ValueError('The Fourier transform should be two dimensional')
 
     cs = cross_spectrum(da1, da2, dim=dim, shift=shift,
-                       remove_mean=remove_mean, density=density,
+                       detrend=detrend, density=density,
                        window=window)
     # if len(cs.dims) > 2:
     #     raise ValueError('The data set has too many dimensions')
