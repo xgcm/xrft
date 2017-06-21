@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import numpy.testing as npt
-import scipy.signal as sig
+import scipy.signal as sps
+import scipy.linalg as spl
 import pytest
 import xrft
 
@@ -15,6 +16,92 @@ def sample_data_3d():
 def sample_data_1d():
     """Create one dimensional test DataArray."""
     pass
+
+def numpy_detrend(da):
+    """
+    Detrend a 2D field by subtracting out the least-square plane fit.
+
+    Parameters
+    ----------
+    da : `numpy.array`
+        The data to be detrended
+
+    Returns
+    -------
+    da : `numpy.array`
+        The detrended input data
+    """
+    N = da.shape
+
+    G = np.ones((N[0]*N[1],3))
+    for i in range(N[0]):
+        G[N[1]*i:N[1]*i+N[1], 1] = i+1
+        G[N[1]*i:N[1]*i+N[1], 2] = np.arange(1, N[1]+1)
+
+    d_obs = np.reshape(da.copy(), (N[0]*N[1],1))
+    m_est = np.dot(np.dot(spl.inv(np.dot(G.T, G)), G.T), d_obs)
+    d_est = np.dot(G, m_est)
+
+    lin_trend = np.reshape(d_est, (N[0],N[1]))
+
+    return da - lin_trend
+
+def test_detrend_1d():
+    N = 16
+    x = np.arange(N+1)
+    y = np.arange(N-1)
+    t = np.linspace(-int(N/2), int(N/2), N-6)
+    z = np.arange(int(N/2))
+    d4d = (t[:,np.newaxis,np.newaxis,np.newaxis]
+            + z[np.newaxis,:,np.newaxis,np.newaxis]
+            + y[np.newaxis,np.newaxis,:,np.newaxis]
+            + x[np.newaxis,np.newaxis,np.newaxis,:]
+          )
+    da4d = xr.DataArray(d4d, dims=['time','z','y','x'],
+                     coords={'time':range(len(t)),'z':range(len(z)),'y':range(len(y)),
+                             'x':range(len(x))}
+                     )
+    func = xrft._detrend_wrap(xrft.detrend2)
+    da = da4d.chunk({'time': 1})
+    da_prime = func(da.data, axes=[2]).compute()
+    npt.assert_allclose(da_prime[0,0], sps.detrend(d4d[0,0], axis=0))
+
+def test_detrend_2d():
+    N = 16
+    x = np.arange(N+1)
+    y = np.arange(N-1)
+    t = np.linspace(-int(N/2), int(N/2), N-6)
+    z = np.arange(int(N/2))
+    d4d = (t[:,np.newaxis,np.newaxis,np.newaxis]
+            + z[np.newaxis,:,np.newaxis,np.newaxis]
+            + y[np.newaxis,np.newaxis,:,np.newaxis]
+            + x[np.newaxis,np.newaxis,np.newaxis,:]
+          )
+    da4d = xr.DataArray(d4d, dims=['time','z','y','x'],
+                     coords={'time':range(len(t)),'z':range(len(z)),
+                             'y':range(len(y)),'x':range(len(x))}
+                       )
+    func = xrft._detrend_wrap(xrft.detrend2)
+    da = da4d.chunk({'time':1})
+    with pytest.raises(ValueError):
+        func(da.data, axes=[0]).compute()
+    da = da4d.chunk({'time':1, 'z':1})
+    with pytest.raises(ValueError):
+        func(da.data, axes=[1,2]).compute()
+    da_prime = func(da.data, axes=[2,3]).compute()
+    npt.assert_allclose(da_prime[0,0], numpy_detrend(d4d[0,0]))
+
+    s = np.arange(2)
+    d5d = d4d[np.newaxis,:,:,:,:] + s[:,np.newaxis,np.newaxis,
+                                        np.newaxis,np.newaxis]
+    da5d = xr.DataArray(d5d, dims=['s','time','z','y','x'],
+                     coords={'s':range(len(s)),'time':range(len(t)),
+                             'z':range(len(z)),'y':range(len(y)),
+                             'x':range(len(x))}
+                       )
+    da = da5d.chunk({'time':1})
+    with pytest.raises(ValueError):
+        func(da.data).compute()
 
 def test_dft_1d():
     """Test the discrete Fourier transform function on one-dimensional data."""
@@ -47,7 +134,7 @@ def test_dft_1d():
 
     # redo with detrending linear least-square fit
     ft = xrft.dft(da, detrend='linear')
-    da_prime = sig.detrend(da.values)
+    da_prime = sps.detrend(da.values)
     ft_data_expected = np.fft.fftshift(np.fft.fft(da_prime))
     npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
 
@@ -100,7 +187,7 @@ def test_dft_3d_dask():
                               'y':range(N)}
                      )
     daft = xrft.dft(da.chunk({'time': 1}), dim=['x','y'], shift=False)
-    assert hasattr(daft.data, 'dask')
+    # assert hasattr(daft.data, 'dask')
     npt.assert_almost_equal(daft.values,
                         np.fft.fftn(da.chunk({'time': 1}).values, axes=[1,2])
                            )
@@ -110,7 +197,8 @@ def test_dft_3d_dask():
 
     daft = xrft.dft(da.chunk({'x': 1}), dim=['time'],
                     shift=False, detrend='linear')
-    da_prime = sig.detrend(da.chunk({'x': 1}), axis=0)
+    # assert hasattr(daft.data, 'dask')
+    da_prime = sps.detrend(da.chunk({'x': 1}), axis=0)
     npt.assert_almost_equal(daft.values,
                         np.fft.fftn(da_prime, axes=[0])
                            )
@@ -155,7 +243,7 @@ def test_power_spectrum():
     ### Remove least-square fit
     da_prime = np.zeros_like(da.values)
     for t in range(5):
-        da_prime[t] = xrft.detrend(da[t].values)
+        da_prime[t] = numpy_detrend(da[t].values)
     da_prime = xr.DataArray(da_prime, dims=da.dims, coords=da.coords)
     ps = xrft.power_spectrum(da_prime, dim=['y', 'x'],
                             window=True, density=False, detrend='constant'

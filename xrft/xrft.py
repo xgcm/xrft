@@ -3,11 +3,12 @@ import xarray as xr
 import pandas as pd
 import functools as ft
 import dask.array as dsar
-import scipy.signal as sig
-import scipy.linalg as lin
+import scipy.signal as sps
+import scipy.linalg as spl
 import warnings
 
-__all__ = ["detrend","dft","power_spectrum","cross_spectrum",
+__all__ = ["detrend2","_detrend_wrap",
+            "dft","power_spectrum","cross_spectrum",
             "isotropic_powerspectrum","isotropic_crossspectrum",
             "fit_loglog"]
 
@@ -41,13 +42,13 @@ def _hanning(da, N):
 
     return da
 
-def detrend(da):
+def detrend2(da, axes=None):
     """
     Detrend a 2D field by subtracting out the least-square plane fit.
 
     Parameters
     ----------
-    da : `numpy.array`
+    da : `dask.array`
         The data to be detrended
 
     Returns
@@ -55,23 +56,64 @@ def detrend(da):
     da : `numpy.array`
         The detrended input data
     """
+#     if da.ndim > 2:
+#         raise ValueError('The data should only have two dimensions')
+#     print(da.shape)
+    N = [da.shape[n] for n in axes]
+    M = []
+    for n in range(da.ndim):
+        if n not in axes:
+            M.append(da.shape[n])
 
-    if da.ndim > 2:
-        raise ValueError('The data should only have two dimensions')
-    ny, nx = da.shape
-    d_obs = np.reshape(da, (ny*nx,1))
-
-    G = np.ones((ny*nx,3))
-    for i in range(ny):
-        G[nx*i:nx*i+nx, 0] = i+1
-        G[nx*i:nx*i+nx, 1] = np.arange(1, nx+1)
-    m_est = np.dot(np.dot(lin.inv(np.dot(G.T, G)), G.T), d_obs)
+    G = np.ones((N[0]*N[1],3))
+    for i in range(N[0]):
+        G[N[1]*i:N[1]*i+N[1], 1] = i+1
+        G[N[1]*i:N[1]*i+N[1], 2] = np.arange(1, N[1]+1)
+    d_obs = np.reshape(da.copy(), (N[0]*N[1],1))
+    m_est = np.dot(np.dot(spl.inv(np.dot(G.T, G)), G.T), d_obs)
     d_est = np.dot(G, m_est)
-    lin_trend = np.reshape(d_est, (ny,nx))
 
-    da -= lin_trend
+    if len(M) == 1:
+        lin_trend = np.reshape(d_est, (da.shape[0],da.shape[1],da.shape[2]))
+    else:
+        lin_trend = np.reshape(d_est, (da.shape[0],da.shape[1],
+                                    da.shape[2],da.shape[3]))
 
-    return da
+    return da - lin_trend
+
+def _detrend_wrap(detrend_func):
+    """
+    Wrapper function for `xrft.detrend2`.
+    """
+    def func(a, axes=None):
+        if a.ndim > 4:
+            raise ValueError("This function only expects up to 4 dimensions")
+        if axes is None:
+            axes = tuple(range(a.ndim))
+        else:
+            if len(set(axes)) < len(axes):
+                raise ValueError("Duplicate axes are not allowed.")
+
+        for each_axis in axes:
+            if len(a.chunks[each_axis]) != 1:
+                raise ValueError('The axis along the detrending is upon'
+                                'cannot be chunked.')
+
+        if len(axes) == 1:
+            return dsar.map_blocks(sps.detrend, a, axis=axes[0],
+                                chunks=a.chunks, dtype=a.dtype)
+        elif len(axes) == 2:
+            for each_axis in range(a.ndim):
+                if each_axis not in axes:
+                    if len(a.chunks[each_axis]) != a.shape[each_axis]:
+                        raise ValueError('The axes other than ones to detrend'
+                                        'over should have a chunk length of 1')
+            return dsar.map_blocks(detrend_func, a, axes,
+                                chunks=a.chunks, dtype=a.dtype)
+        else:
+            raise ValueError("Too many dimensions to detrend over.")
+
+    return func
 
 def dft(da, dim=None, shift=True, detrend=None, window=False):
     """
@@ -135,16 +177,16 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
     if detrend == 'constant':
         da = da - da.mean(dim=dim)
     elif detrend == 'linear':
-        if len(axis_num) == 1:
-            da = xr.DataArray(sig.detrend(da.values, axis=axis_num[0],
-                                        type=detrend),
+        if hasattr(da.data, 'dask'):
+            func = _detrend_wrap(detrend2)
+            da = xr.DataArray(func(da.data, axes=axis_num).compute(),
                             dims=da.dims, coords=da.coords)
         else:
-            raise ValueError('The input data has more than one dimension to'
-                            'detrend over, which is not supported by'
-                            '`scipy.signal.detrend()`.' 
-                            'The user should apply `xrft.detrend()`'
-                            'to the data before taking the Fourier transform.')
+            if da.ndim == 1:
+                da = xr.DataArray(sps.detrend(da),
+                                dims=da.dims, coords=da.coords)
+            else:
+                raise ValueError("Data should be dask array.")
 
     if window:
         da = _hanning(da, N)
