@@ -74,10 +74,9 @@ def detrend2(da, axes=None):
     d_est = np.dot(G, m_est)
 
     if len(M) == 1:
-        lin_trend = np.reshape(d_est, (da.shape[0],da.shape[1],da.shape[2]))
+        lin_trend = np.reshape(d_est, da.shape)
     else:
-        lin_trend = np.reshape(d_est, (da.shape[0],da.shape[1],
-                                    da.shape[2],da.shape[3]))
+        lin_trend = np.reshape(d_est, da.shape)
 
     return da - lin_trend
 

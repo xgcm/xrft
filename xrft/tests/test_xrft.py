@@ -42,7 +42,7 @@ def numpy_detrend(da):
     m_est = np.dot(np.dot(spl.inv(np.dot(G.T, G)), G.T), d_obs)
     d_est = np.dot(G, m_est)
 
-    lin_trend = np.reshape(d_est, (N[0],N[1]))
+    lin_trend = np.reshape(d_est, N)
 
     return da - lin_trend
 
