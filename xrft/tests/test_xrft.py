@@ -342,9 +342,6 @@ def test_parseval():
     for d in dim:
         coord = da[d]
         diff = np.diff(coord)
-        # if pd.core.common.is_timedelta64_dtype(diff):
-        #     # convert to seconds so we get hertz
-        #     diff = diff.astype('timedelta64[s]').astype('f8')
         delta = diff[0]
         delta_x.append(delta)
 
@@ -357,20 +354,6 @@ def test_parseval():
                             ), decimal=5
                             )
 
-    # da = xr.DataArray(np.random.rand(5,2,20,30),
-    #               dims=['time', 'z', 'y', 'x'],
-    #               coords={'time': np.arange(5),'z':range(2),
-    #                     'y': np.arange(20),
-    #                     'x': np.arange(30)}).chunk({'z':1})
-    # dim = ['y','x']
-    # ps = xrft.power_spectrum(da, dim=dim, window=True)
-    # da_prime = da.values - da.mean(dim=dim).values
-    # npt.assert_almost_equal(ps.values.sum(),
-    #                         (np.asarray(delta_x).prod()
-    #                         * ((da_prime*window)**2).sum()
-    #                         ), decimal=5
-    #                         )
-
     cs = xrft.cross_spectrum(da, da2, window=True, detrend='constant')
     da2_prime = da2.values - da2.mean(dim=dim).values
     npt.assert_almost_equal(cs.values.sum(),
@@ -379,6 +362,17 @@ def test_parseval():
                             * (da2_prime*window)).sum()
                             ), decimal=5
                             )
+
+    d3d = xr.DataArray(np.random.rand(N,N,N),
+                    dims=['time','y','x'],
+                    coords={'time':range(N), 'y':range(N), 'x':range(N)}
+                      ).chunk({'time':1})
+    ps = xrft.power_spectrum(d3d, dim=['x','y'], window=True, detrend='linear')
+    npt.assert_almost_equal(ps[0].values.sum(),
+                            (np.asarray(delta_x).prod()
+                            * ((numpy_detrend(d3d[0].values)*window)**2).sum()
+                            ), decimal=5
+                           )
 
 def _synthetic_field(N, dL, amp, s):
     """
