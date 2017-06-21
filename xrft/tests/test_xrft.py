@@ -229,12 +229,14 @@ def test_cross_spectrum_dask():
                     dim=dim, shift=True, window=True,
                     detrend='constant')
     daft2 = xrft.dft(da2,
-                    shift=True, dim=dim, window=True,
+                    dim=dim, shift=True, window=True,
                     detrend='constant')
     coord = list(daft.coords)
     test = (daft * np.conj(daft2)).real.values/N**4
-    for i in dim:
-        test /= daft['freq_' + i + '_spacing']
+    # for i in dim:
+    #     test /= daft['freq_' + i + '_spacing']
+    dk = np.diff(np.fft.fftfreq(N, 1.))[0]
+    test /= dk**2
     npt.assert_almost_equal(cs.values, test)
     npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.)
 
