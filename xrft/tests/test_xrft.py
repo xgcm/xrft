@@ -102,6 +102,8 @@ def test_detrend_2d():
     da = da5d.chunk({'time':1})
     with pytest.raises(ValueError):
         func(da.data).compute()
+    with pytest.raises(ValueError):
+        func(da.data, axes=[2,3,4]).compute()
 
 def test_dft_1d():
     """Test the discrete Fourier transform function on one-dimensional data."""
