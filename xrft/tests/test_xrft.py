@@ -88,6 +88,8 @@ def test_detrend_2d():
     da = da4d.chunk({'time':1, 'z':1})
     with pytest.raises(ValueError):
         func(da.data, axes=[1,2]).compute()
+    with pytest.raises(ValueError):
+        func(da.data, axes=[2,2]).compute()
     da_prime = func(da.data, axes=[2,3]).compute()
     npt.assert_allclose(da_prime[0,0], numpy_detrend(d4d[0,0]))
 
