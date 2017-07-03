@@ -61,4 +61,4 @@ MINOR = _version_minor
 MICRO = _version_micro
 VERSION = __version__
 PACKAGE_DATA = {'xrft': [pjoin('data', '*')]}
-REQUIRES = ["numpy", "xarray"]
+REQUIRES = ["numpy", "scipy", "xarray", "dask"]
