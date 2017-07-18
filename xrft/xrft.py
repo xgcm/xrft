@@ -7,7 +7,7 @@ import scipy.signal as sps
 import scipy.linalg as spl
 import warnings
 
-__all__ = ["detrend2","_detrend_wrap",
+__all__ = ["_hanning","detrend2","_detrend_wrap",
             "dft","power_spectrum","cross_spectrum",
             "isotropic_powerspectrum","isotropic_crossspectrum",
             "fit_loglog"]
@@ -19,13 +19,13 @@ def _hanning(da, N, dim):
     if len(N)==1:
         window = xr.DataArray(np.hanning(N[0]), dims=dim)
     elif len(N)==2:
-        window = xr.DataArray(np.hanning(N[-1])
-                            * np.hanning(N[-2])[:,np.newaxis],
+        window = xr.DataArray(np.hanning(N[0])[:,np.newaxis]
+                            * np.hanning(N[1]),
                             dims=dim)
     elif len(N)==3:
-        window = xr.DataArray(np.hanning(N[-3])[:,np.newaxis,np.newaxis]
-                            * np.hanning(N[-2])[np.newaxis,:,np.newaxis]
-                            * np.hanning(N[-1]),
+        window = xr.DataArray(np.hanning(N[0])[:,np.newaxis,np.newaxis]
+                            * np.hanning(N[1])[np.newaxis,:,np.newaxis]
+                            * np.hanning(N[2])[np.newaxis,np.newaxis,:],
                             dims=dim)
     elif len(N)==4:
         window = xr.DataArray(np.hanning(N[0])[:,np.newaxis,
@@ -34,7 +34,8 @@ def _hanning(da, N, dim):
                                             np.newaxis,np.newaxis]
                             * np.hanning(N[2])[np.newaxis,np.newaxis,
                                             :,np.newaxis]
-                            * np.hanning(N[3]),
+                            * np.hanning(N[3])[np.newaxis,np.newaxis,
+                                            np.newaxis,:],
                             dims=dim)
     else:
         raise ValueError("Windowing can only be applied up to four dimesnions "
@@ -60,9 +61,9 @@ def _hanning(da, N, dim):
     #     da *= window
     # else:
     #     raise ValueError('Data has too many dimensions')
-    da *= window
+    da_win =  da * window
 
-    return da
+    return da_win
 
 def detrend2(da, axes=None):
     """
