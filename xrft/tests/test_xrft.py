@@ -12,10 +12,18 @@ def sample_data_3d():
     """Create three dimensional test data."""
     pass
 
-@pytest.fixture()
-def sample_data_1d():
+@pytest.fixture(params=['numpy', 'dask', 'nocoords'])
+def test_data_1d(request):
     """Create one dimensional test DataArray."""
-    pass
+    Nx = 16
+    Lx = 1.0
+    x = np.linspace(0, Lx, Nx)
+    dx = x[1] - x[0]
+    coords = None if request.param == 'nocoords' else [x]
+    da = xr.DataArray(np.random.rand(Nx), coords=coords, dims=['x'])
+    if request.param == 'dask':
+        da = da.chunk()
+    return da
 
 def numpy_detrend(da):
     """
@@ -107,13 +115,11 @@ def test_detrend_2d():
     with pytest.raises(ValueError):
         func(da.data, axes=[2,3,4]).compute()
 
-def test_dft_1d():
+def test_dft_1d(test_data_1d):
     """Test the discrete Fourier transform function on one-dimensional data."""
-    Nx = 16
-    Lx = 1.0
-    x = np.linspace(0, Lx, Nx)
-    dx = x[1] - x[0]
-    da = xr.DataArray(np.random.rand(Nx), coords=[x], dims=['x'])
+    da = test_data_1d
+    Nx = len(da)
+    dx = float(da.x[1] - da.x[0]) if 'x' in da else 1
 
     # defaults with no keyword args
     ft = xrft.dft(da, detrend='constant')
@@ -124,12 +130,15 @@ def test_dft_1d():
     npt.assert_allclose(ft['freq_x'], freq_x_expected)
     # check that a spacing variable was created
     assert ft['freq_x_spacing'] == freq_x_expected[1] - freq_x_expected[0]
+    # make sure the function is lazy
+    assert isinstance(ft.data, type(da.data))
     # check that the Fourier transform itself is correct
     data = (da - da.mean()).values
     ft_data_expected = np.fft.fftshift(np.fft.fft(data))
     # because the zero frequency component is zero, there is a numerical
     # precision issue. Fixed by setting atol
     npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
+
 
     # redo without removing mean
     ft = xrft.dft(da)
@@ -143,14 +152,15 @@ def test_dft_1d():
     npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
 
     # modify data to be non-evenly spaced
-    da2 = da.copy()
+    da2 = da.copy().load()
     da2[-1] = np.nan
     with pytest.raises(ValueError):
         ft = xrft.dft(da2)
 
-    da['x'].values[-1] *= 2
-    with pytest.raises(ValueError):
-        ft = xrft.dft(da)
+    if 'x' in da and not da.chunks:
+        da['x'].values[-1] *= 2
+        with pytest.raises(ValueError):
+            ft = xrft.dft(da)
 
 def test_dft_1d_time():
     """Test the discrete Fourier transform function on timeseries data."""
@@ -182,6 +192,14 @@ def test_dft_2d():
 
     with pytest.raises(ValueError):
         xrft.dft(da, shift=False, window=True, detrend='linear')
+
+
+def test_dft_nocoords():
+    # Julius' example
+    import xrft
+    data = xr.DataArray(np.random.random([20,30,100]),dims=['time','lat','lon'])
+    dft = xrft.dft(data,dim=['time'])
+    ps = xrft.power_spectrum(data,dim=['time'])
 
 def test_dft_3d_dask():
     """Test the discrete Fourier transform on 3D dask array data"""
