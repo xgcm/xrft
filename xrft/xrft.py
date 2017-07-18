@@ -13,10 +13,32 @@ __all__ = ["detrend2","_detrend_wrap",
             "fit_loglog"]
 
 
-def _hanning(da, N):
+def _hanning(da, N, dim):
     """Apply Hanning window"""
 
-    window = np.hanning(N[-1]) * np.hanning(N[-2])[:, np.newaxis]
+    if len(N)==1:
+        window = xr.DataArray(np.hanning(N[0]), dims=dim)
+    elif len(N)==2:
+        window = xr.DataArray(np.hanning(N[-1])
+                            * np.hanning(N[-2])[:,np.newaxis],
+                            dims=dim)
+    elif len(N)==3:
+        window = xr.DataArray(np.hanning(N[-3])[:,np.newaxis,np.newaxis]
+                            * np.hanning(N[-2])[np.newaxis,:,np.newaxis]
+                            * np.hanning(N[-1]),
+                            dims=dim)
+    elif len(N)==4:
+        window = xr.DataArray(np.hanning(N[0])[:,np.newaxis,
+                                            np.newaxis,np.newaxis]
+                            * np.hanning(N[1])[np.newaxis,:,
+                                            np.newaxis,np.newaxis]
+                            * np.hanning(N[2])[np.newaxis,np.newaxis,
+                                            :,np.newaxis]
+                            * np.hanning(N[3]),
+                            dims=dim)
+    else:
+        raise ValueError("Windowing can only be applied up to four dimesnions "
+                        "(time, z, x, y).")
 
     # dim = da.dims
     # coord = da.coords
@@ -188,7 +210,7 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
                 raise ValueError("Data should be dask array.")
 
     if window:
-        da = _hanning(da, N)
+        da = _hanning(da, N, dim)
 
     # the hard work
     #f = np.fft.fftn(da.values, axes=axis_num)
@@ -421,9 +443,10 @@ def isotropic_powerspectrum(da, dim=None, shift=True, detrend=None,
     """
 
     if dim is None:
-        dim = da.dims
+        dim = da.dims[-2:]
     if len(dim) != 2:
-        raise ValueError('The Fourier transform should be two dimensional')
+        raise ValueError('The azimuthal averaging can only be applied to '
+                        'two dimensions.')
 
     ps = power_spectrum(da, dim=dim, shift=shift,
                        detrend=detrend, density=density,
@@ -504,12 +527,13 @@ def isotropic_crossspectrum(da1, da2,
     """
 
     if dim is None:
-        dim = da1.dims
-        dim2 = da2.dims
+        dim = da1.dims[-2:]
+        dim2 = da2.dims[-2:]
         if dim != dim2:
             raise ValueError('The two datasets have different dimensions')
     if len(dim) != 2:
-        raise ValueError('The Fourier transform should be two dimensional')
+        raise ValueError('The azimuthal averaging can only be applied to '
+                        'two dimensions.')
 
     cs = cross_spectrum(da1, da2, dim=dim, shift=shift,
                        detrend=detrend, density=density,

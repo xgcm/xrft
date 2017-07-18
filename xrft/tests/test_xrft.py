@@ -20,12 +20,10 @@ def sample_data_1d():
 def numpy_detrend(da):
     """
     Detrend a 2D field by subtracting out the least-square plane fit.
-
     Parameters
     ----------
     da : `numpy.array`
         The data to be detrended
-
     Returns
     -------
     da : `numpy.array`
@@ -182,6 +180,9 @@ def test_dft_2d():
 
     with pytest.raises(ValueError):
         xrft.dft(da, shift=False, window=True, detrend='linear')
+
+    daft = xrft.dft(da, dim=['x'], window=True)
+    assert daft.dims[0] == 'freq_x'
 
 def test_dft_3d_dask():
     """Test the discrete Fourier transform on 3D dask array data"""
