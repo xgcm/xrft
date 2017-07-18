@@ -12,6 +12,11 @@ __all__ = ["detrend2","_detrend_wrap",
             "isotropic_powerspectrum","isotropic_crossspectrum",
             "fit_loglog"]
 
+def _fft_module(da):
+    if da.chunks:
+        return dsar.fft
+    else:
+        return np.fft
 
 def _hanning(da, N):
     """Apply Hanning window"""
@@ -146,8 +151,12 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
     daft : `xarray.DataArray`
         The output of the Fourier transformation, with appropriate dimensions.
     """
-    if np.isnan(da.values).any():
-        raise ValueError("Data cannot take Nans")
+    # we can't do da.values because it
+    if not da.chunks:
+        if np.isnan(da.values).any():
+            raise ValueError("Data cannot take Nans")
+
+    fft = _fft_module(da)
 
     if dim is None:
         dim = da.dims
@@ -171,6 +180,7 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
                              "coodinate %s is not evenly spaced" % d)
         delta_x.append(delta)
     # calculate frequencies from coordinates
+    # coordinates are always loaded eagerly, so we use numpy
     k = [ np.fft.fftfreq(Nx, dx) for (Nx, dx) in zip(N, delta_x) ]
 
     if detrend == 'constant':
@@ -178,7 +188,7 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
     elif detrend == 'linear':
         if hasattr(da.data, 'dask'):
             func = _detrend_wrap(detrend2)
-            da = xr.DataArray(func(da.data, axes=axis_num).compute(),
+            da = xr.DataArray(func(da.data, axes=axis_num),
                             dims=da.dims, coords=da.coords)
         else:
             if da.ndim == 1:
@@ -190,18 +200,10 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
     if window:
         da = _hanning(da, N)
 
-    # the hard work
-    #f = np.fft.fftn(da.values, axes=axis_num)
-    # need special path for dask
-    # is this the best way to check for dask?
-    data = da.data
-    if hasattr(data, 'dask'):
-        f = dsar.fft.fftn(data, axes=axis_num)
-    else:
-        f = np.fft.fftn(data, axes=axis_num)
+    f = fft.fftn(da.data, axes=axis_num)
 
     if shift:
-        f = np.fft.fftshift(f, axes=axis_num)
+        f = fft.fftshift(f, axes=axis_num)
         k = [np.fft.fftshift(l) for l in k]
 
     # set up new coordinates for dataarray
@@ -215,10 +217,10 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
 
     newcoords = {}
     for d in newdims:
-        if d in da.coords:
-            newcoords[d] = da.coords[d].values
-        else:
+        if d in k_coords:
             newcoords[d] = k_coords[d]
+        elif d in da:
+            newcoords[d] = da[d].data
 
     dk = [l[1] - l[0] for l in k]
     for this_dk, d in zip(dk, dim):
