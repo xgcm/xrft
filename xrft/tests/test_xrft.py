@@ -20,12 +20,10 @@ def sample_data_1d():
 def numpy_detrend(da):
     """
     Detrend a 2D field by subtracting out the least-square plane fit.
-
     Parameters
     ----------
     da : `numpy.array`
         The data to be detrended
-
     Returns
     -------
     da : `numpy.array`
@@ -45,6 +43,61 @@ def numpy_detrend(da):
     lin_trend = np.reshape(d_est, N)
 
     return da - lin_trend
+
+def test_hanning():
+    M=16
+    x = np.arange(M+1)
+    y = np.arange(M-1)
+    t = np.linspace(-int(M/2), int(M/2), M-6)
+    z = np.arange(int(M/2))
+    d4d = (t[:,np.newaxis,np.newaxis,np.newaxis]
+           + z[np.newaxis,:,np.newaxis,np.newaxis]
+           + y[np.newaxis,np.newaxis,:,np.newaxis]
+           + x[np.newaxis,np.newaxis,np.newaxis,:])
+    da4d = xr.DataArray(d4d, dims=['time','z','y','x'],
+                     coords={'time':range(len(t)),'z':range(len(z)),
+                             'y':range(len(y)),'x':range(len(x))}
+                     )
+
+    dim = ['time']
+    N = [da4d.shape[0]]
+    da4d_t = xrft._hanning(da4d, N, dim)
+    npt.assert_allclose(da4d_t.values, d4d*np.hanning(N[0])[:,np.newaxis,
+                                                        np.newaxis,np.newaxis]
+                        )
+    dim = ['time','z']
+    N = [da4d.shape[n] for n in range(2)]
+    da4d_tz = xrft._hanning(da4d, N, dim)
+    numpy_win = (np.hanning(N[0])[:,np.newaxis]
+                 *np.hanning(N[1])
+                )
+    npt.assert_allclose(da4d_tz.values,
+                        d4d*numpy_win[:,:,np.newaxis,np.newaxis])
+    dim = ['time','z','y']
+    N = [da4d.shape[n] for n in range(3)]
+    da4d_tzy = xrft._hanning(da4d, N, dim)
+    numpy_win = (np.hanning(N[0])[:,np.newaxis,np.newaxis]
+                 * np.hanning(N[1])[np.newaxis,:,np.newaxis]
+                 * np.hanning(N[2])[np.newaxis,np.newaxis,:]
+                )
+    npt.assert_allclose(da4d_tzy.values, d4d*numpy_win[:,:,:,np.newaxis])
+    N = [da4d.shape[n] for n in range(4)]
+    da4d_tzyx = xrft._hanning(da4d, N, da4d.dims)
+    numpy_win = (np.hanning(N[0])[:,np.newaxis,np.newaxis,np.newaxis]
+                 * np.hanning(N[1])[np.newaxis,:,np.newaxis,np.newaxis]
+                 * np.hanning(N[2])[np.newaxis,np.newaxis,:,np.newaxis]
+                 * np.hanning(N[3])[np.newaxis,np.newaxis,np.newaxis,:]
+                )
+    npt.assert_allclose(da4d_tzyx.values, d4d*numpy_win)
+
+    d5d = np.random.rand(M,M,M,M,M)
+    da5d = xr.DataArray(d5d, dims=['time','w','z','y','x'],
+                     coords={'time':range(M),'w':range(M),'z':range(M),
+                            'y':range(M),'x':range(M)}
+                     )
+    N = [da5d.shape[n] for n in range(5)]
+    with pytest.raises(ValueError):
+        xrft._hanning(da5d, N, da5d.dims)
 
 def test_detrend_1d():
     N = 16
@@ -182,6 +235,9 @@ def test_dft_2d():
 
     with pytest.raises(ValueError):
         xrft.dft(da, shift=False, window=True, detrend='linear')
+
+    daft = xrft.dft(da, dim=['x'], window=True)
+    assert daft.dims[0] == 'freq_x'
 
 def test_dft_3d_dask():
     """Test the discrete Fourier transform on 3D dask array data"""
