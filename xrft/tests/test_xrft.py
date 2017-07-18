@@ -196,10 +196,23 @@ def test_dft_2d():
 
 def test_dft_nocoords():
     # Julius' example
-    import xrft
+    # https://github.com/rabernat/xrft/issues/17
     data = xr.DataArray(np.random.random([20,30,100]),dims=['time','lat','lon'])
     dft = xrft.dft(data,dim=['time'])
     ps = xrft.power_spectrum(data,dim=['time'])
+
+
+def test_window_single_dim():
+    # Julius' example
+    # https://github.com/rabernat/xrft/issues/16
+    data = xr.DataArray(np.random.random([20,30,100]),
+                    dims=['time','lat','lon'],
+                    coords={'time':range(20),'lat':range(30),'lon':range(100)})
+    ps = xrft.power_spectrum(data, dim=['time'], window=True)
+    # make sure it works with dask data
+    ps = xrft.power_spectrum(data.chunk(), dim=['time'], window=True)
+    ps.load()
+    
 
 def test_dft_3d_dask():
     """Test the discrete Fourier transform on 3D dask array data"""
