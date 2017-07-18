@@ -201,7 +201,7 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
     elif detrend == 'linear':
         if hasattr(da.data, 'dask'):
             func = _detrend_wrap(detrend2)
-            da = xr.DataArray(func(da.data, axes=axis_num).compute(),
+            da = xr.DataArray(func(da.data, axes=axis_num),
                             dims=da.dims, coords=da.coords)
         else:
             if da.ndim == 1:
