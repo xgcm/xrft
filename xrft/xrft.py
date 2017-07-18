@@ -443,6 +443,8 @@ def isotropic_powerspectrum(da, dim=None, shift=True, detrend=None,
     """
 
     if dim is None:
+        warnings.warn("Dimensions were not provided so the azimuthal averaging"
+                    " will be taken over the last two dimensions.")
         dim = da.dims[-2:]
     if len(dim) != 2:
         raise ValueError('The azimuthal averaging can only be applied to '
@@ -527,6 +529,8 @@ def isotropic_crossspectrum(da1, da2,
     """
 
     if dim is None:
+        warnings.warn("Dimensions were not provided so the azimuthal averaging"
+                    " will be taken over the last two dimensions.")
         dim = da1.dims[-2:]
         dim2 = da2.dims[-2:]
         if dim != dim2:
