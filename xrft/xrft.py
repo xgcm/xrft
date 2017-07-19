@@ -3,9 +3,12 @@ import xarray as xr
 import pandas as pd
 import functools as ft
 import dask.array as dsar
+from dask import delayed
 import scipy.signal as sps
 import scipy.linalg as spl
 import warnings
+from functools import reduce
+import operator
 
 __all__ = ["detrend2","_detrend_wrap",
             "dft","power_spectrum","cross_spectrum",
@@ -18,34 +21,28 @@ def _fft_module(da):
     else:
         return np.fft
 
-def _hanning(da, N):
-    """Apply Hanning window"""
+def _create_window(da, dims, window_type='hanning'):
+    """Creating windows in dimensions dims."""
 
-    window = np.hanning(N[-1]) * np.hanning(N[-2])[:, np.newaxis]
+    if window_type not in ['hanning']:
+        raise NotImplementedError("Only hanning window is supported for now.")
 
-    # dim = da.dims
-    # coord = da.coords
+    numpy_win_func = getattr(np, window_type)
 
-    # if len(dim) == 3:
-    #     N1 = da.shape[0]
-    #     if da[0].shape != window.shape:
-    #         raise ValueError('The spatial dimensions do not match up')
-    #     for i in range(N1):
-    #         da[i] *= window
-    # elif len(dim) == 4:
-    #     N1, N2 = da.shape[:2]
-    #     if da[0,0].shape != window.shape:
-    #         raise ValueError('The spatial dimensions do not match up')
-    #     for j in range(N1):
-    #         for i in range(N2):
-    #             da[j,i] *= window
-    # elif len(dim) == 2:
-    #     da *= window
-    # else:
-    #     raise ValueError('Data has too many dimensions')
-    da *= window
+    if da.chunks:
+        def dask_win_func(n):
+            return dsar.from_delayed(
+                delayed(numpy_win_func, pure=True)(n),
+                (n,), float)
+        win_func = dask_win_func
+    else:
+        win_func = numpy_win_func
 
-    return da
+    windows = [xr.DataArray(win_func(len(da[d])),
+               dims=da[d].dims, coords=da[d].coords) for d in dims]
+
+    return reduce(operator.mul, windows[::-1])
+
 
 def detrend2(da, axes=None):
     """
@@ -144,7 +141,8 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
         the FT.
     window : bool (optional)
         Whether to apply a Hann window to the data before the Fourier
-        transform is taken
+        transform is taken. A window will be applied to all the dimensions in
+        dim.
 
     Returns
     -------
@@ -198,9 +196,12 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
                 raise ValueError("Data should be dask array.")
 
     if window:
-        da = _hanning(da, N)
+        window_array = _create_window(da, dim)
+        da_win = da * window_array
+    else:
+        da_win = da
 
-    f = fft.fftn(da.data, axes=axis_num)
+    f = fft.fftn(da_win.data, axes=axis_num)
 
     if shift:
         f = fft.fftshift(f, axes=axis_num)
