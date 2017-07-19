@@ -197,9 +197,11 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
 
     if window:
         window_array = _create_window(da, dim)
-        da *= window_array
+        da_win = da * window_array
+    else:
+        da_win = da
 
-    f = fft.fftn(da.data, axes=axis_num)
+    f = fft.fftn(da_win.data, axes=axis_num)
 
     if shift:
         f = fft.fftshift(f, axes=axis_num)
