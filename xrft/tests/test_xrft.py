@@ -54,7 +54,7 @@ def numpy_detrend(da):
 
     return da - lin_trend
 
-def test_detrend_1d():
+def test_detrend():
     N = 16
     x = np.arange(N+1)
     y = np.arange(N-1)
@@ -69,28 +69,11 @@ def test_detrend_1d():
                      coords={'time':range(len(t)),'z':range(len(z)),'y':range(len(y)),
                              'x':range(len(x))}
                      )
-    func = xrft._detrend_wrap(xrft.detrend2)
+    func = xrft._detrend_wrap(xrft._detrend)
     da = da4d.chunk({'time': 1})
     da_prime = func(da.data, axes=[2]).compute()
     npt.assert_allclose(da_prime[0,0], sps.detrend(d4d[0,0], axis=0))
 
-def test_detrend_2d():
-    N = 16
-    x = np.arange(N+1)
-    y = np.arange(N-1)
-    t = np.linspace(-int(N/2), int(N/2), N-6)
-    z = np.arange(int(N/2))
-    d4d = (t[:,np.newaxis,np.newaxis,np.newaxis]
-            + z[np.newaxis,:,np.newaxis,np.newaxis]
-            + y[np.newaxis,np.newaxis,:,np.newaxis]
-            + x[np.newaxis,np.newaxis,np.newaxis,:]
-          )
-    da4d = xr.DataArray(d4d, dims=['time','z','y','x'],
-                     coords={'time':range(len(t)),'z':range(len(z)),
-                             'y':range(len(y)),'x':range(len(x))}
-                       )
-    func = xrft._detrend_wrap(xrft.detrend2)
-    da = da4d.chunk({'time':1})
     with pytest.raises(ValueError):
         func(da.data, axes=[0]).compute()
     da = da4d.chunk({'time':1, 'z':1})
@@ -113,7 +96,7 @@ def test_detrend_2d():
     with pytest.raises(ValueError):
         func(da.data).compute()
     with pytest.raises(ValueError):
-        func(da.data, axes=[2,3,4]).compute()
+        func(da.data, axes=[1,2,3,4]).compute()
 
 def test_dft_1d(test_data_1d):
     """Test the discrete Fourier transform function on one-dimensional data."""
@@ -212,7 +195,7 @@ def test_window_single_dim():
     # make sure it works with dask data
     ps = xrft.power_spectrum(data.chunk(), dim=['time'], window=True)
     ps.load()
-    
+
 
 def test_dft_3d_dask():
     """Test the discrete Fourier transform on 3D dask array data"""
