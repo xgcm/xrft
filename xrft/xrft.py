@@ -21,7 +21,7 @@ def _fft_module(da):
     else:
         return np.fft
 
-def _create_window(da, dims, window_type='hanning'):
+def _apply_window(da, dims, window_type='hanning'):
     """Creating windows in dimensions dims."""
 
     if window_type not in ['hanning']:
@@ -41,7 +41,7 @@ def _create_window(da, dims, window_type='hanning'):
     windows = [xr.DataArray(win_func(len(da[d])),
                dims=da[d].dims, coords=da[d].coords) for d in dims]
 
-    return reduce(operator.mul, windows[::-1])
+    return da * reduce(operator.mul, windows[::-1])
 
 
 def detrend2(da, axes=None):
@@ -196,12 +196,9 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
                 raise ValueError("Data should be dask array.")
 
     if window:
-        window_array = _create_window(da, dim)
-        da_win = da * window_array
-    else:
-        da_win = da
+        da = _apply_window(da, dim)
 
-    f = fft.fftn(da_win.data, axes=axis_num)
+    f = fft.fftn(da.data, axes=axis_num)
 
     if shift:
         f = fft.fftshift(f, axes=axis_num)
