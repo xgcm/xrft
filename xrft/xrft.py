@@ -45,7 +45,7 @@ def _apply_window(da, dims, window_type='hanning'):
 
 def _detrend(da, axes=None):
     """
-    Detrend by subtracting out the least-square plane or least_cubic fit
+    Detrend by subtracting out the least-square plane or least-square cubic fit
     depending on the number of axis.
 
     Parameters
@@ -72,14 +72,32 @@ def _detrend(da, axes=None):
         for i in range(N[0]):
             G[N[1]*i:N[1]*i+N[1], 1] = i+1
             G[N[1]*i:N[1]*i+N[1], 2] = np.arange(1, N[1]+1)
-        d_obs = np.reshape(da.copy(), (N[0]*N[1],1))
+        if type(da) == xr.DataArray:
+            d_obs = np.reshape(da.copy().values, (N[0]*N[1],1))
+        else:
+            d_obs = np.reshape(da.copy(), (N[0]*N[1],1))
     elif len(N) == 3:
-        G = np.ones((N[0]*N[1]*N[2],4))
-        for i in range(N[0]):
-            G[N[1]*i:N[1]*i+N[1], 1] = i+1
-            G[N[1]*i:N[1]*i+N[1], 2] = np.arange(1, N[1]+1)
-            G[N[1]*i:N[1]*i+N[1], 2] = np.arange(1, N[2]+1)
-        d_obs = np.reshape(da.copy(), (N[0]*N[1]*N[2],1))
+        if da.ndim > 3:
+            raise NotImplementedError("Cubic detrend is not implemented for "
+                                     "4-dimensional `xarray.DataArray`. "
+                                     "We suggest converting it to "
+                                     "`dask.array`.")
+        else:
+            G = np.ones((N[0]*N[1]*N[2],4))
+            G[:,3] = np.tile(np.arange(1,N[2]+1), N[0]*N[1])
+            ys = np.zeros(N[1]*N[2])
+            for i in range(N[1]):
+                ys[N[2]*i:N[2]*i+N[2]] = i+1
+            G[:,2] = np.tile(ys, N[0])
+            for i in range(N[0]):
+                G[len(ys)*i:len(ys)*i+len(ys),1] = i+1
+            if type(da) == xr.DataArray:
+                d_obs = np.reshape(da.copy().values, (N[0]*N[1]*N[2],1))
+            else:
+                d_obs = np.reshape(da.copy(), (N[0]*N[1]*N[2],1))
+    else:
+        raise NotImplementedError("Detrending over more than 4 axes is "
+                                 "not implemented.")
 
     m_est = np.dot(np.dot(spl.inv(np.dot(G.T, G)), G.T), d_obs)
     d_est = np.dot(G, m_est)
@@ -122,6 +140,23 @@ def _detrend_wrap(detrend_func):
                                   )
 
     return func
+
+def _apply_detrend(da, axis_num):
+    """Wrapper function for applying detrending"""
+    if da.chunks:
+        func = _detrend_wrap(_detrend)
+        da = xr.DataArray(func(da.data, axes=axis_num),
+                        dims=da.dims, coords=da.coords)
+    else:
+        if da.ndim == 1:
+            da = xr.DataArray(sps.detrend(da),
+                            dims=da.dims, coords=da.coords)
+        else:
+            da = _detrend(da, axes=axis_num)
+        # else:
+        #     raise ValueError("Data should be dask array.")
+
+    return da
 
 def dft(da, dim=None, shift=True, detrend=None, window=False):
     """
@@ -191,16 +226,17 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
     if detrend == 'constant':
         da = da - da.mean(dim=dim)
     elif detrend == 'linear':
-        if hasattr(da.data, 'dask'):
-            func = _detrend_wrap(_detrend)
-            da = xr.DataArray(func(da.data, axes=axis_num),
-                            dims=da.dims, coords=da.coords)
-        else:
-            if da.ndim == 1:
-                da = xr.DataArray(sps.detrend(da),
-                                dims=da.dims, coords=da.coords)
-            else:
-                raise ValueError("Data should be dask array.")
+        da = _apply_detrend(da, axis_num)
+        # if hasattr(da.data, 'dask'):
+        #     func = _detrend_wrap(_detrend)
+        #     da = xr.DataArray(func(da.data, axes=axis_num),
+        #                     dims=da.dims, coords=da.coords)
+        # else:
+        #     if da.ndim == 1:
+        #         da = xr.DataArray(sps.detrend(da),
+        #                         dims=da.dims, coords=da.coords)
+        #     else:
+        #         raise ValueError("Data should be dask array.")
 
     if window:
         da = _apply_window(da, dim)

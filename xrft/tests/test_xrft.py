@@ -69,13 +69,16 @@ def test_detrend():
                      coords={'time':range(len(t)),'z':range(len(z)),'y':range(len(y)),
                              'x':range(len(x))}
                      )
+
     func = xrft._detrend_wrap(xrft._detrend)
     da = da4d.chunk({'time': 1})
     da_prime = func(da.data, axes=[2]).compute()
     npt.assert_allclose(da_prime[0,0], sps.detrend(d4d[0,0], axis=0))
 
     with pytest.raises(ValueError):
-        func(da.data, axes=[0]).compute()
+        func(da.data, axes=[0]).compute
+    with pytest.raises(ValueError):
+        func(da.data, axes=[0,1,2,3]).compute()
     da = da4d.chunk({'time':1, 'z':1})
     with pytest.raises(ValueError):
         func(da.data, axes=[1,2]).compute()
@@ -95,8 +98,6 @@ def test_detrend():
     da = da5d.chunk({'time':1})
     with pytest.raises(ValueError):
         func(da.data).compute()
-    with pytest.raises(ValueError):
-        func(da.data, axes=[1,2,3,4]).compute()
 
 def test_dft_1d(test_data_1d):
     """Test the discrete Fourier transform function on one-dimensional data."""
@@ -173,8 +174,29 @@ def test_dft_2d():
     da_prime = (da - da.mean(dim=dim)).values
     npt.assert_almost_equal(ft.values, np.fft.fftn(da_prime*window))
 
-    with pytest.raises(ValueError):
-        xrft.dft(da, shift=False, window=True, detrend='linear')
+
+def test_dft_4d():
+    """Test the discrete Fourier transform on 2D data"""
+    N = 16
+    da = xr.DataArray(np.random.rand(N,N,N,N),
+                    dims=['time','z','y','x'],
+                    coords={'time':range(N),'z':range(N),
+                            'y':range(N),'x':range(N)}
+                     )
+    ft = xrft.dft(da, shift=False)
+    npt.assert_almost_equal(ft.values, np.fft.fftn(da.values))
+
+    with pytest.raises(NotImplementedError):
+        xrft.dft(da, detrend='linear')
+    with pytest.raises(NotImplementedError):
+        xrft.dft(da, dim=['time','y','x'], detrend='linear')
+
+    da_prime = xrft._detrend(da[:,0].values, [0,1,2]) # cubic detrend over time, y, and x
+    npt.assert_almost_equal(xrft.dft(da[:,0].drop('z'),
+                                    dim=['time','y','x'],
+                                    shift=False, detrend='linear'
+                                    ).values,
+                            np.fft.fftn(da_prime))
 
 
 def test_dft_nocoords():
