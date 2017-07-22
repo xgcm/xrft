@@ -70,7 +70,7 @@ def test_detrend():
                              'x':range(len(x))}
                      )
 
-    func = xrft._detrend_wrap(xrft._detrend)
+    func = xrft.detrend_wrap(xrft.detrendn)
     da = da4d.chunk({'time': 1})
     da_prime = func(da.data, axes=[2]).compute()
     npt.assert_allclose(da_prime[0,0], sps.detrend(d4d[0,0], axis=0))
@@ -191,7 +191,7 @@ def test_dft_4d():
     with pytest.raises(NotImplementedError):
         xrft.dft(da, dim=['time','y','x'], detrend='linear')
 
-    da_prime = xrft._detrend(da[:,0].values, [0,1,2]) # cubic detrend over time, y, and x
+    da_prime = xrft.detrendn(da[:,0].values, [0,1,2]) # cubic detrend over time, y, and x
     npt.assert_almost_equal(xrft.dft(da[:,0].drop('z'),
                                     dim=['time','y','x'],
                                     shift=False, detrend='linear'

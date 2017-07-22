@@ -10,7 +10,7 @@ import warnings
 from functools import reduce
 import operator
 
-__all__ = ["_detrend","_detrend_wrap",
+__all__ = ["detrendn","detrend_wrap",
             "dft","power_spectrum","cross_spectrum",
             "isotropic_powerspectrum","isotropic_crossspectrum",
             "fit_loglog"]
@@ -43,7 +43,7 @@ def _apply_window(da, dims, window_type='hanning'):
 
     return da * reduce(operator.mul, windows[::-1])
 
-def _detrend(da, axes=None):
+def detrendn(da, axes=None):
     """
     Detrend by subtracting out the least-square plane or least-square cubic fit
     depending on the number of axis.
@@ -106,9 +106,9 @@ def _detrend(da, axes=None):
 
     return da - lin_trend
 
-def _detrend_wrap(detrend_func):
+def detrend_wrap(detrend_func):
     """
-    Wrapper function for `xrft._detrend`.
+    Wrapper function for `xrft.detrendn`.
     """
     def func(a, axes=None):
         if a.ndim > 4 or len(axes) > 3:
@@ -144,7 +144,7 @@ def _detrend_wrap(detrend_func):
 def _apply_detrend(da, axis_num):
     """Wrapper function for applying detrending"""
     if da.chunks:
-        func = _detrend_wrap(_detrend)
+        func = detrend_wrap(detrendn)
         da = xr.DataArray(func(da.data, axes=axis_num),
                         dims=da.dims, coords=da.coords)
     else:
@@ -152,7 +152,7 @@ def _apply_detrend(da, axis_num):
             da = xr.DataArray(sps.detrend(da),
                             dims=da.dims, coords=da.coords)
         else:
-            da = _detrend(da, axes=axis_num)
+            da = detrendn(da, axes=axis_num)
         # else:
         #     raise ValueError("Data should be dask array.")
 
