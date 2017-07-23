@@ -71,21 +71,32 @@ def test_detrend():
                      )
 
     func = xrft.detrend_wrap(xrft.detrendn)
-    da = da4d.chunk({'time': 1})
-    da_prime = func(da.data, axes=[2]).compute()
-    npt.assert_allclose(da_prime[0,0], sps.detrend(d4d[0,0], axis=0))
 
+    #########
+    # Chunk along the `time` axis
+    #########
+    da = da4d.chunk({'time': 1})
     with pytest.raises(ValueError):
         func(da.data, axes=[0]).compute
     with pytest.raises(ValueError):
         func(da.data, axes=[0,1,2,3]).compute()
+    da_prime = func(da.data, axes=[2]).compute()
+    npt.assert_allclose(da_prime[0,0], sps.detrend(d4d[0,0], axis=0))
+    da_prime = func(da.data, axes=[1,2,3]).compute()
+    npt.assert_allclose(da_prime[0],
+                        xrft.detrendn(d4d[0], axes=[0,1,2]))
+
+    #########
+    # Chunk along the `time` and `z` axes
+    #########
     da = da4d.chunk({'time':1, 'z':1})
     with pytest.raises(ValueError):
         func(da.data, axes=[1,2]).compute()
     with pytest.raises(ValueError):
         func(da.data, axes=[2,2]).compute()
     da_prime = func(da.data, axes=[2,3]).compute()
-    npt.assert_allclose(da_prime[0,0], numpy_detrend(d4d[0,0]))
+    npt.assert_allclose(da_prime[0,0],
+                        xrft.detrendn(d4d[0,0], axes=[0,1]))
 
     s = np.arange(2)
     d5d = d4d[np.newaxis,:,:,:,:] + s[:,np.newaxis,np.newaxis,

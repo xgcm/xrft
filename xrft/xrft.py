@@ -77,24 +77,25 @@ def detrendn(da, axes=None):
         else:
             d_obs = np.reshape(da.copy(), (N[0]*N[1],1))
     elif len(N) == 3:
-        if da.ndim > 3:
-            raise NotImplementedError("Cubic detrend is not implemented for "
-                                     "4-dimensional `xarray.DataArray`. "
-                                     "We suggest converting it to "
-                                     "`dask.array`.")
-        else:
-            G = np.ones((N[0]*N[1]*N[2],4))
-            G[:,3] = np.tile(np.arange(1,N[2]+1), N[0]*N[1])
-            ys = np.zeros(N[1]*N[2])
-            for i in range(N[1]):
-                ys[N[2]*i:N[2]*i+N[2]] = i+1
-            G[:,2] = np.tile(ys, N[0])
-            for i in range(N[0]):
-                G[len(ys)*i:len(ys)*i+len(ys),1] = i+1
-            if type(da) == xr.DataArray:
-                d_obs = np.reshape(da.copy().values, (N[0]*N[1]*N[2],1))
+        if type(da) == xr.DataArray:
+            if da.ndim > 3:
+                raise NotImplementedError("Cubic detrend is not implemented "
+                                         "for 4-dimensional `xarray.DataArray`."
+                                         " We suggest converting it to "
+                                         "`dask.array`.")
             else:
-                d_obs = np.reshape(da.copy(), (N[0]*N[1]*N[2],1))
+                d_obs = np.reshape(da.copy().values, (N[0]*N[1]*N[2],1))
+        else:
+            d_obs = np.reshape(da.copy(), (N[0]*N[1]*N[2],1))
+
+        G = np.ones((N[0]*N[1]*N[2],4))
+        G[:,3] = np.tile(np.arange(1,N[2]+1), N[0]*N[1])
+        ys = np.zeros(N[1]*N[2])
+        for i in range(N[1]):
+            ys[N[2]*i:N[2]*i+N[2]] = i+1
+        G[:,2] = np.tile(ys, N[0])
+        for i in range(N[0]):
+            G[len(ys)*i:len(ys)*i+len(ys),1] = i+1
     else:
         raise NotImplementedError("Detrending over more than 4 axes is "
                                  "not implemented.")
