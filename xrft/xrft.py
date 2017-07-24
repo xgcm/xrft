@@ -212,7 +212,8 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
     for d in dim:
         coord = da[d]
         diff = np.diff(coord)
-        if pd.core.common.is_timedelta64_dtype(diff):
+        # if pd.core.common.is_timedelta64_dtype(diff):
+        if pd.api.types.is_timedelta64_dtype(diff):
             # convert to seconds so we get hertz
             diff = diff.astype('timedelta64[s]').astype('f8')
         delta = diff[0]
