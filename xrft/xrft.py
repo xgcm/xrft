@@ -10,7 +10,7 @@ import warnings
 from functools import reduce
 import operator
 
-__all__ = ["detrend2","_detrend_wrap",
+__all__ = ["detrendn","detrend_wrap",
             "dft","power_spectrum","cross_spectrum",
             "isotropic_powerspectrum","isotropic_crossspectrum",
             "fit_loglog"]
@@ -21,7 +21,7 @@ def _fft_module(da):
     else:
         return np.fft
 
-def _create_window(da, dims, window_type='hanning'):
+def _apply_window(da, dims, window_type='hanning'):
     """Creating windows in dimensions dims."""
 
     if window_type not in ['hanning']:
@@ -41,12 +41,12 @@ def _create_window(da, dims, window_type='hanning'):
     windows = [xr.DataArray(win_func(len(da[d])),
                dims=da[d].dims, coords=da[d].coords) for d in dims]
 
-    return reduce(operator.mul, windows[::-1])
+    return da * reduce(operator.mul, windows[::-1])
 
-
-def detrend2(da, axes=None):
+def detrendn(da, axes=None):
     """
-    Detrend a 2D field by subtracting out the least-square plane fit.
+    Detrend by subtracting out the least-square plane or least-square cubic fit
+    depending on the number of axis.
 
     Parameters
     ----------
@@ -67,28 +67,54 @@ def detrend2(da, axes=None):
         if n not in axes:
             M.append(da.shape[n])
 
-    G = np.ones((N[0]*N[1],3))
-    for i in range(N[0]):
-        G[N[1]*i:N[1]*i+N[1], 1] = i+1
-        G[N[1]*i:N[1]*i+N[1], 2] = np.arange(1, N[1]+1)
-    d_obs = np.reshape(da.copy(), (N[0]*N[1],1))
+    if len(N) == 2:
+        G = np.ones((N[0]*N[1],3))
+        for i in range(N[0]):
+            G[N[1]*i:N[1]*i+N[1], 1] = i+1
+            G[N[1]*i:N[1]*i+N[1], 2] = np.arange(1, N[1]+1)
+        if type(da) == xr.DataArray:
+            d_obs = np.reshape(da.copy().values, (N[0]*N[1],1))
+        else:
+            d_obs = np.reshape(da.copy(), (N[0]*N[1],1))
+    elif len(N) == 3:
+        if type(da) == xr.DataArray:
+            if da.ndim > 3:
+                raise NotImplementedError("Cubic detrend is not implemented "
+                                         "for 4-dimensional `xarray.DataArray`."
+                                         " We suggest converting it to "
+                                         "`dask.array`.")
+            else:
+                d_obs = np.reshape(da.copy().values, (N[0]*N[1]*N[2],1))
+        else:
+            d_obs = np.reshape(da.copy(), (N[0]*N[1]*N[2],1))
+
+        G = np.ones((N[0]*N[1]*N[2],4))
+        G[:,3] = np.tile(np.arange(1,N[2]+1), N[0]*N[1])
+        ys = np.zeros(N[1]*N[2])
+        for i in range(N[1]):
+            ys[N[2]*i:N[2]*i+N[2]] = i+1
+        G[:,2] = np.tile(ys, N[0])
+        for i in range(N[0]):
+            G[len(ys)*i:len(ys)*i+len(ys),1] = i+1
+    else:
+        raise NotImplementedError("Detrending over more than 4 axes is "
+                                 "not implemented.")
+
     m_est = np.dot(np.dot(spl.inv(np.dot(G.T, G)), G.T), d_obs)
     d_est = np.dot(G, m_est)
 
-    if len(M) == 1:
-        lin_trend = np.reshape(d_est, da.shape)
-    else:
-        lin_trend = np.reshape(d_est, da.shape)
+    lin_trend = np.reshape(d_est, da.shape)
 
     return da - lin_trend
 
-def _detrend_wrap(detrend_func):
+def detrend_wrap(detrend_func):
     """
-    Wrapper function for `xrft.detrend2`.
+    Wrapper function for `xrft.detrendn`.
     """
     def func(a, axes=None):
-        if a.ndim > 4:
-            raise ValueError("This function only expects up to 4 dimensions")
+        if a.ndim > 4 or len(axes) > 3:
+            raise ValueError("Data has too many dimensions "
+                            "and/or too many axes to detrend over.")
         if axes is None:
             axes = tuple(range(a.ndim))
         else:
@@ -97,24 +123,41 @@ def _detrend_wrap(detrend_func):
 
         for each_axis in axes:
             if len(a.chunks[each_axis]) != 1:
-                raise ValueError('The axis along the detrending is upon'
+                raise ValueError('The axis along the detrending is upon '
                                 'cannot be chunked.')
 
         if len(axes) == 1:
             return dsar.map_blocks(sps.detrend, a, axis=axes[0],
-                                chunks=a.chunks, dtype=a.dtype)
-        elif len(axes) == 2:
+                                   chunks=a.chunks, dtype=a.dtype
+                                  )
+        else:
             for each_axis in range(a.ndim):
                 if each_axis not in axes:
                     if len(a.chunks[each_axis]) != a.shape[each_axis]:
-                        raise ValueError('The axes other than ones to detrend'
-                                        'over should have a chunk length of 1')
+                        raise ValueError("The axes other than ones to detrend "
+                                        "over should have a chunk length of 1.")
             return dsar.map_blocks(detrend_func, a, axes,
-                                chunks=a.chunks, dtype=a.dtype)
-        else:
-            raise ValueError("Too many dimensions to detrend over.")
+                                   chunks=a.chunks, dtype=a.dtype
+                                  )
 
     return func
+
+def _apply_detrend(da, axis_num):
+    """Wrapper function for applying detrending"""
+    if da.chunks:
+        func = detrend_wrap(detrendn)
+        da = xr.DataArray(func(da.data, axes=axis_num),
+                        dims=da.dims, coords=da.coords)
+    else:
+        if da.ndim == 1:
+            da = xr.DataArray(sps.detrend(da),
+                            dims=da.dims, coords=da.coords)
+        else:
+            da = detrendn(da, axes=axis_num)
+        # else:
+        #     raise ValueError("Data should be dask array.")
+
+    return da
 
 def dft(da, dim=None, shift=True, detrend=None, window=False):
     """
@@ -169,12 +212,13 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
     for d in dim:
         coord = da[d]
         diff = np.diff(coord)
-        if pd.core.common.is_timedelta64_dtype(diff):
+        # if pd.core.common.is_timedelta64_dtype(diff):
+        if pd.api.types.is_timedelta64_dtype(diff):
             # convert to seconds so we get hertz
             diff = diff.astype('timedelta64[s]').astype('f8')
         delta = diff[0]
         if not np.allclose(diff, diff[0]):
-            raise ValueError("Can't take Fourier transform because"
+            raise ValueError("Can't take Fourier transform because "
                              "coodinate %s is not evenly spaced" % d)
         delta_x.append(delta)
     # calculate frequencies from coordinates
@@ -184,24 +228,22 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
     if detrend == 'constant':
         da = da - da.mean(dim=dim)
     elif detrend == 'linear':
-        if hasattr(da.data, 'dask'):
-            func = _detrend_wrap(detrend2)
-            da = xr.DataArray(func(da.data, axes=axis_num),
-                            dims=da.dims, coords=da.coords)
-        else:
-            if da.ndim == 1:
-                da = xr.DataArray(sps.detrend(da),
-                                dims=da.dims, coords=da.coords)
-            else:
-                raise ValueError("Data should be dask array.")
+        da = _apply_detrend(da, axis_num)
+        # if hasattr(da.data, 'dask'):
+        #     func = _detrend_wrap(_detrend)
+        #     da = xr.DataArray(func(da.data, axes=axis_num),
+        #                     dims=da.dims, coords=da.coords)
+        # else:
+        #     if da.ndim == 1:
+        #         da = xr.DataArray(sps.detrend(da),
+        #                         dims=da.dims, coords=da.coords)
+        #     else:
+        #         raise ValueError("Data should be dask array.")
 
     if window:
-        window_array = _create_window(da, dim)
-        da_win = da * window_array
-    else:
-        da_win = da
+        da = _apply_window(da, dim)
 
-    f = fft.fftn(da_win.data, axes=axis_num)
+    f = fft.fftn(da.data, axes=axis_num)
 
     if shift:
         f = fft.fftshift(f, axes=axis_num)
@@ -377,8 +419,8 @@ def _azimuthal_avg(k, l, f, fftdim, N, nfactor):
                                     weights=f.data.ravel())
                                     / area) * kr
     else:
-        raise ValueError('The data has too many or few dimensions.'
-                        'The input should only have the two dimensions'
+        raise ValueError('The data has too many or few dimensions. '
+                        'The input should only have the two dimensions '
                         'to take the azimuthal averaging over.')
 
     return kr, iso_f
