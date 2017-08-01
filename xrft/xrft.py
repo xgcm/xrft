@@ -217,7 +217,7 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
             # convert to seconds so we get hertz
             diff = diff.astype('timedelta64[s]').astype('f8')
         delta = diff[0]
-        if not np.allclose(diff, diff[0]):
+        if not np.allclose(diff, diff[0], rtol=1e-3):
             raise ValueError("Can't take Fourier transform because "
                              "coodinate %s is not evenly spaced" % d)
         delta_x.append(delta)
