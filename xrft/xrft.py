@@ -159,7 +159,7 @@ def _apply_detrend(da, axis_num):
 
     return da
 
-def dft(da, dim=None, shift=True, detrend=None, window=False):
+def dft(da, stol=1e-3, dim=None, shift=True, detrend=None, window=False):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
     specified dimensions.
@@ -172,6 +172,9 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
     ----------
     da : `xarray.DataArray`
         The data to be transformed
+    stol: float (default)
+        Spacing tolerance. Fourier transform should not be applied to uneven grid but 
+        this restriction can be relaxed with this setting. Use caution.
     dim : list (optional)
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
@@ -217,7 +220,7 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
             # convert to seconds so we get hertz
             diff = diff.astype('timedelta64[s]').astype('f8')
         delta = diff[0]
-        if not np.allclose(diff, diff[0], rtol=1e-3):
+        if not np.allclose(diff, diff[0], rtol=stol):
             raise ValueError("Can't take Fourier transform because "
                              "coodinate %s is not evenly spaced" % d)
         delta_x.append(delta)
@@ -271,7 +274,7 @@ def dft(da, dim=None, shift=True, detrend=None, window=False):
 
     return xr.DataArray(f, dims=newdims, coords=newcoords)
 
-def power_spectrum(da, dim=None, shift=True, detrend=None, density=True,
+def power_spectrum(da, stol=1e-3, dim=None, shift=True, detrend=None, density=True,
                 window=False):
     """
     Calculates the power spectrum of da.
@@ -285,6 +288,9 @@ def power_spectrum(da, dim=None, shift=True, detrend=None, density=True,
     ----------
     da : `xarray.DataArray`
         The data to be transformed
+    stol: float (default)
+        Spacing tolerance. Fourier transform should not be applied to uneven grid but 
+        this restriction can be relaxed with this setting. Use caution.
     dim : list (optional)
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
@@ -315,7 +321,7 @@ def power_spectrum(da, dim=None, shift=True, detrend=None, density=True,
 
     N = [da.shape[n] for n in axis_num]
 
-    daft = dft(da,
+    daft = dft(da, stol,
             dim=dim, shift=shift, detrend=detrend,
             window=window)
 
@@ -330,7 +336,7 @@ def power_spectrum(da, dim=None, shift=True, detrend=None, density=True,
 
     return ps
 
-def cross_spectrum(da1, da2, dim=None,
+def cross_spectrum(da1, da2, stol=1e-3, dim=None,
                    shift=True, detrend=None, density=True, window=False):
     """
     Calculates the cross spectra of da1 and da2.
@@ -346,6 +352,9 @@ def cross_spectrum(da1, da2, dim=None,
         The data to be transformed
     da2 : `xarray.DataArray`
         The data to be transformed
+    stol: float (default)
+        Spacing tolerance. Fourier transform should not be applied to uneven grid but 
+        this restriction can be relaxed with this setting. Use caution.
     dim : list (optional)
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
@@ -380,9 +389,9 @@ def cross_spectrum(da1, da2, dim=None,
 
     N = [da1.shape[n] for n in axis_num]
 
-    daft1 = dft(da1, dim=dim,
+    daft1 = dft(da1, stol, dim=dim,
                 shift=shift, detrend=detrend, window=window)
-    daft2 = dft(da2, dim=dim,
+    daft2 = dft(da2, stol, dim=dim,
                 shift=shift, detrend=detrend, window=window)
 
     coord = list(daft1.coords)
@@ -425,7 +434,7 @@ def _azimuthal_avg(k, l, f, fftdim, N, nfactor):
 
     return kr, iso_f
 
-def isotropic_powerspectrum(da, dim=None, shift=True, detrend=None,
+def isotropic_powerspectrum(da, stol=1e-3, dim=None, shift=True, detrend=None,
                        density=True, window=False, nfactor=4):
     """
     Calculates the isotropic spectrum from the
@@ -440,6 +449,9 @@ def isotropic_powerspectrum(da, dim=None, shift=True, detrend=None,
     ----------
     da : `xarray.DataArray`
         The data to be transformed
+    stol: float (default)
+        Spacing tolerance. Fourier transform should not be applied to uneven grid but 
+        this restriction can be relaxed with this setting. Use caution.
     dim : list (optional)
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
@@ -470,7 +482,7 @@ def isotropic_powerspectrum(da, dim=None, shift=True, detrend=None,
     if len(dim) != 2:
         raise ValueError('The Fourier transform should be two dimensional')
 
-    ps = power_spectrum(da, dim=dim, shift=shift,
+    ps = power_spectrum(da, stol, dim=dim, shift=shift,
                        detrend=detrend, density=density,
                        window=window)
 
@@ -504,7 +516,7 @@ def isotropic_powerspectrum(da, dim=None, shift=True, detrend=None,
 
     return xr.DataArray(iso_ps, dims=newdims, coords=newcoords)
 
-def isotropic_crossspectrum(da1, da2,
+def isotropic_crossspectrum(da1, da2, stol=1e-3,
                         dim=None, shift=True, detrend=None,
                         density=True, window=False, nfactor=4):
     """
@@ -523,6 +535,9 @@ def isotropic_crossspectrum(da1, da2,
         The data to be transformed
     da2 : `xarray.DataArray`
         The data to be transformed
+    stol: float (default)
+        Spacing tolerance. Fourier transform should not be applied to uneven grid but 
+        this restriction can be relaxed with this setting. Use caution.
     dim : list (optional)
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
@@ -556,7 +571,7 @@ def isotropic_crossspectrum(da1, da2,
     if len(dim) != 2:
         raise ValueError('The Fourier transform should be two dimensional')
 
-    cs = cross_spectrum(da1, da2, dim=dim, shift=shift,
+    cs = cross_spectrum(da1, da2, stol, dim=dim, shift=shift,
                        detrend=detrend, density=density,
                        window=window)
     # if len(cs.dims) > 2:
