@@ -1,0 +1,4 @@
+{
+  "xrft/tests/test_xrft.py::test_stol": true,
+  "xrft/tests/test_xrft.py::test_stol[dask]": true
+}
