@@ -586,7 +586,6 @@ def test_spacing_tol(test_data_1d):
     da = test_data_1d
     da2 = da.copy().load()
 
-    # test for changing tolerance levels
     # Create improperly spaced data
     Nx = 16
     Lx = 1.0
@@ -599,11 +598,6 @@ def test_spacing_tol(test_data_1d):
     # But this should 
     with pytest.raises(ValueError):
         xrft.dft(da3, spacing_tol=1e-4)
-
-    # modify data to be non-evenly spaced
-    #da2[-1] = np.nan
-    #with pytest.raises(ValueError):
-    #    ft = xrft.dft(da2)
 
 def test_spacing_tol_float_value(test_data_1d):
     da = test_data_1d
