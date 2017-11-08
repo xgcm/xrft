@@ -146,12 +146,6 @@ def test_dft_1d(test_data_1d):
     ft_data_expected = np.fft.fftshift(np.fft.fft(da_prime))
     npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
 
-    # modify data to be non-evenly spaced
-    da2 = da.copy().load()
-    da2[-1] = np.nan
-    with pytest.raises(ValueError):
-        ft = xrft.dft(da2)
-
     if 'x' in da and not da.chunks:
         da['x'].values[-1] *= 2
         with pytest.raises(ValueError):
@@ -587,3 +581,28 @@ def test_isotropic_cs():
         iso_cs[t] = xrft.isotropic_crossspectrum(da[t], da2[t], dim=['y','x'],
                                                 window=True).values
     npt.assert_almost_equal(np.ma.masked_invalid(iso_cs[:,1:]).mask.sum(), 0.)
+
+def test_spacing_tol(test_data_1d):
+    da = test_data_1d
+    da2 = da.copy().load()
+
+    # Create improperly spaced data
+    Nx = 16
+    Lx = 1.0
+    x  = np.linspace(0, Lx, Nx)
+    x[-1] = x[-1] + .001
+    da3 = xr.DataArray(np.random.rand(Nx), coords=[x], dims=['x']) 
+
+    # This shouldn't raise an error
+    xrft.dft(da3, spacing_tol=1e-1)
+    # But this should 
+    with pytest.raises(ValueError):
+        xrft.dft(da3, spacing_tol=1e-4)
+
+def test_spacing_tol_float_value(test_data_1d):
+    da = test_data_1d
+    with pytest.raises(TypeError):
+        xrft.dft(da, spacing_tol='string')
+
+
+
