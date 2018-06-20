@@ -269,7 +269,7 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False):
     for d in newdims:
         if d in k_coords:
             newcoords[d] = k_coords[d]
-        elif d in da:
+        elif d in da.coords:
             newcoords[d] = da[d].data
 
     dk = [l[1] - l[0] for l in k]
