@@ -17,8 +17,9 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
+import os
+import sys
+import xrft
 # sys.path.insert(0, os.path.abspath('.'))
 
 
@@ -36,6 +37,10 @@ extensions = ['sphinx.ext.autodoc',
     'sphinx.ext.githubpages',
     'nbsphinx',
     'IPython.sphinxext.ipython_console_highlighting']
+
+# never execute notebooks: avoids lots of expensive imports on rtd
+# https://nbsphinx.readthedocs.io/en/0.2.14/never-execute.html
+nbsphinx_execute = 'never'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
