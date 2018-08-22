@@ -6,7 +6,6 @@ dependencies:
   - dask
   - scipy
   - numpy
-  - functools
   - pytest
   - numpydoc
   - sphinx
