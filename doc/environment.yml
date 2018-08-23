@@ -14,3 +14,4 @@ dependencies:
   - pip:
     - docrep
     - nbsphinx
+    - sphinx_rtd_theme

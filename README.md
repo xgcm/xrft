@@ -1,12 +1,6 @@
 # xrft : Fourier transforms for xarray data
 
-[![Build Status](https://travis-ci.org/xgcm/xrft.svg?branch=master)](https://travis-ci.org/xgcm/xrft)
-
-[![codecov](https://codecov.io/gh/xgcm/xrft/branch/master/graph/badge.svg)](https://codecov.io/gh/xgcm/xrft)
-
-[![Documentation Status](https://readthedocs.org/projects/xrft/badge/?version=latest)](https://xrft.readthedocs.io/en/latest/?badge=latest)
-
-[![DOI](https://zenodo.org/badge/60866797.svg)](https://zenodo.org/badge/latestdoi/60866797)
+[![Build Status](https://travis-ci.org/xgcm/xrft.svg?branch=master)](https://travis-ci.org/xgcm/xrft) [![codecov](https://codecov.io/gh/xgcm/xrft/branch/master/graph/badge.svg)](https://codecov.io/gh/xgcm/xrft) [![Documentation Status](https://readthedocs.org/projects/xrft/badge/?version=latest)](https://xrft.readthedocs.io/en/latest/?badge=latest) [![DOI](https://zenodo.org/badge/60866797.svg)](https://zenodo.org/badge/latestdoi/60866797)
 
 
 xrft is a Python package for
