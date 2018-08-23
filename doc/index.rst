@@ -10,8 +10,8 @@ taking the discrete Fourier transform (DFT) on xarray_ and dask_ arrays.
 It is
 
 - **Powerful**: It keeps the metadata and coordinates of the original xarray dataset and provides a clean work flow of DFT.
-- **Easy-to-use**: It uses the native arguments of numpy fft and provides a simple, high-level API.
-- **Fast**: It uses the dask API of fft and map_blocks to allow parallelization of DFT.
+- **Easy-to-use**: It uses the native arguments of numpy FFT and provides a simple, high-level API.
+- **Fast**: It uses the dask API of FFT and map_blocks to allow parallelization of DFT.
 
 .. note::
 
