@@ -5,7 +5,7 @@
 
 xrft is a Python package for
 taking the discrete Fourier transform (DFT) on xarray and dask arrays.
-It is
+It is:
 
 - **Powerful**: It keeps the metadata and coordinates of the original xarray dataset and provides a clean work flow of DFT.
 - **Easy-to-use**: It uses the native arguments of numpy FFT and provides a simple, high-level API.
