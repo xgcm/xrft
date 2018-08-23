@@ -33,9 +33,12 @@ import xrft
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['sphinx.ext.autodoc',
-    'sphinx.ext.mathjax',
-    'sphinx.ext.githubpages',
+    'sphinx.ext.mathjax','sphinx.ext.githubpages',
+    'sphinx.ext.autosummary','sphinx.ext.extlinks',
+    'sphinx.ext.viewcode','sphinx.ext.intersphinx',
+    'numpydoc',
     'nbsphinx',
+    'IPython.sphinxext.ipython_directive',
     'IPython.sphinxext.ipython_console_highlighting']
 
 # never execute notebooks: avoids lots of expensive imports on rtd
