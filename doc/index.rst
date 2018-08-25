@@ -19,7 +19,7 @@ It is:
     The discrete Fourier transform API should be quite stable,
     but minor utilities could change in the next version.
     If you find any bugs or would like to request any enhancements,
-    please `raise an issue on GitHub <https://github.com/rabernat/xrft/issues>`_.
+    please `raise an issue on GitHub <https://github.com/xgcm/xrft/issues>`_.
 
 Contents
 --------
