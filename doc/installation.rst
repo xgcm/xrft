@@ -15,13 +15,13 @@ Install xrft from GitHub repo
 -----------------------------
 To get the latest version::
 
-    $ git clone https://github.com/rabernat/xrft.git
+    $ git clone https://github.com/xrft/xrft.git
     $ cd xrft
     $ python setup.py install .
 
 Developers can track source code changes by::
 
-    $ git clone https://github.com/rabernat/xrft.git
+    $ git clone https://github.com/xrft/xrft.git
     $ cd xrft
     $ python setup.py build .
 
