@@ -41,8 +41,7 @@ Contents
    :maxdepth: 1
    :caption: Examples
 
-   DFT
-   Power_spectrum
+   MITgcm_example
 
 .. toctree::
    :maxdepth: 1
