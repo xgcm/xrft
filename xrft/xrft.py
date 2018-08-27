@@ -165,15 +165,14 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False):
     specified dimensions.
 
     .. math::
-
-     daft = \mathbb{F}(da - \overline{da})
+        daft = \mathbb{F}(da - \overline{da})
 
     Parameters
     ----------
     da : `xarray.DataArray`
         The data to be transformed
     spacing_tol: float (default)
-        Spacing tolerance. Fourier transform should not be applied to uneven grid but 
+        Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
     dim : list (optional)
         The dimensions along which to take the transformation. If `None`, all
@@ -284,16 +283,16 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, den
     Calculates the power spectrum of da.
 
     .. math::
-
-     da' = da - \overline{da}
-     ps = \mathbb{F}(da') * {\mathbb{F}(da')}^*
+        da' = da - \overline{da}
+    .. math::
+        ps = \mathbb{F}(da') * {\mathbb{F}(da')}^*
 
     Parameters
     ----------
     da : `xarray.DataArray`
         The data to be transformed
     spacing_tol: float (default)
-        Spacing tolerance. Fourier transform should not be applied to uneven grid but 
+        Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
     dim : list (optional)
         The dimensions along which to take the transformation. If `None`, all
@@ -346,9 +345,9 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
     Calculates the cross spectra of da1 and da2.
 
     .. math::
-
-     da1' = da1 - \overline{da1}; da2' = da2 - \overline{da2}
-     cs = \mathbb{F}(da1') * {\mathbb{F}(da2')}^*
+        da1' = da1 - \overline{da1};\ \ da2' = da2 - \overline{da2}
+    .. math::
+        cs = \mathbb{F}(da1') * {\mathbb{F}(da2')}^*
 
     Parameters
     ----------
@@ -357,7 +356,7 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
     da2 : `xarray.DataArray`
         The data to be transformed
     spacing_tol: float (default)
-        Spacing tolerance. Fourier transform should not be applied to uneven grid but 
+        Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
     dim : list (optional)
         The dimensions along which to take the transformation. If `None`, all
@@ -445,16 +444,16 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=
     two-dimensional power spectrum by taking the
     azimuthal average.
 
-    ..math::
-
-     iso_ps = k_r \frac{1}{N_{\theta}} \sum_{N_{\theta}} |\mathbb{F}(da')|^2
+    .. math::
+        iso_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
+    where :math:`N` is the number of azimuthal bins.
 
     Parameters
     ----------
     da : `xarray.DataArray`
         The data to be transformed
     spacing_tol: float (default)
-        Spacing tolerance. Fourier transform should not be applied to uneven grid but 
+        Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
     dim : list (optional)
         The dimensions along which to take the transformation. If `None`, all
@@ -528,10 +527,9 @@ def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
     two-dimensional power spectrumby taking the
     azimuthal average.
 
-    ..math::
-
-     iso_ps = k_r \frac{1}{N_{\theta}} \sum_{N_{\theta}} \\
-            (\mathbb{F}(da1') \times {\mathbb{F}(da2')}^* )
+    .. math::
+        iso_{cs} = k_r N^{-1} \sum_{N} (\mathbb{F}(da1') {\mathbb{F}(da2')}^*)
+    where :math:`N` is the number of azimuthal bins.
 
     Parameters
     ----------
@@ -540,7 +538,7 @@ def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
     da2 : `xarray.DataArray`
         The data to be transformed
     spacing_tol: float (default)
-        Spacing tolerance. Fourier transform should not be applied to uneven grid but 
+        Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
     dim : list (optional)
         The dimensions along which to take the transformation. If `None`, all

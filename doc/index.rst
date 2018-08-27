@@ -44,6 +44,12 @@ Contents
    DFT
    Power_spectrum
 
+.. toctree::
+   :maxdepth: 1
+   :caption: API
+
+   api
+
 
 .. _xarray: http://xarray.pydata.org
 .. _dask: http://dask.pydata.org/en/latest/array-api.html
