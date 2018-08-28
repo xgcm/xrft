@@ -159,7 +159,8 @@ def _apply_detrend(da, axis_num):
 
     return da
 
-def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False):
+def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
+       chunks_to_segments=False, **kwargs):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
     specified dimensions.
@@ -177,17 +178,22 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False):
     dim : list (optional)
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    shift : bool (optional)
+    shift : bool (default)
         Whether to shift the fft output.
     detrend : str (optional)
         If `constant`, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
         If `linear`, the linear least-square fit will be subtracted before
         the FT.
-    window : bool (optional)
+    window : bool (default)
         Whether to apply a Hann window to the data before the Fourier
         transform is taken. A window will be applied to all the dimensions in
         dim.
+    chunks_to_segments : bool (default)
+        Whether the data is chunked along the axis to take FFT.
+    kwargs : dict
+        Need to provide the information of chunk length (`seglen`: int)
+        when `chunks_to_segment=True`.
 
     Returns
     -------
@@ -209,6 +215,33 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False):
         dim = da.dims
 
     # the axes along which to take ffts
+    if chunks_to_segments:
+        data = da.data
+        if len(dim)>1:
+            raise NotImplementedError("Currently, only a one-dimensional "
+                                     "DFT is supported when the dimension "
+                                     "to FT is chunked.")
+        suffix = '_segment'
+        newdims = []
+        newcoords = {}
+        newshape = []
+        for d in da.dims:
+            if d == dim[0]:
+                newdims.append(d + suffix)
+                newdims.append(d)
+                n = len(da[d])
+                seglen = kwargs['seglen']
+                coord_rs = da[d].data.reshape((int(n/seglen),int(seglen)))
+                newshape.append(int(n/seglen))
+                newshape.append(int(seglen))
+                newcoords[d+suffix] = range(int(n/seglen))
+                newcoords[d] = coord_rs[0]
+            else:
+                newdims.append(d)
+                newshape.append(len(da[d]))
+                newcoords[d] = da[d].data
+        da = xr.DataArray(data.reshape(newshape), dims=newdims, coords=newcoords)
+
     axis_num = [da.get_axis_num(d) for d in dim]
 
     N = [da.shape[n] for n in axis_num]
@@ -278,7 +311,7 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False):
     return xr.DataArray(f, dims=newdims, coords=newcoords)
 
 def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, density=True,
-                window=False):
+                  window=False, chunks_to_segments=False, **kwargs):
     """
     Calculates the power spectrum of da.
 
@@ -309,6 +342,11 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, den
     window : bool (optional)
         Whether to apply a Hann window to the data before the Fourier
         transform is taken
+    chunks_to_segments : bool (default)
+        Whether the data is chunked along the axis to take FFT.
+    kwargs : dict
+        Need to provide the information of chunk length (`seglen`: int)
+        when `chunks_to_segment=True`.
 
     Returns
     -------
@@ -324,9 +362,15 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, den
 
     N = [da.shape[n] for n in axis_num]
 
-    daft = dft(da, spacing_tol,
-            dim=dim, shift=shift, detrend=detrend,
-            window=window)
+    if chunks_to_segments:
+        daft = dft(da, spacing_tol,
+                  dim=dim, shift=shift, detrend=detrend, window=window,
+                  chunks_to_segments=chunks_to_segments,
+                  **kwargs)
+    else:
+        daft = dft(da, spacing_tol,
+                  dim=dim, shift=shift, detrend=detrend,
+                  window=window)
 
     coord = list(daft.coords)
 

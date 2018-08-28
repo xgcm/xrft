@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import xarray as xr
+import dask.array as dsar
 import numpy.testing as npt
 import scipy.signal as sps
 import scipy.linalg as spl
@@ -195,6 +196,14 @@ def test_dft_4d():
         xrft.dft(da, detrend='linear')
     with pytest.raises(NotImplementedError):
         xrft.dft(da, dim=['time','y','x'], detrend='linear')
+
+    with pytest.raises(NotImplementedError):
+        xrft.dft(da.chunk({'time':8}), dim=['time','z'], chunks_to_segments=True)
+    ft = xrft.dft(da.chunk({'time':8}), dim=['time'], shift=False,
+                 chunks_to_segments=True, seglen=8)
+    data = da.chunk({'time':8}).data.reshape((2,8,16,16,16))
+    npt.assert_almost_equal(ft.values, dsar.fft.fftn(data, axes=[1]).compute(),
+                           decimal=7)
 
     da_prime = xrft.detrendn(da[:,0].values, [0,1,2]) # cubic detrend over time, y, and x
     npt.assert_almost_equal(xrft.dft(da[:,0].drop('z'),
@@ -591,11 +600,11 @@ def test_spacing_tol(test_data_1d):
     Lx = 1.0
     x  = np.linspace(0, Lx, Nx)
     x[-1] = x[-1] + .001
-    da3 = xr.DataArray(np.random.rand(Nx), coords=[x], dims=['x']) 
+    da3 = xr.DataArray(np.random.rand(Nx), coords=[x], dims=['x'])
 
     # This shouldn't raise an error
     xrft.dft(da3, spacing_tol=1e-1)
-    # But this should 
+    # But this should
     with pytest.raises(ValueError):
         xrft.dft(da3, spacing_tol=1e-4)
 
@@ -603,6 +612,3 @@ def test_spacing_tol_float_value(test_data_1d):
     da = test_data_1d
     with pytest.raises(TypeError):
         xrft.dft(da, spacing_tol='string')
-
-
-
