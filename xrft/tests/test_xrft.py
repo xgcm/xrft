@@ -99,18 +99,6 @@ def test_detrend():
     npt.assert_allclose(da_prime[0,0],
                         xrft.detrendn(d4d[0,0], axes=[0,1]))
 
-    # s = np.arange(2)
-    # d5d = d4d[np.newaxis,:,:,:,:] + s[:,np.newaxis,np.newaxis,
-    #                                     np.newaxis,np.newaxis]
-    # da5d = xr.DataArray(d5d, dims=['s','time','z','y','x'],
-    #                  coords={'s':range(len(s)),'time':range(len(t)),
-    #                          'z':range(len(z)),'y':range(len(y)),
-    #                          'x':range(len(x))}
-    #                    )
-    # da = da5d.chunk({'time':1})
-    # with pytest.raises(ValueError):
-    #     func(da.data).compute()
-
 def test_dft_1d(test_data_1d):
     """Test the discrete Fourier transform function on one-dimensional data."""
     da = test_data_1d
@@ -192,11 +180,6 @@ def test_dft_4d():
     ft = xrft.dft(da, shift=False)
     npt.assert_almost_equal(ft.values, np.fft.fftn(da.values))
 
-    # with pytest.raises(NotImplementedError):
-    #     xrft.dft(da, detrend='linear')
-    # with pytest.raises(NotImplementedError):
-    #     xrft.dft(da, dim=['time','y','x'], detrend='linear')
-
     da_prime = xrft.detrendn(da[:,0].values, [0,1,2]) # cubic detrend over time, y, and x
     npt.assert_almost_equal(xrft.dft(da[:,0].drop('z'),
                                     dim=['time','y','x'],
@@ -211,23 +194,28 @@ def test_bartlett():
                      coords={'time':range(N),'y':range(N),'x':range(N)}
                      )
 
-    # with pytest.raises(NotImplementedError):
-    #     xrft.dft(da.chunk({'time':16}), dim=['time','y'], detrend='linear',
-    #             chunks_to_segments=True)
     with pytest.raises(ValueError):
         xrft.dft(da.chunk(chunks=((20,N,N),(N-20,N,N))), dim=['time'],
                 detrend='linear', chunks_to_segments=True)
 
     ft = xrft.dft(da.chunk({'time':16}), dim=['time'], shift=False,
                  chunks_to_segments=True)
+    assert ft.dims == ('time_segment','freq_time','y','x')
     data = da.chunk({'time':16}).data.reshape((2,16,N,N))
     npt.assert_almost_equal(ft.values, dsar.fft.fftn(data, axes=[1]),
                            decimal=7)
     ft = xrft.dft(da.chunk({'y':16,'x':16}), dim=['y','x'], shift=False,
                  chunks_to_segments=True)
+    assert ft.dims == ('time','y_segment','freq_y','x_segment','freq_x')
     data = da.chunk({'y':16,'x':16}).data.reshape((N,2,16,2,16))
     npt.assert_almost_equal(ft.values, dsar.fft.fftn(data, axes=[2,4]),
                            decimal=7)
+    ps = xrft.power_spectrum(da.chunk({'y':16,'x':16}), dim=['y','x'],
+                            shift=False, density=False,
+                            chunks_to_segments=True)
+    npt.assert_almost_equal(ps.values,
+                           (ft*np.conj(ft)).real.values,
+                           )
 
 
 def test_dft_nocoords():

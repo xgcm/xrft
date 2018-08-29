@@ -161,10 +161,7 @@ def _apply_detrend(da, axis_num):
 def _stack_chunks(da, dim, suffix='_segment'):
     """Reshape a DataArray so there is only one chunk along dimension `dim`"""
     data = da.data
-    # if len(dim)>1 and detrend=='linear':
-    #     raise NotImplementedError("Currently, only a one-dimensional "
-    #                              "linear detrending is supported "
-    #                              "when the dimension to FT is chunked.")
+    attr = da.attrs
     newdims = []
     newcoords = {}
     newshape = []
@@ -187,7 +184,10 @@ def _stack_chunks(da, dim, suffix='_segment'):
             newshape.append(len(da[d]))
             newcoords[d] = da[d].data
 
-    return xr.DataArray(data.reshape(newshape), dims=newdims, coords=newcoords)
+    da = xr.DataArray(data.reshape(newshape), dims=newdims, coords=newcoords)
+    da.attrs = attr
+
+    return da
 
 def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
        chunks_to_segments=False):
@@ -350,9 +350,6 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, den
         transform is taken
     chunks_to_segments : bool (default)
         Whether the data is chunked along the axis to take FFT.
-    kwargs : dict
-        Need to provide the information of chunk length (`seglen`: int)
-        when `chunks_to_segment=True`.
 
     Returns
     -------
@@ -368,14 +365,9 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, den
 
     N = [da.shape[n] for n in axis_num]
 
-    if chunks_to_segments:
-        daft = dft(da, spacing_tol,
-                  dim=dim, shift=shift, detrend=detrend, window=window,
-                  chunks_to_segments=chunks_to_segments)
-    else:
-        daft = dft(da, spacing_tol,
-                  dim=dim, shift=shift, detrend=detrend,
-                  window=window)
+    daft = dft(da, spacing_tol,
+              dim=dim, shift=shift, detrend=detrend, window=window,
+              chunks_to_segments=chunks_to_segments)
 
     coord = list(daft.coords)
 
@@ -389,7 +381,8 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, den
     return ps
 
 def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
-                   shift=True, detrend=None, density=True, window=False):
+                  shift=True, detrend=None, density=True, window=False,
+                  chunks_to_segments=False):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -441,10 +434,12 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
 
     N = [da1.shape[n] for n in axis_num]
 
-    daft1 = dft(da1, spacing_tol, dim=dim,
-                shift=shift, detrend=detrend, window=window)
-    daft2 = dft(da2, spacing_tol, dim=dim,
-                shift=shift, detrend=detrend, window=window)
+    daft1 = dft(da1, spacing_tol,
+               dim=dim, shift=shift, detrend=detrend, window=window,
+               chunks_to_segments=chunks_to_segments)
+    daft2 = dft(da2, spacing_tol,
+               dim=dim, shift=shift, detrend=detrend, window=window,
+               chunks_to_segments=chunks_to_segments)
 
     coord = list(daft1.coords)
 
