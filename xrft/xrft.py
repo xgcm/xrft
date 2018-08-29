@@ -159,8 +159,39 @@ def _apply_detrend(da, axis_num):
 
     return da
 
+def _stack_chunks(da, dim, detrend, suffix='_segment'):
+    """Reshape a DataArray so there is only one chunk along dimension `dim`"""
+    data = da.data
+    if len(dim)>1 and detrend=='linear':
+        raise NotImplementedError("Currently, only a one-dimensional "
+                                 "linear detrending is supported "
+                                 "when the dimension to FT is chunked.")
+    newdims = []
+    newcoords = {}
+    newshape = []
+    for d in da.dims:
+        if d in dim:
+            axis_num = da.get_axis_num(d)
+            if np.diff(da.chunks[axis_num]).sum() != 0:
+                raise ValueError("Chunk lengths need to be the same.")
+            n = len(da[d])
+            chunklen = da.chunks[axis_num][0]
+            coord_rs = da[d].data.reshape((int(n/chunklen),int(chunklen)))
+            newdims.append(d + suffix)
+            newdims.append(d)
+            newshape.append(int(n/chunklen))
+            newshape.append(int(chunklen))
+            newcoords[d+suffix] = range(int(n/chunklen))
+            newcoords[d] = coord_rs[0]
+        else:
+            newdims.append(d)
+            newshape.append(len(da[d]))
+            newcoords[d] = da[d].data
+
+    return xr.DataArray(data.reshape(newshape), dims=newdims, coords=newcoords)
+
 def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
-       chunks_to_segments=False, **kwargs):
+       chunks_to_segments=False, suffix='_segment'):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
     specified dimensions.
@@ -191,9 +222,6 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
         dim.
     chunks_to_segments : bool (default)
         Whether the data is chunked along the axis to take FFT.
-    kwargs : dict
-        Need to provide the information of chunk length (`seglen`: int)
-        when `chunks_to_segment=True`.
 
     Returns
     -------
@@ -216,31 +244,7 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
 
     # the axes along which to take ffts
     if chunks_to_segments:
-        data = da.data
-        if len(dim)>1:
-            raise NotImplementedError("Currently, only a one-dimensional "
-                                     "DFT is supported when the dimension "
-                                     "to FT is chunked.")
-        suffix = '_segment'
-        newdims = []
-        newcoords = {}
-        newshape = []
-        for d in da.dims:
-            if d == dim[0]:
-                newdims.append(d + suffix)
-                newdims.append(d)
-                n = len(da[d])
-                seglen = kwargs['seglen']
-                coord_rs = da[d].data.reshape((int(n/seglen),int(seglen)))
-                newshape.append(int(n/seglen))
-                newshape.append(int(seglen))
-                newcoords[d+suffix] = range(int(n/seglen))
-                newcoords[d] = coord_rs[0]
-            else:
-                newdims.append(d)
-                newshape.append(len(da[d]))
-                newcoords[d] = da[d].data
-        da = xr.DataArray(data.reshape(newshape), dims=newdims, coords=newcoords)
+        da = _stack_chunks(da, dim, detrend, suffix)
 
     axis_num = [da.get_axis_num(d) for d in dim]
 
@@ -311,7 +315,7 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
     return xr.DataArray(f, dims=newdims, coords=newcoords)
 
 def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, density=True,
-                  window=False, chunks_to_segments=False, **kwargs):
+                  window=False, chunks_to_segments=False):
     """
     Calculates the power spectrum of da.
 
@@ -365,8 +369,7 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, den
     if chunks_to_segments:
         daft = dft(da, spacing_tol,
                   dim=dim, shift=shift, detrend=detrend, window=window,
-                  chunks_to_segments=chunks_to_segments,
-                  **kwargs)
+                  chunks_to_segments=chunks_to_segments)
     else:
         daft = dft(da, spacing_tol,
                   dim=dim, shift=shift, detrend=detrend,

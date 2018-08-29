@@ -185,8 +185,8 @@ def test_dft_4d():
     """Test the discrete Fourier transform on 2D data"""
     N = 16
     da = xr.DataArray(np.random.rand(N,N,N,N),
-                    dims=['time','z','y','x'],
-                    coords={'time':range(N),'z':range(N),
+                     dims=['time','z','y','x'],
+                     coords={'time':range(N),'z':range(N),
                             'y':range(N),'x':range(N)}
                      )
     ft = xrft.dft(da, shift=False)
@@ -197,20 +197,32 @@ def test_dft_4d():
     with pytest.raises(NotImplementedError):
         xrft.dft(da, dim=['time','y','x'], detrend='linear')
 
-    with pytest.raises(NotImplementedError):
-        xrft.dft(da.chunk({'time':8}), dim=['time','z'], chunks_to_segments=True)
-    ft = xrft.dft(da.chunk({'time':8}), dim=['time'], shift=False,
-                 chunks_to_segments=True, seglen=8)
-    data = da.chunk({'time':8}).data.reshape((2,8,16,16,16))
-    npt.assert_almost_equal(ft.values, dsar.fft.fftn(data, axes=[1]).compute(),
-                           decimal=7)
-
     da_prime = xrft.detrendn(da[:,0].values, [0,1,2]) # cubic detrend over time, y, and x
     npt.assert_almost_equal(xrft.dft(da[:,0].drop('z'),
                                     dim=['time','y','x'],
                                     shift=False, detrend='linear'
                                     ).values,
                             np.fft.fftn(da_prime))
+
+def test_bartlett():
+    N = 32
+    da = xr.DataArray(np.random.rand(N,N,N),
+                     dims=['time','y','x'],
+                     coords={'time':range(N),'y':range(N),'x':range(N)}
+                     )
+
+    with pytest.raises(NotImplementedError):
+        xrft.dft(da.chunk({'time':16}), dim=['time','y'], detrend='linear',
+                chunks_to_segments=True)
+    with pytest.raises(ValueError):
+        xrft.dft(da.chunk(chunks=((20,N,N),(N-20,N,N))), dim=['time'],
+                detrend='linear', chunks_to_segments=True)
+
+    ft = xrft.dft(da.chunk({'time':16}), dim=['time'], shift=False,
+                 chunks_to_segments=True)
+    data = da.chunk({'time':16}).data.reshape((2,16,N,N))
+    npt.assert_almost_equal(ft.values, dsar.fft.fftn(data, axes=[1]),
+                           decimal=7)
 
 
 def test_dft_nocoords():
