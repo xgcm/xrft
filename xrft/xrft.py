@@ -185,8 +185,8 @@ def _stack_chunks(da, dim, suffix='_segment'):
             newshape.append(len(da[d]))
             newcoords[d] = da[d].data
 
-    da = xr.DataArray(data.reshape(newshape), dims=newdims, coords=newcoords)
-    da.attrs = attr
+    da = xr.DataArray(data.reshape(newshape), dims=newdims, coords=newcoords,
+                     attrs=attr)
 
     return da
 
