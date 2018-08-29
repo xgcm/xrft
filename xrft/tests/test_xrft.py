@@ -99,17 +99,17 @@ def test_detrend():
     npt.assert_allclose(da_prime[0,0],
                         xrft.detrendn(d4d[0,0], axes=[0,1]))
 
-    s = np.arange(2)
-    d5d = d4d[np.newaxis,:,:,:,:] + s[:,np.newaxis,np.newaxis,
-                                        np.newaxis,np.newaxis]
-    da5d = xr.DataArray(d5d, dims=['s','time','z','y','x'],
-                     coords={'s':range(len(s)),'time':range(len(t)),
-                             'z':range(len(z)),'y':range(len(y)),
-                             'x':range(len(x))}
-                       )
-    da = da5d.chunk({'time':1})
-    with pytest.raises(ValueError):
-        func(da.data).compute()
+    # s = np.arange(2)
+    # d5d = d4d[np.newaxis,:,:,:,:] + s[:,np.newaxis,np.newaxis,
+    #                                     np.newaxis,np.newaxis]
+    # da5d = xr.DataArray(d5d, dims=['s','time','z','y','x'],
+    #                  coords={'s':range(len(s)),'time':range(len(t)),
+    #                          'z':range(len(z)),'y':range(len(y)),
+    #                          'x':range(len(x))}
+    #                    )
+    # da = da5d.chunk({'time':1})
+    # with pytest.raises(ValueError):
+    #     func(da.data).compute()
 
 def test_dft_1d(test_data_1d):
     """Test the discrete Fourier transform function on one-dimensional data."""
@@ -192,10 +192,10 @@ def test_dft_4d():
     ft = xrft.dft(da, shift=False)
     npt.assert_almost_equal(ft.values, np.fft.fftn(da.values))
 
-    with pytest.raises(NotImplementedError):
-        xrft.dft(da, detrend='linear')
-    with pytest.raises(NotImplementedError):
-        xrft.dft(da, dim=['time','y','x'], detrend='linear')
+    # with pytest.raises(NotImplementedError):
+    #     xrft.dft(da, detrend='linear')
+    # with pytest.raises(NotImplementedError):
+    #     xrft.dft(da, dim=['time','y','x'], detrend='linear')
 
     da_prime = xrft.detrendn(da[:,0].values, [0,1,2]) # cubic detrend over time, y, and x
     npt.assert_almost_equal(xrft.dft(da[:,0].drop('z'),
@@ -211,9 +211,9 @@ def test_bartlett():
                      coords={'time':range(N),'y':range(N),'x':range(N)}
                      )
 
-    with pytest.raises(NotImplementedError):
-        xrft.dft(da.chunk({'time':16}), dim=['time','y'], detrend='linear',
-                chunks_to_segments=True)
+    # with pytest.raises(NotImplementedError):
+    #     xrft.dft(da.chunk({'time':16}), dim=['time','y'], detrend='linear',
+    #             chunks_to_segments=True)
     with pytest.raises(ValueError):
         xrft.dft(da.chunk(chunks=((20,N,N),(N-20,N,N))), dim=['time'],
                 detrend='linear', chunks_to_segments=True)

@@ -112,9 +112,8 @@ def detrend_wrap(detrend_func):
     Wrapper function for `xrft.detrendn`.
     """
     def func(a, axes=None):
-        if a.ndim > 4 or len(axes) > 3:
-            raise ValueError("Data has too many dimensions "
-                            "and/or too many axes to detrend over.")
+        if len(axes) > 3:
+            raise ValueError("Data has too many axes to detrend over.")
         if axes is None:
             axes = tuple(range(a.ndim))
         else:
@@ -159,13 +158,13 @@ def _apply_detrend(da, axis_num):
 
     return da
 
-def _stack_chunks(da, dim, detrend, suffix='_segment'):
+def _stack_chunks(da, dim, suffix='_segment'):
     """Reshape a DataArray so there is only one chunk along dimension `dim`"""
     data = da.data
-    if len(dim)>1 and detrend=='linear':
-        raise NotImplementedError("Currently, only a one-dimensional "
-                                 "linear detrending is supported "
-                                 "when the dimension to FT is chunked.")
+    # if len(dim)>1 and detrend=='linear':
+    #     raise NotImplementedError("Currently, only a one-dimensional "
+    #                              "linear detrending is supported "
+    #                              "when the dimension to FT is chunked.")
     newdims = []
     newcoords = {}
     newshape = []
@@ -244,7 +243,11 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
 
     # the axes along which to take ffts
     if chunks_to_segments:
-        da = _stack_chunks(da, dim, detrend)
+        da = _stack_chunks(da, dim)
+        if detrend=='linear':
+            for d in da.dims:
+                if d not in dim:
+                    da = da.chunk({d:1})
 
     axis_num = [da.get_axis_num(d) for d in dim]
 
