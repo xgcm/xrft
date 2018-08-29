@@ -113,7 +113,8 @@ def detrend_wrap(detrend_func):
     """
     def func(a, axes=None):
         if len(axes) > 3:
-            raise ValueError("Data has too many axes to detrend over.")
+            raise ValueError("Detrending is only supported up to "
+                            "3 dimensions.")
         if axes is None:
             axes = tuple(range(a.ndim))
         else:
