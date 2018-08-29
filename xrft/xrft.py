@@ -244,10 +244,6 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
     # the axes along which to take ffts
     if chunks_to_segments:
         da = _stack_chunks(da, dim)
-    if detrend=='linear':
-        for d in da.dims:
-            if d not in dim:
-                da = da.chunk({d:1})
 
     axis_num = [da.get_axis_num(d) for d in dim]
 
@@ -274,6 +270,9 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
     if detrend == 'constant':
         da = da - da.mean(dim=dim)
     elif detrend == 'linear':
+        for d in da.dims:
+            if d not in dim:
+                da = da.chunk({d:1})
         da = _apply_detrend(da, axis_num)
         # if hasattr(da.data, 'dask'):
         #     func = _detrend_wrap(_detrend)
