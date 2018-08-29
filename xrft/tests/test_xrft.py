@@ -223,6 +223,11 @@ def test_bartlett():
     data = da.chunk({'time':16}).data.reshape((2,16,N,N))
     npt.assert_almost_equal(ft.values, dsar.fft.fftn(data, axes=[1]),
                            decimal=7)
+    ft = xrft.dft(da.chunk({'y':16,'x':16}), dim=['y','x'], shift=False,
+                 chunks_to_segments=True)
+    data = da.chunk({'y':16,'x':16}).data.reshape((N,2,16,2,16))
+    npt.assert_almost_equal(ft.values, dsar.fft.fftn(data, axes=[2,4]),
+                           decimal=7)
 
 
 def test_dft_nocoords():

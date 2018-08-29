@@ -191,7 +191,7 @@ def _stack_chunks(da, dim, detrend, suffix='_segment'):
     return xr.DataArray(data.reshape(newshape), dims=newdims, coords=newcoords)
 
 def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
-       chunks_to_segments=False, suffix='_segment'):
+       chunks_to_segments=False):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
     specified dimensions.
@@ -244,7 +244,7 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
 
     # the axes along which to take ffts
     if chunks_to_segments:
-        da = _stack_chunks(da, dim, detrend, suffix)
+        da = _stack_chunks(da, dim, detrend)
 
     axis_num = [da.get_axis_num(d) for d in dim]
 
