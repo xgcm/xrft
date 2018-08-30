@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import xarray as xr
+import dask.array as dsar
 import numpy.testing as npt
 import scipy.signal as sps
 import scipy.linalg as spl
@@ -98,18 +99,6 @@ def test_detrend():
     npt.assert_allclose(da_prime[0,0],
                         xrft.detrendn(d4d[0,0], axes=[0,1]))
 
-    s = np.arange(2)
-    d5d = d4d[np.newaxis,:,:,:,:] + s[:,np.newaxis,np.newaxis,
-                                        np.newaxis,np.newaxis]
-    da5d = xr.DataArray(d5d, dims=['s','time','z','y','x'],
-                     coords={'s':range(len(s)),'time':range(len(t)),
-                             'z':range(len(z)),'y':range(len(y)),
-                             'x':range(len(x))}
-                       )
-    da = da5d.chunk({'time':1})
-    with pytest.raises(ValueError):
-        func(da.data).compute()
-
 def test_dft_1d(test_data_1d):
     """Test the discrete Fourier transform function on one-dimensional data."""
     da = test_data_1d
@@ -184,17 +173,14 @@ def test_dft_4d():
     """Test the discrete Fourier transform on 2D data"""
     N = 16
     da = xr.DataArray(np.random.rand(N,N,N,N),
-                    dims=['time','z','y','x'],
-                    coords={'time':range(N),'z':range(N),
+                     dims=['time','z','y','x'],
+                     coords={'time':range(N),'z':range(N),
                             'y':range(N),'x':range(N)}
                      )
+    with pytest.raises(ValueError):
+        xrft.dft(da.chunk({'time':8}), dim=['y','x'], detrend='linear')
     ft = xrft.dft(da, shift=False)
     npt.assert_almost_equal(ft.values, np.fft.fftn(da.values))
-
-    with pytest.raises(NotImplementedError):
-        xrft.dft(da, detrend='linear')
-    with pytest.raises(NotImplementedError):
-        xrft.dft(da, dim=['time','y','x'], detrend='linear')
 
     da_prime = xrft.detrendn(da[:,0].values, [0,1,2]) # cubic detrend over time, y, and x
     npt.assert_almost_equal(xrft.dft(da[:,0].drop('z'),
@@ -202,6 +188,49 @@ def test_dft_4d():
                                     shift=False, detrend='linear'
                                     ).values,
                             np.fft.fftn(da_prime))
+
+def test_chunks_to_segments():
+    N = 32
+    da = xr.DataArray(np.random.rand(N,N,N),
+                     dims=['time','y','x'],
+                     coords={'time':range(N),'y':range(N),'x':range(N)}
+                     )
+
+    with pytest.raises(ValueError):
+        xrft.dft(da.chunk(chunks=((20,N,N),(N-20,N,N))), dim=['time'],
+                detrend='linear', chunks_to_segments=True)
+
+    ft = xrft.dft(da.chunk({'time':16}), dim=['time'], shift=False,
+                 chunks_to_segments=True)
+    assert ft.dims == ('time_segment','freq_time','y','x')
+    data = da.chunk({'time':16}).data.reshape((2,16,N,N))
+    npt.assert_almost_equal(ft.values, dsar.fft.fftn(data, axes=[1]),
+                           decimal=7)
+    ft = xrft.dft(da.chunk({'y':16,'x':16}), dim=['y','x'], shift=False,
+                 chunks_to_segments=True)
+    assert ft.dims == ('time','y_segment','freq_y','x_segment','freq_x')
+    data = da.chunk({'y':16,'x':16}).data.reshape((N,2,16,2,16))
+    npt.assert_almost_equal(ft.values, dsar.fft.fftn(data, axes=[2,4]),
+                           decimal=7)
+    ps = xrft.power_spectrum(da.chunk({'y':16,'x':16}), dim=['y','x'],
+                            shift=False, density=False,
+                            chunks_to_segments=True)
+    npt.assert_almost_equal(ps.values,
+                           (ft*np.conj(ft)).real.values,
+                           )
+    da2 = xr.DataArray(np.random.rand(N,N,N),
+                      dims=['time','y','x'],
+                      coords={'time':range(N),'y':range(N),'x':range(N)}
+                      )
+    ft2 = xrft.dft(da2.chunk({'y':16,'x':16}), dim=['y','x'], shift=False,
+                  chunks_to_segments=True)
+    cs = xrft.cross_spectrum(da.chunk({'y':16,'x':16}),
+                            da2.chunk({'y':16,'x':16}),
+                            dim=['y','x'], shift=False, density=False,
+                            chunks_to_segments=True)
+    npt.assert_almost_equal(cs.values,
+                           (ft*np.conj(ft2)).real.values,
+                           )
 
 
 def test_dft_nocoords():
@@ -591,11 +620,11 @@ def test_spacing_tol(test_data_1d):
     Lx = 1.0
     x  = np.linspace(0, Lx, Nx)
     x[-1] = x[-1] + .001
-    da3 = xr.DataArray(np.random.rand(Nx), coords=[x], dims=['x']) 
+    da3 = xr.DataArray(np.random.rand(Nx), coords=[x], dims=['x'])
 
     # This shouldn't raise an error
     xrft.dft(da3, spacing_tol=1e-1)
-    # But this should 
+    # But this should
     with pytest.raises(ValueError):
         xrft.dft(da3, spacing_tol=1e-4)
 
@@ -603,6 +632,3 @@ def test_spacing_tol_float_value(test_data_1d):
     da = test_data_1d
     with pytest.raises(TypeError):
         xrft.dft(da, spacing_tol='string')
-
-
-

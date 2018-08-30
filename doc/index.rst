@@ -42,6 +42,7 @@ Contents
    :caption: Examples
 
    MITgcm_example
+   chunk_example
 
 .. toctree::
    :maxdepth: 1

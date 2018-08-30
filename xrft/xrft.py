@@ -58,9 +58,6 @@ def detrendn(da, axes=None):
     da : `numpy.array`
         The detrended input data
     """
-#     if da.ndim > 2:
-#         raise ValueError('The data should only have two dimensions')
-#     print(da.shape)
     N = [da.shape[n] for n in axes]
     M = []
     for n in range(da.ndim):
@@ -112,9 +109,9 @@ def detrend_wrap(detrend_func):
     Wrapper function for `xrft.detrendn`.
     """
     def func(a, axes=None):
-        if a.ndim > 4 or len(axes) > 3:
-            raise ValueError("Data has too many dimensions "
-                            "and/or too many axes to detrend over.")
+        if len(axes) > 3:
+            raise ValueError("Detrending is only supported up to "
+                            "3 dimensions.")
         if axes is None:
             axes = tuple(range(a.ndim))
         else:
@@ -147,19 +144,49 @@ def _apply_detrend(da, axis_num):
     if da.chunks:
         func = detrend_wrap(detrendn)
         da = xr.DataArray(func(da.data, axes=axis_num),
-                        dims=da.dims, coords=da.coords)
+                         dims=da.dims, coords=da.coords)
     else:
         if da.ndim == 1:
             da = xr.DataArray(sps.detrend(da),
-                            dims=da.dims, coords=da.coords)
+                             dims=da.dims, coords=da.coords)
         else:
             da = detrendn(da, axes=axis_num)
-        # else:
-        #     raise ValueError("Data should be dask array.")
 
     return da
 
-def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False):
+def _stack_chunks(da, dim, suffix='_segment'):
+    """Reshape a DataArray so there is only one chunk along dimension `dim`"""
+    data = da.data
+    attr = da.attrs
+    newdims = []
+    newcoords = {}
+    newshape = []
+    for d in da.dims:
+        if d in dim:
+            axis_num = da.get_axis_num(d)
+            if np.diff(da.chunks[axis_num]).sum() != 0:
+                raise ValueError("Chunk lengths need to be the same.")
+            n = len(da[d])
+            chunklen = da.chunks[axis_num][0]
+            coord_rs = da[d].data.reshape((int(n/chunklen),int(chunklen)))
+            newdims.append(d + suffix)
+            newdims.append(d)
+            newshape.append(int(n/chunklen))
+            newshape.append(int(chunklen))
+            newcoords[d+suffix] = range(int(n/chunklen))
+            newcoords[d] = coord_rs[0]
+        else:
+            newdims.append(d)
+            newshape.append(len(da[d]))
+            newcoords[d] = da[d].data
+
+    da = xr.DataArray(data.reshape(newshape), dims=newdims, coords=newcoords,
+                     attrs=attr)
+
+    return da
+
+def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
+       chunks_to_segments=False):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
     specified dimensions.
@@ -171,23 +198,25 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False):
     ----------
     da : `xarray.DataArray`
         The data to be transformed
-    spacing_tol: float (default)
+    spacing_tol: float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
-    dim : list (optional)
+    dim : list, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    shift : bool (optional)
+    shift : bool, default
         Whether to shift the fft output.
-    detrend : str (optional)
+    detrend : str, optional
         If `constant`, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
         If `linear`, the linear least-square fit will be subtracted before
         the FT.
-    window : bool (optional)
+    window : bool, optional
         Whether to apply a Hann window to the data before the Fourier
         transform is taken. A window will be applied to all the dimensions in
         dim.
+    chunks_to_segments : bool, optional
+        Whether the data is chunked along the axis to take FFT.
 
     Returns
     -------
@@ -198,15 +227,25 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False):
     if not isinstance(spacing_tol, float):
         raise TypeError("Please provide a float argument")
 
-    # we can't do da.values because it
+    if dim is None:
+        dim = da.dims
+
     if not da.chunks:
         if np.isnan(da.values).any():
             raise ValueError("Data cannot take Nans")
+    else:
+        if detrend=='linear' and len(dim)>1:
+            for d in da.dims:
+                a_n = da.get_axis_num(d)
+                if d not in dim and da.chunks[a_n][0]>1:
+                    raise ValueError("Linear detrending utilizes the `dask.map_blocks` "
+                                    "API so the dimensions not being detrended "
+                                    "must have the chunk length of 1.")
 
     fft = _fft_module(da)
 
-    if dim is None:
-        dim = da.dims
+    if chunks_to_segments:
+        da = _stack_chunks(da, dim)
 
     # the axes along which to take ffts
     axis_num = [da.get_axis_num(d) for d in dim]
@@ -234,17 +273,10 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False):
     if detrend == 'constant':
         da = da - da.mean(dim=dim)
     elif detrend == 'linear':
+        for d in da.dims:
+            if d not in dim:
+                da = da.chunk({d:1})
         da = _apply_detrend(da, axis_num)
-        # if hasattr(da.data, 'dask'):
-        #     func = _detrend_wrap(_detrend)
-        #     da = xr.DataArray(func(da.data, axes=axis_num),
-        #                     dims=da.dims, coords=da.coords)
-        # else:
-        #     if da.ndim == 1:
-        #         da = xr.DataArray(sps.detrend(da),
-        #                         dims=da.dims, coords=da.coords)
-        #     else:
-        #         raise ValueError("Data should be dask array.")
 
     if window:
         da = _apply_window(da, dim)
@@ -278,37 +310,39 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False):
     return xr.DataArray(f, dims=newdims, coords=newcoords)
 
 def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, density=True,
-                window=False):
+                  window=False, chunks_to_segments=False):
     """
     Calculates the power spectrum of da.
 
     .. math::
         da' = da - \overline{da}
     .. math::
-        ps = \mathbb{F}(da') * {\mathbb{F}(da')}^*
+        ps = \mathbb{F}(da') {\mathbb{F}(da')}^*
 
     Parameters
     ----------
     da : `xarray.DataArray`
         The data to be transformed
-    spacing_tol: float (default)
+    spacing_tol: float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
-    dim : list (optional)
+    dim : list, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    shift : bool (optional)
+    shift : bool, optional
         Whether to shift the fft output.
-    detrend : str (optional)
+    detrend : str, optional
         If `constant`, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
         If `linear`, the linear least-square fit will be subtracted before
         the FT.
-    density : list (optional)
+    density : bool, optional
         If true, it will normalize the spectrum to spectral density
-    window : bool (optional)
+    window : bool, optional
         Whether to apply a Hann window to the data before the Fourier
         transform is taken
+    chunks_to_segments : bool, optional
+        Whether the data is chunked along the axis to take FFT.
 
     Returns
     -------
@@ -325,8 +359,8 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, den
     N = [da.shape[n] for n in axis_num]
 
     daft = dft(da, spacing_tol,
-            dim=dim, shift=shift, detrend=detrend,
-            window=window)
+              dim=dim, shift=shift, detrend=detrend, window=window,
+              chunks_to_segments=chunks_to_segments)
 
     coord = list(daft.coords)
 
@@ -340,14 +374,15 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, den
     return ps
 
 def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
-                   shift=True, detrend=None, density=True, window=False):
+                  shift=True, detrend=None, density=True, window=False,
+                  chunks_to_segments=False):
     """
     Calculates the cross spectra of da1 and da2.
 
     .. math::
         da1' = da1 - \overline{da1};\ \ da2' = da2 - \overline{da2}
     .. math::
-        cs = \mathbb{F}(da1') * {\mathbb{F}(da2')}^*
+        cs = \mathbb{F}(da1') {\mathbb{F}(da2')}^*
 
     Parameters
     ----------
@@ -355,23 +390,23 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
         The data to be transformed
     da2 : `xarray.DataArray`
         The data to be transformed
-    spacing_tol: float (default)
+    spacing_tol: float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
-    dim : list (optional)
+    dim : list, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    shift : bool (optional)
+    shift : bool, optional
         Whether to shift the fft output.
-    detrend : str (optional)
+    detrend : str, optional
         If `constant`, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
         If `linear`, the linear least-square fit along one axis will be
         subtracted before the FT. It will give an error if the length of
         `dim` is longer than one.
-    density : list (optional)
+    density : bool, optional
         If true, it will normalize the spectrum to spectral density
-    window : bool (optional)
+    window : bool, optional
         Whether to apply a Hann window to the data before the Fourier
         transform is taken
 
@@ -392,10 +427,12 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
 
     N = [da1.shape[n] for n in axis_num]
 
-    daft1 = dft(da1, spacing_tol, dim=dim,
-                shift=shift, detrend=detrend, window=window)
-    daft2 = dft(da2, spacing_tol, dim=dim,
-                shift=shift, detrend=detrend, window=window)
+    daft1 = dft(da1, spacing_tol,
+               dim=dim, shift=shift, detrend=detrend, window=window,
+               chunks_to_segments=chunks_to_segments)
+    daft2 = dft(da2, spacing_tol,
+               dim=dim, shift=shift, detrend=detrend, window=window,
+               chunks_to_segments=chunks_to_segments)
 
     coord = list(daft1.coords)
 
@@ -412,7 +449,8 @@ def _azimuthal_avg(k, l, f, fftdim, N, nfactor):
     """
     Takes the azimuthal average of a given field.
     """
-    k = k.values; l = l.values
+    k = k.values
+    l = l.values
     kk, ll = np.meshgrid(k, l)
     K = np.sqrt(kk**2 + ll**2)
     nbins = int(N/nfactor)
@@ -437,8 +475,8 @@ def _azimuthal_avg(k, l, f, fftdim, N, nfactor):
 
     return kr, iso_f
 
-def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None,
-                       density=True, window=False, nfactor=4):
+def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
+                           detrend=None, density=True, window=False, nfactor=4):
     """
     Calculates the isotropic spectrum from the
     two-dimensional power spectrum by taking the
@@ -452,25 +490,25 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=
     ----------
     da : `xarray.DataArray`
         The data to be transformed
-    spacing_tol: float (default)
+    spacing_tol: float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
-    dim : list (optional)
+    dim : list, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    shift : bool (optional)
+    shift : bool, optional
         Whether to shift the fft output.
-    detrend : str (optional)
+    detrend : str, optional
         If `constant`, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
         If `linear`, the linear least-square fit will be subtracted before
         the FT.
-    density : list (optional)
+    density : list, optional
         If true, it will normalize the spectrum to spectral density
-    window : bool (optional)
+    window : bool, optional
         Whether to apply a Hann window to the data before the Fourier
         transform is taken
-    nfactor : int (optional)
+    nfactor : int, optional
         Ratio of number of bins to take the azimuthal averaging with the
         data size. Default is 4.
 
@@ -520,8 +558,8 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=
     return xr.DataArray(iso_ps, dims=newdims, coords=newcoords)
 
 def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
-                        dim=None, shift=True, detrend=None,
-                        density=True, window=False, nfactor=4):
+                           dim=None, shift=True, detrend=None,
+                           density=True, window=False, nfactor=4):
     """
     Calculates the isotropic spectrum from the
     two-dimensional power spectrumby taking the
