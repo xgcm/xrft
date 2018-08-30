@@ -58,9 +58,6 @@ def detrendn(da, axes=None):
     da : `numpy.array`
         The detrended input data
     """
-#     if da.ndim > 2:
-#         raise ValueError('The data should only have two dimensions')
-#     print(da.shape)
     N = [da.shape[n] for n in axes]
     M = []
     for n in range(da.ndim):
@@ -154,14 +151,11 @@ def _apply_detrend(da, axis_num):
                              dims=da.dims, coords=da.coords)
         else:
             da = detrendn(da, axes=axis_num)
-        # else:
-        #     raise ValueError("Data should be dask array.")
 
     return da
 
-def _stack_chunks(da, dim, detrend, suffix='_segment'):
+def _stack_chunks(da, dim, suffix='_segment'):
     """Reshape a DataArray so there is only one chunk along dimension `dim`"""
-    origdim = da.dims
     data = da.data
     attr = da.attrs
     newdims = []
@@ -188,10 +182,6 @@ def _stack_chunks(da, dim, detrend, suffix='_segment'):
 
     da = xr.DataArray(data.reshape(newshape), dims=newdims, coords=newcoords,
                      attrs=attr)
-    if detrend == 'linear':
-        for d in origddim:
-            if d not in dim:
-                da = da.chunk({d:1})
 
     return da
 
@@ -255,7 +245,7 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
     fft = _fft_module(da)
 
     if chunks_to_segments:
-        da = _stack_chunks(da, dim, detrend)
+        da = _stack_chunks(da, dim)
 
     # the axes along which to take ffts
     axis_num = [da.get_axis_num(d) for d in dim]
@@ -283,17 +273,10 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
     if detrend == 'constant':
         da = da - da.mean(dim=dim)
     elif detrend == 'linear':
+        for d in da.dims:
+            if d not in dim:
+                da = da.chunk({d:1})
         da = _apply_detrend(da, axis_num)
-        # if hasattr(da.data, 'dask'):
-        #     func = _detrend_wrap(_detrend)
-        #     da = xr.DataArray(func(da.data, axes=axis_num),
-        #                     dims=da.dims, coords=da.coords)
-        # else:
-        #     if da.ndim == 1:
-        #         da = xr.DataArray(sps.detrend(da),
-        #                         dims=da.dims, coords=da.coords)
-        #     else:
-        #         raise ValueError("Data should be dask array.")
 
     if window:
         da = _apply_window(da, dim)
