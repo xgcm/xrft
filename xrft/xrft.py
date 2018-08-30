@@ -198,24 +198,24 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
     ----------
     da : `xarray.DataArray`
         The data to be transformed
-    spacing_tol: float (default)
+    spacing_tol: float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
-    dim : list (optional)
+    dim : list, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    shift : bool (default)
+    shift : bool, default
         Whether to shift the fft output.
-    detrend : str (optional)
+    detrend : str, optional
         If `constant`, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
         If `linear`, the linear least-square fit will be subtracted before
         the FT.
-    window : bool (default)
+    window : bool, optional
         Whether to apply a Hann window to the data before the Fourier
         transform is taken. A window will be applied to all the dimensions in
         dim.
-    chunks_to_segments : bool (default)
+    chunks_to_segments : bool, optional
         Whether the data is chunked along the axis to take FFT.
 
     Returns
@@ -323,25 +323,25 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, den
     ----------
     da : `xarray.DataArray`
         The data to be transformed
-    spacing_tol: float (default)
+    spacing_tol: float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
-    dim : list (optional)
+    dim : list, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    shift : bool (optional)
+    shift : bool, optional
         Whether to shift the fft output.
-    detrend : str (optional)
+    detrend : str, optional
         If `constant`, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
         If `linear`, the linear least-square fit will be subtracted before
         the FT.
-    density : list (optional)
+    density : bool, optional
         If true, it will normalize the spectrum to spectral density
-    window : bool (optional)
+    window : bool, optional
         Whether to apply a Hann window to the data before the Fourier
         transform is taken
-    chunks_to_segments : bool (default)
+    chunks_to_segments : bool, optional
         Whether the data is chunked along the axis to take FFT.
 
     Returns
@@ -390,23 +390,23 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
         The data to be transformed
     da2 : `xarray.DataArray`
         The data to be transformed
-    spacing_tol: float (default)
+    spacing_tol: float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
-    dim : list (optional)
+    dim : list, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    shift : bool (optional)
+    shift : bool, optional
         Whether to shift the fft output.
-    detrend : str (optional)
+    detrend : str, optional
         If `constant`, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
         If `linear`, the linear least-square fit along one axis will be
         subtracted before the FT. It will give an error if the length of
         `dim` is longer than one.
-    density : list (optional)
+    density : bool, optional
         If true, it will normalize the spectrum to spectral density
-    window : bool (optional)
+    window : bool, optional
         Whether to apply a Hann window to the data before the Fourier
         transform is taken
 
@@ -490,25 +490,25 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
     ----------
     da : `xarray.DataArray`
         The data to be transformed
-    spacing_tol: float (default)
+    spacing_tol: float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
-    dim : list (optional)
+    dim : list, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    shift : bool (optional)
+    shift : bool, optional
         Whether to shift the fft output.
-    detrend : str (optional)
+    detrend : str, optional
         If `constant`, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
         If `linear`, the linear least-square fit will be subtracted before
         the FT.
-    density : list (optional)
+    density : list, optional
         If true, it will normalize the spectrum to spectral density
-    window : bool (optional)
+    window : bool, optional
         Whether to apply a Hann window to the data before the Fourier
         transform is taken
-    nfactor : int (optional)
+    nfactor : int, optional
         Ratio of number of bins to take the azimuthal averaging with the
         data size. Default is 4.
 

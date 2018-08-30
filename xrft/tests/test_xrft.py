@@ -189,7 +189,7 @@ def test_dft_4d():
                                     ).values,
                             np.fft.fftn(da_prime))
 
-def test_bartlett():
+def test_chunks_to_segments():
     N = 32
     da = xr.DataArray(np.random.rand(N,N,N),
                      dims=['time','y','x'],
@@ -217,6 +217,19 @@ def test_bartlett():
                             chunks_to_segments=True)
     npt.assert_almost_equal(ps.values,
                            (ft*np.conj(ft)).real.values,
+                           )
+    da2 = xr.DataArray(np.random.rand(N,N,N),
+                      dims=['time','y','x'],
+                      coords={'time':range(N),'y':range(N),'x':range(N)}
+                      )
+    ft2 = xrft.dft(da2.chunk({'y':16,'x':16}), dim=['y','x'], shift=False,
+                  chunks_to_segments=True)
+    cs = xrft.cross_spectrum(da.chunk({'y':16,'x':16}),
+                            da2.chunk({'y':16,'x':16}),
+                            dim=['y','x'], shift=False, density=False,
+                            chunks_to_segments=True)
+    npt.assert_almost_equal(cs.values,
+                           (ft*np.conj(ft2)).real.values,
                            )
 
 
