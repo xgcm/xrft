@@ -449,7 +449,8 @@ def _azimuthal_avg(k, l, f, fftdim, N, nfactor):
     """
     Takes the azimuthal average of a given field.
     """
-    k = k.values; l = l.values
+    k = k.values
+    l = l.values
     kk, ll = np.meshgrid(k, l)
     K = np.sqrt(kk**2 + ll**2)
     nbins = int(N/nfactor)
@@ -474,8 +475,8 @@ def _azimuthal_avg(k, l, f, fftdim, N, nfactor):
 
     return kr, iso_f
 
-def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None,
-                       density=True, window=False, nfactor=4):
+def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
+                           detrend=None, density=True, window=False, nfactor=4):
     """
     Calculates the isotropic spectrum from the
     two-dimensional power spectrum by taking the
@@ -557,8 +558,8 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=
     return xr.DataArray(iso_ps, dims=newdims, coords=newcoords)
 
 def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
-                        dim=None, shift=True, detrend=None,
-                        density=True, window=False, nfactor=4):
+                           dim=None, shift=True, detrend=None,
+                           density=True, window=False, nfactor=4):
     """
     Calculates the isotropic spectrum from the
     two-dimensional power spectrumby taking the
