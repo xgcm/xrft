@@ -317,7 +317,7 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, den
     .. math::
         da' = da - \overline{da}
     .. math::
-        ps = \mathbb{F}(da') * {\mathbb{F}(da')}^*
+        ps = \mathbb{F}(da') {\mathbb{F}(da')}^*
 
     Parameters
     ----------
@@ -382,7 +382,7 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
     .. math::
         da1' = da1 - \overline{da1};\ \ da2' = da2 - \overline{da2}
     .. math::
-        cs = \mathbb{F}(da1') * {\mathbb{F}(da2')}^*
+        cs = \mathbb{F}(da1') {\mathbb{F}(da2')}^*
 
     Parameters
     ----------
