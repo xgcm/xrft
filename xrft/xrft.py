@@ -147,11 +147,11 @@ def _apply_detrend(da, axis_num):
     if da.chunks:
         func = detrend_wrap(detrendn)
         da = xr.DataArray(func(da.data, axes=axis_num),
-                        dims=da.dims, coords=da.coords)
+                         dims=da.dims, coords=da.coords)
     else:
         if da.ndim == 1:
             da = xr.DataArray(sps.detrend(da),
-                            dims=da.dims, coords=da.coords)
+                             dims=da.dims, coords=da.coords)
         else:
             da = detrendn(da, axes=axis_num)
         # else:
@@ -159,8 +159,9 @@ def _apply_detrend(da, axis_num):
 
     return da
 
-def _stack_chunks(da, dim, suffix='_segment'):
+def _stack_chunks(da, dim, detrend, suffix='_segment'):
     """Reshape a DataArray so there is only one chunk along dimension `dim`"""
+    origdim = da.dims
     data = da.data
     attr = da.attrs
     newdims = []
@@ -187,6 +188,10 @@ def _stack_chunks(da, dim, suffix='_segment'):
 
     da = xr.DataArray(data.reshape(newshape), dims=newdims, coords=newcoords,
                      attrs=attr)
+    if detrend == 'linear':
+        for d in origddim:
+            if d not in dim:
+                da = da.chunk({d:1})
 
     return da
 
@@ -232,20 +237,27 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
     if not isinstance(spacing_tol, float):
         raise TypeError("Please provide a float argument")
 
-    # we can't do da.values because it
-    if not da.chunks:
-        if np.isnan(da.values).any():
-            raise ValueError("Data cannot take Nans")
-
-    fft = _fft_module(da)
-
     if dim is None:
         dim = da.dims
 
-    # the axes along which to take ffts
-    if chunks_to_segments:
-        da = _stack_chunks(da, dim)
+    if not da.chunks:
+        if np.isnan(da.values).any():
+            raise ValueError("Data cannot take Nans")
+    else:
+        if detrend=='linear' and len(dim)>1:
+            for d in da.dims:
+                a_n = da.get_axis_num(d)
+                if d not in dim and da.chunks[a_n][0]>1:
+                    raise ValueError("Linear detrending utilizes the `dask.map_blocks` "
+                                    "API so the dimensions not being detrended "
+                                    "must have the chunk length of 1.")
 
+    fft = _fft_module(da)
+
+    if chunks_to_segments:
+        da = _stack_chunks(da, dim, detrend)
+
+    # the axes along which to take ffts
     axis_num = [da.get_axis_num(d) for d in dim]
 
     N = [da.shape[n] for n in axis_num]
@@ -271,9 +283,6 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
     if detrend == 'constant':
         da = da - da.mean(dim=dim)
     elif detrend == 'linear':
-        for d in da.dims:
-            if d not in dim:
-                da = da.chunk({d:1})
         da = _apply_detrend(da, axis_num)
         # if hasattr(da.data, 'dask'):
         #     func = _detrend_wrap(_detrend)
