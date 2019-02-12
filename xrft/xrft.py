@@ -10,10 +10,10 @@ import warnings
 from functools import reduce
 import operator
 
-__all__ = ["detrendn","detrend_wrap",
-            "dft","power_spectrum","cross_spectrum",
-            "isotropic_powerspectrum","isotropic_crossspectrum",
-            "fit_loglog"]
+__all__ = ["detrendn", "detrend_wrap",
+           "dft","power_spectrum", "cross_spectrum", "cross_phase",
+           "isotropic_powerspectrum", "isotropic_crossspectrum",
+           "fit_loglog"]
 
 def _fft_module(da):
     if da.chunks:
@@ -444,6 +444,78 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
             cs /= daft1['freq_' + i + '_spacing']
 
     return cs
+
+
+def cross_phase(da1, da2, spacing_tol=1e-3, dim=None,
+                shift=True, detrend=None, density=True, window=False,
+                chunks_to_segments=False):
+    """
+    Calculates the cross-phase between da1 and da2.
+
+    .. math::
+        da1' = da1 - \overline{da1};\ \ da2' = da2 - \overline{da2}
+    .. math::
+        cp = \text{Im} \log \mathbb{F}(da1')^* {\mathbb{F}(da2')}
+
+    Parameters
+    ----------
+    da1 : `xarray.DataArray`
+        The data to be transformed
+    da2 : `xarray.DataArray`
+        The data to be transformed
+    spacing_tol: float, optional
+        Spacing tolerance. Fourier transform should not be applied to uneven grid but
+        this restriction can be relaxed with this setting. Use caution.
+    dim : list, optional
+        The dimensions along which to take the transformation. If `None`, all
+        dimensions will be transformed.
+    shift : bool, optional
+        Whether to shift the fft output.
+    detrend : str, optional
+        If `constant`, the mean across the transform dimensions will be
+        subtracted before calculating the Fourier transform (FT).
+        If `linear`, the linear least-square fit along one axis will be
+        subtracted before the FT. It will give an error if the length of
+        `dim` is longer than one.
+    density : bool, optional
+        If true, it will normalize the spectrum to spectral density
+    window : bool, optional
+        Whether to apply a Hann window to the data before the Fourier
+        transform is taken
+
+    Returns
+    -------
+    cp : `xarray.DataArray`
+        Two-dimensional cross-phase
+    """
+
+    if dim is None:
+        dim = da1.dims
+        dim2 = da2.dims
+        if dim != dim2:
+            raise ValueError('The two datasets have different dimensions')
+
+    # the axes along which to take ffts
+    axis_num = [da1.get_axis_num(d) for d in dim]
+
+    N = [da1.shape[n] for n in axis_num]
+
+    daft1 = dft(da1, spacing_tol,
+               dim=dim, shift=shift, detrend=detrend, window=window,
+               chunks_to_segments=chunks_to_segments)
+    daft2 = dft(da2, spacing_tol,
+               dim=dim, shift=shift, detrend=detrend, window=window,
+               chunks_to_segments=chunks_to_segments)
+
+    cp = np.log((daft1 * np.conj(daft2))).imag
+
+    if density:
+        cp /= (np.asarray(N).prod())**2
+        for i in dim:
+            cp /= daft1['freq_' + i + '_spacing']
+
+    return cp
+
 
 def _azimuthal_avg(k, l, f, fftdim, N, nfactor):
     """
