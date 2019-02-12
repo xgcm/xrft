@@ -364,14 +364,20 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, den
 
     coord = list(daft.coords)
 
+    return _power_spectrum(daft, dim, N, density)
+
+
+def _power_spectrum(daft, dim, N, density):
+
     ps = (daft * np.conj(daft)).real
 
     if density:
-        ps /= (np.asarray(N).prod())**2
+        ps /= (np.asarray(N).prod()) ** 2
         for i in dim:
             ps /= daft['freq_' + i + '_spacing']
 
     return ps
+
 
 def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
                   shift=True, detrend=None, density=True, window=False,
@@ -434,8 +440,6 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
                dim=dim, shift=shift, detrend=detrend, window=window,
                chunks_to_segments=chunks_to_segments)
 
-    coord = list(daft1.coords)
-
     cs = (daft1 * np.conj(daft2)).real
 
     if density:
@@ -451,6 +455,8 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None,
                 chunks_to_segments=False):
     """
     Calculates the cross-phase between da1 and da2.
+
+    Normalised to the power spectral density, so returned values in [-pi, pi].
 
     .. math::
         da1' = da1 - \overline{da1};\ \ da2' = da2 - \overline{da2}
@@ -477,8 +483,6 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None,
         If `linear`, the linear least-square fit along one axis will be
         subtracted before the FT. It will give an error if the length of
         `dim` is longer than one.
-    density : bool, optional
-        If true, it will normalize the spectrum to spectral density
     window : bool, optional
         Whether to apply a Hann window to the data before the Fourier
         transform is taken
@@ -486,7 +490,7 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None,
     Returns
     -------
     cp : `xarray.DataArray`
-        Two-dimensional cross-phase
+        Cross-phase
     """
 
     if dim is None:
@@ -507,12 +511,11 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None,
                dim=dim, shift=shift, detrend=detrend, window=window,
                chunks_to_segments=chunks_to_segments)
 
-    cp = np.log((daft1 * np.conj(daft2))).imag
+    # Return phases in [-pi, pi]
+    daft1 /= _power_spectrum(daft1, dim, N, density=True)
+    daft1 /= _power_spectrum(daft1, dim, N, density=True)
 
-    if density:
-        cp /= (np.asarray(N).prod())**2
-        for i in dim:
-            cp /= daft1['freq_' + i + '_spacing']
+    cp = np.log((daft1 * np.conj(daft2))).imag
 
     return cp
 
