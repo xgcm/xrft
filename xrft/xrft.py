@@ -1,14 +1,18 @@
+import warnings
+import operator
+import functools as ft
+from functools import reduce
+
 import numpy as np
 import xarray as xr
 import pandas as pd
-import functools as ft
+
 import dask.array as dsar
 from dask import delayed
+
 import scipy.signal as sps
 import scipy.linalg as spl
-import warnings
-from functools import reduce
-import operator
+
 
 __all__ = ["detrendn", "detrend_wrap",
            "dft","power_spectrum", "cross_spectrum", "cross_phase",
@@ -450,18 +454,17 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
     return cs
 
 
-def cross_phase(da1, da2, spacing_tol=1e-3, dim=None,
-                shift=True, detrend=None, density=True, window=False,
-                chunks_to_segments=False):
+def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, shift=True, detrend=None,
+                window=False, chunks_to_segments=False):
     """
     Calculates the cross-phase between da1 and da2.
 
-    Normalised to the power spectral density, so returned values in [-pi, pi].
+    Returned values are in [-pi, pi].
 
     .. math::
         da1' = da1 - \overline{da1};\ \ da2' = da2 - \overline{da2}
     .. math::
-        cp = \text{Im} \log \mathbb{F}(da1')^* {\mathbb{F}(da2')}
+        cp = \text{Arg} \mathbb{F}(da1')^* {\mathbb{F}(da2')}
 
     Parameters
     ----------
@@ -498,24 +501,23 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None,
         dim2 = da2.dims
         if dim != dim2:
             raise ValueError('The two datasets have different dimensions')
-
-    # the axes along which to take ffts
-    axis_num = [da1.get_axis_num(d) for d in dim]
-
-    N = [da1.shape[n] for n in axis_num]
+    elif not isinstance(dim, list):
+        dim = [dim]
 
     daft1 = dft(da1, spacing_tol,
-               dim=dim, shift=shift, detrend=detrend, window=window,
-               chunks_to_segments=chunks_to_segments)
+                dim=dim, shift=shift, detrend=detrend, window=window,
+                chunks_to_segments=chunks_to_segments)
     daft2 = dft(da2, spacing_tol,
-               dim=dim, shift=shift, detrend=detrend, window=window,
-               chunks_to_segments=chunks_to_segments)
+                dim=dim, shift=shift, detrend=detrend, window=window,
+                chunks_to_segments=chunks_to_segments)
 
-    # Return phases in [-pi, pi]
-    daft1 /= _power_spectrum(daft1, dim, N, density=True)
-    daft1 /= _power_spectrum(daft1, dim, N, density=True)
+    if daft1.chunks and daft2.chunks:
+        _cross_phase = lambda a, b: dsar.angle(a * dsar.conj(b))
+    else:
+        _cross_phase = lambda a, b: np.angle(a * np.conj(b))
+    cp = xr.apply_ufunc(_cross_phase, daft1, daft2, dask='allowed')
 
-    cp = np.log((daft1 * np.conj(daft2))).imag
+    cp.name = "{}_{}_phase".format(da1.name, da2.name)
 
     return cp
 
