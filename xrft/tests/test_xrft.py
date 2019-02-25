@@ -103,7 +103,7 @@ def test_dft_1d(test_data_1d):
     """Test the discrete Fourier transform function on one-dimensional data."""
     da = test_data_1d
     Nx = len(da)
-    dx = float(da.x[1] - da.x[0]) if 'x' in da else 1
+    dx = float(da.x[1] - da.x[0]) if 'x' in da.dims else 1
 
     # defaults with no keyword args
     ft = xrft.dft(da, detrend='constant')
