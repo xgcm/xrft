@@ -402,6 +402,24 @@ def test_cross_spectrum_dask():
     npt.assert_almost_equal(cs.values, test)
     npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.)
 
+
+def TestCrossPhase():
+    def test_cross_phase_1d(self):
+        """Test the cross phase function"""
+        N = 16
+        x = range(N)
+        phase = 10
+        signal1 = np.sin(x)
+        signal2 = np.sin(x + phase)
+        da1 = xr.DataArray(signal1, dims=['x'],
+                           coords={'x': x})
+        da2 = xr.DataArray(signal2, dims=['x'],
+                           coords={'x': x})
+        cp = xrft.cross_phase(da1, da2, window=True, detrend='constant')
+        print(cp)
+        assert False
+
+
 def test_parseval():
     """Test whether the Parseval's relation is satisfied."""
 
