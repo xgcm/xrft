@@ -505,38 +505,11 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, shift=True, detrend=None,
         dim = [dim]
 
     daft1 = dft(da1, spacing_tol,
-                dim=dim, shift=shift, detrend=detrend, window=window,
-                chunks_to_segments=chunks_to_segments)
+                dim=dim, real=True, shift=shift, detrend=detrend,
+                window=window, chunks_to_segments=chunks_to_segments)
     daft2 = dft(da2, spacing_tol,
-                dim=dim, shift=shift, detrend=detrend, window=window,
-                chunks_to_segments=chunks_to_segments)
-
-    # Discard negative frequencies
-    freq_dims = ['freq_' + dim for dim in dim]
-    print(freq_dims)
-    #daft1 = daft1.where(np.all(daft1.coords[dim] >= 0 for dim in freq_dims), drop=True)
-    #daft2 = daft2.where(np.all(daft2.coords[dim] >= 0 for dim in freq_dims), drop=True)
-
-
-    freqs_positive = daft1
-    for freq_dim in freq_dims:
-        freqs_positive = freqs_positive.coords[freq_dim] >= 0
-    daft1 = daft1.where(freqs_positive, drop=True)
-
-    freqs_positive = daft2
-    for freq_dim in freq_dims:
-        freqs_positive = freqs_positive.coords[freq_dim] >= 0
-    daft2 = daft2.where(freqs_positive, drop=True)
-
-    import matplotlib.pyplot as plt
-    abs(daft1).plot()
-    plt.show()
-    (daft1).plot()
-
-    print(abs(daft2))
-    abs(daft1).plot()
-
-    plt.show()
+                dim=dim, real=True, shift=shift, detrend=detrend,
+                window=window, chunks_to_segments=chunks_to_segments)
 
     if daft1.chunks and daft2.chunks:
         _cross_phase = lambda a, b: dsar.angle(a * dsar.conj(b))
