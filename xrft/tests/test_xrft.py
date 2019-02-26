@@ -403,21 +403,22 @@ def test_cross_spectrum_dask():
     npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.)
 
 
-def TestCrossPhase():
+class TestCrossPhase(object):
     def test_cross_phase_1d(self):
         """Test the cross phase function"""
-        N = 16
-        x = range(N)
-        phase = 10
-        signal1 = np.sin(x)
-        signal2 = np.sin(x + phase)
+        N = 320
+        x = np.arange(N)
+        phase_offset = np.pi/4
+        signal1 = np.sin(x)  # frequency = 1/(2*pi)
+        signal2 = np.sin(x - phase_offset)
         da1 = xr.DataArray(signal1, dims=['x'],
                            coords={'x': x})
         da2 = xr.DataArray(signal2, dims=['x'],
                            coords={'x': x})
-        cp = xrft.cross_phase(da1, da2, window=True, detrend='constant')
-        print(cp)
-        assert False
+
+        cp = xrft.cross_phase(da1, da2, dim='x')
+
+        assert cp.max == phase_offset
 
 
 def test_parseval():
