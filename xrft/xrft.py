@@ -469,7 +469,7 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
     return cs
 
 
-def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, shift=True, detrend=None,
+def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, detrend=None,
                 window=False, chunks_to_segments=False):
     """
     Calculates the cross-phase between da1 and da2.
@@ -508,7 +508,7 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, shift=True, detrend=None,
     Returns
     -------
     cp : `xarray.DataArray`
-        Cross-phase
+        Cross-phase as a function of frequency.
     """
 
     if dim is None:
@@ -520,10 +520,10 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, shift=True, detrend=None,
         dim = [dim]
 
     daft1 = dft(da1, spacing_tol,
-                dim=dim, real=True, shift=shift, detrend=detrend,
+                dim=dim, real=True, shift=False, detrend=detrend,
                 window=window, chunks_to_segments=chunks_to_segments)
     daft2 = dft(da2, spacing_tol,
-                dim=dim, real=True, shift=shift, detrend=detrend,
+                dim=dim, real=True, shift=False, detrend=detrend,
                 window=window, chunks_to_segments=chunks_to_segments)
 
     if daft1.chunks and daft2.chunks:
@@ -532,9 +532,8 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, shift=True, detrend=None,
         _cross_phase = lambda a, b: np.angle(a * np.conj(b))
     cp = xr.apply_ufunc(_cross_phase, daft1, daft2, dask='allowed')
 
-    cp.name = "{}_{}_phase".format(da1.name, da2.name)
-
-    # TODO add frequencies as coordinates to returned cross_phase
+    if da1.name and da2.name:
+        cp.name = "{}_{}_phase".format(da1.name, da2.name)
 
     return cp
 
