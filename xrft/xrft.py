@@ -185,8 +185,9 @@ def _stack_chunks(da, dim, suffix='_segment'):
 
     return da
 
-def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
-       chunks_to_segments=False):
+
+def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
+        window=False, chunks_to_segments=False):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
     specified dimensions.
@@ -204,6 +205,9 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
     dim : list, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
+    real : bool, optional
+        Whether the input array is all real or not. If set to True will return
+        only positive frequencies. Defaults to False.
     shift : bool, default
         Whether to shift the fft output.
     detrend : str, optional
@@ -243,6 +247,12 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
                                     "must have the chunk length of 1.")
 
     fft = _fft_module(da)
+    if real:
+        fftfreq = np.fft.rfftfreq
+        fft_fn = fft.rfftn
+    else:
+        fftfreq = np.fft.fftfreq
+        fft_fn = fft.fftn
 
     if chunks_to_segments:
         da = _stack_chunks(da, dim)
@@ -268,7 +278,8 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
         delta_x.append(delta)
     # calculate frequencies from coordinates
     # coordinates are always loaded eagerly, so we use numpy
-    k = [ np.fft.fftfreq(Nx, dx) for (Nx, dx) in zip(N, delta_x) ]
+
+    k = [fftfreq(Nx, dx) for (Nx, dx) in zip(N, delta_x)]
 
     if detrend == 'constant':
         da = da - da.mean(dim=dim)
@@ -281,7 +292,7 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
     if window:
         da = _apply_window(da, dim)
 
-    f = fft.fftn(da.data, axes=axis_num)
+    f = fft_fn(da.data, axes=axis_num)
 
     if shift:
         f = fft.fftshift(f, axes=axis_num)
@@ -308,6 +319,7 @@ def dft(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, window=False,
         newcoords[prefix + d + '_spacing'] = this_dk
 
     return xr.DataArray(f, dims=newdims, coords=newcoords)
+
 
 def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, density=True,
                   window=False, chunks_to_segments=False):
