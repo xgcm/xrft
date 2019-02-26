@@ -213,7 +213,8 @@ def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
         Whether the input array is all real or not. If set to True will return
         only positive frequencies. Defaults to False.
     shift : bool, default
-        Whether to shift the fft output.
+        Whether to shift the fft output. Default is True, unless `real=True`,
+        in which case shift will be set to False always.
     detrend : str, optional
         If `constant`, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
@@ -251,7 +252,9 @@ def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
                                     "must have the chunk length of 1.")
 
     fft = _fft_module(da)
+
     if real:
+        shift = False
         fftfreq = np.fft.rfftfreq
         fft_fn = fft.rfftn
     else:
