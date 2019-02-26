@@ -204,7 +204,7 @@ def test_dft_real(test_data_1d):
     # check that the frequency dimension was created properly
     assert ft.dims == ('freq_x',)
     # check that the coords are correct
-    freq_x_expected = np.fft.fftshift(np.fft.rfftfreq(Nx, dx))
+    freq_x_expected = np.fft.rfftfreq(Nx, dx)
     npt.assert_allclose(ft['freq_x'], freq_x_expected)
     # check that a spacing variable was created
     assert ft['freq_x_spacing'] == freq_x_expected[1] - freq_x_expected[0]
@@ -212,7 +212,7 @@ def test_dft_real(test_data_1d):
     assert isinstance(ft.data, type(da.data))
     # check that the Fourier transform itself is correct
     data = (da - da.mean()).values
-    ft_data_expected = np.fft.fftshift(np.fft.rfft(data))
+    ft_data_expected = np.fft.rfft(data)
     # because the zero frequency component is zero, there is a numerical
     # precision issue. Fixed by setting atol
     npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
