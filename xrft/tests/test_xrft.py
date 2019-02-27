@@ -460,7 +460,7 @@ def test_cross_spectrum_dask():
 
 def test_cross_phase_1d():
     N = 32
-    x = np.arange(N)/N
+    x = np.linspace(0, 1, num=N, endpoint=False)
     f = 6
     phase_offset = np.pi/2
     signal1 = np.cos(2*np.pi*f*x)  # frequency = 1/(2*pi)
