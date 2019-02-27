@@ -210,8 +210,8 @@ def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
     real : bool, optional
-        Whether the input array is all real or not. If set to True will return
-        only positive frequencies. Defaults to False.
+        Whether the input array is all real or not. If set to True the
+        redundant negative frequencies will be discarded. Defaults to False.
     shift : bool, default
         Whether to shift the fft output. Default is True, unless `real=True`,
         in which case shift will be set to False always.
@@ -255,10 +255,8 @@ def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
 
     if real:
         shift = False
-        fftfreq = np.fft.rfftfreq
         fft_fn = fft.rfftn
     else:
-        fftfreq = np.fft.fftfreq
         fft_fn = fft.fftn
 
     if chunks_to_segments:
@@ -283,10 +281,18 @@ def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
             raise ValueError("Can't take Fourier transform because "
                              "coodinate %s is not evenly spaced" % d)
         delta_x.append(delta)
+
     # calculate frequencies from coordinates
     # coordinates are always loaded eagerly, so we use numpy
+    if real:
+        # Discard negative frequencies from transform along last axis to be
+        # consistent with np.fft.rfftn
+        fftfreq = [np.fft.fftfreq]*(len(N)-1)
+        fftfreq.append(np.fft.rfftfreq)
+    else:
+        fftfreq = [np.fft.fftfreq]*len(N)
 
-    k = [fftfreq(Nx, dx) for (Nx, dx) in zip(N, delta_x)]
+    k = [fftfreq(Nx, dx) for (fftfreq, Nx, dx) in zip(fftfreq, N, delta_x)]
 
     if detrend == 'constant':
         da = da - da.mean(dim=dim)
