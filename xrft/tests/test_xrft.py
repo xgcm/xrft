@@ -193,29 +193,55 @@ def test_dft_4d():
                             np.fft.fftn(da_prime))
 
 
-def test_dft_real(test_data_1d):
-    """Test the discrete Fourier transform function on one-dimensional data."""
-    da = test_data_1d
-    Nx = len(da)
-    dx = float(da.x[1] - da.x[0]) if 'x' in da.dims else 1
+class TestDFTReal(object):
+    def test_dft_real_1d(self, test_data_1d):
+        """
+        Test the discrete Fourier transform function on one-dimensional data.
+        """
+        da = test_data_1d
+        Nx = len(da)
+        dx = float(da.x[1] - da.x[0]) if 'x' in da.dims else 1
 
-    # defaults with no keyword args
-    ft = xrft.dft(da, real=True, detrend='constant')
-    # check that the frequency dimension was created properly
-    assert ft.dims == ('freq_x',)
-    # check that the coords are correct
-    freq_x_expected = np.fft.rfftfreq(Nx, dx)
-    npt.assert_allclose(ft['freq_x'], freq_x_expected)
-    # check that a spacing variable was created
-    assert ft['freq_x_spacing'] == freq_x_expected[1] - freq_x_expected[0]
-    # make sure the function is lazy
-    assert isinstance(ft.data, type(da.data))
-    # check that the Fourier transform itself is correct
-    data = (da - da.mean()).values
-    ft_data_expected = np.fft.rfft(data)
-    # because the zero frequency component is zero, there is a numerical
-    # precision issue. Fixed by setting atol
-    npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
+        # defaults with no keyword args
+        ft = xrft.dft(da, real=True, detrend='constant')
+        # check that the frequency dimension was created properly
+        assert ft.dims == ('freq_x',)
+        # check that the coords are correct
+        freq_x_expected = np.fft.rfftfreq(Nx, dx)
+        npt.assert_allclose(ft['freq_x'], freq_x_expected)
+        # check that a spacing variable was created
+        assert ft['freq_x_spacing'] == freq_x_expected[1] - freq_x_expected[0]
+        # make sure the function is lazy
+        assert isinstance(ft.data, type(da.data))
+        # check that the Fourier transform itself is correct
+        data = (da - da.mean()).values
+        ft_data_expected = np.fft.rfft(data)
+        # because the zero frequency component is zero, there is a numerical
+        # precision issue. Fixed by setting atol
+        npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
+
+    def test_dft_real_2d(self):
+        """
+        Test the real discrete Fourier transform function on one-dimensional
+        data. Non-trivial because we need to keep only some of the negative
+        frequencies.
+        """
+        Nx, Ny = 16, 32
+        da = xr.DataArray(np.random.rand(Nx, Ny), dims=['x', 'y'],
+                          coords={'x': range(Nx), 'y': range(Ny)})
+        dx = float(da.x[1] - da.x[0])
+        dy = float(da.y[1] - da.y[0])
+
+        daft = xrft.dft(da, real=True)
+        npt.assert_almost_equal(daft.values, np.fft.rfftn(da.values))
+
+        actual_freq_x = daft.coords['freq_x'].values
+        expected_freq_x = np.fft.fftfreq(Nx, dx)
+        npt.assert_almost_equal(actual_freq_x, expected_freq_x)
+
+        actual_freq_y = daft.coords['freq_y'].values
+        expected_freq_y = np.fft.rfftfreq(Ny, dy)
+        npt.assert_almost_equal(actual_freq_y, expected_freq_y)
 
 
 def test_chunks_to_segments():
