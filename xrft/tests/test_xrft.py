@@ -2,11 +2,16 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import dask.array as dsar
-import numpy.testing as npt
+
 import scipy.signal as sps
 import scipy.linalg as spl
+
 import pytest
+import numpy.testing as npt
+import xarray.testing as xrt
+
 import xrft
+
 
 @pytest.fixture()
 def sample_data_3d():
@@ -458,21 +463,31 @@ def test_cross_spectrum_dask():
     npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.)
 
 
-def test_cross_phase_1d():
-    N = 32
-    x = np.linspace(0, 1, num=N, endpoint=False)
-    f = 6
-    phase_offset = np.pi/2
-    signal1 = np.cos(2*np.pi*f*x)  # frequency = 1/(2*pi)
-    signal2 = np.cos(2*np.pi*f*x - phase_offset)
-    da1 = xr.DataArray(data=signal1, name='a', dims=['x'], coords={'x': x})
-    da2 = xr.DataArray(data=signal2, name='b', dims=['x'], coords={'x': x})
+class TestCrossPhase(object):
+    @pytest.mark.parametrize("dask", [False, True])
+    def test_cross_phase_1d(self, dask):
+        N = 32
+        x = np.linspace(0, 1, num=N, endpoint=False)
+        f = 6
+        phase_offset = np.pi/2
+        signal1 = np.cos(2*np.pi*f*x)  # frequency = 1/(2*pi)
+        signal2 = np.cos(2*np.pi*f*x - phase_offset)
+        da1 = xr.DataArray(data=signal1, name='a', dims=['x'], coords={'x': x})
+        da2 = xr.DataArray(data=signal2, name='b', dims=['x'], coords={'x': x})
 
-    cp = xrft.cross_phase(da1, da2, dim='x')
+        if dask:
+            da1 = da1.chunk({'x': 32})
+            da2 = da2.chunk({'x': 32})
+        cp = xrft.cross_phase(da1, da2, dim='x')
 
-    actual_phase_offset = cp.sel(freq_x=f).values
-    npt.assert_almost_equal(actual_phase_offset, phase_offset)
-    assert cp.name == 'a_b_phase'
+        actual_phase_offset = cp.sel(freq_x=f).values
+        npt.assert_almost_equal(actual_phase_offset, phase_offset)
+        assert cp.name == 'a_b_phase'
+
+        xrt.assert_equal(xrft.cross_phase(da1, da2, dim=None), cp)
+
+        with pytest.raises(ValueError):
+            xrft.cross_phase(da1, da2.drop('x'))
 
 
 def test_parseval():
