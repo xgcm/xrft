@@ -487,7 +487,7 @@ class TestCrossPhase(object):
         xrt.assert_equal(xrft.cross_phase(da1, da2, dim=None), cp)
 
         with pytest.raises(ValueError):
-            xrft.cross_phase(da1, da2.drop('x'))
+            xrft.cross_phase(da1, da2.isel(x=0).drop('x'))
 
 
 def test_parseval():
