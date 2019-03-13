@@ -2,11 +2,16 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import dask.array as dsar
-import numpy.testing as npt
+
 import scipy.signal as sps
 import scipy.linalg as spl
+
 import pytest
+import numpy.testing as npt
+import xarray.testing as xrt
+
 import xrft
+
 
 @pytest.fixture()
 def sample_data_3d():
@@ -101,9 +106,12 @@ def test_detrend():
 
 def test_dft_1d(test_data_1d):
     """Test the discrete Fourier transform function on one-dimensional data."""
+
+    # TODO group these tests into a parameterized class
+
     da = test_data_1d
     Nx = len(da)
-    dx = float(da.x[1] - da.x[0]) if 'x' in da else 1
+    dx = float(da.x[1] - da.x[0]) if 'x' in da.dims else 1
 
     # defaults with no keyword args
     ft = xrft.dft(da, detrend='constant')
@@ -188,6 +196,58 @@ def test_dft_4d():
                                     shift=False, detrend='linear'
                                     ).values,
                             np.fft.fftn(da_prime))
+
+
+class TestDFTReal(object):
+    def test_dft_real_1d(self, test_data_1d):
+        """
+        Test the discrete Fourier transform function on one-dimensional data.
+        """
+        da = test_data_1d
+        Nx = len(da)
+        dx = float(da.x[1] - da.x[0]) if 'x' in da.dims else 1
+
+        # defaults with no keyword args
+        ft = xrft.dft(da, real=True, detrend='constant')
+        # check that the frequency dimension was created properly
+        assert ft.dims == ('freq_x',)
+        # check that the coords are correct
+        freq_x_expected = np.fft.rfftfreq(Nx, dx)
+        npt.assert_allclose(ft['freq_x'], freq_x_expected)
+        # check that a spacing variable was created
+        assert ft['freq_x_spacing'] == freq_x_expected[1] - freq_x_expected[0]
+        # make sure the function is lazy
+        assert isinstance(ft.data, type(da.data))
+        # check that the Fourier transform itself is correct
+        data = (da - da.mean()).values
+        ft_data_expected = np.fft.rfft(data)
+        # because the zero frequency component is zero, there is a numerical
+        # precision issue. Fixed by setting atol
+        npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
+
+    def test_dft_real_2d(self):
+        """
+        Test the real discrete Fourier transform function on one-dimensional
+        data. Non-trivial because we need to keep only some of the negative
+        frequencies.
+        """
+        Nx, Ny = 16, 32
+        da = xr.DataArray(np.random.rand(Nx, Ny), dims=['x', 'y'],
+                          coords={'x': range(Nx), 'y': range(Ny)})
+        dx = float(da.x[1] - da.x[0])
+        dy = float(da.y[1] - da.y[0])
+
+        daft = xrft.dft(da, real=True)
+        npt.assert_almost_equal(daft.values, np.fft.rfftn(da.values))
+
+        actual_freq_x = daft.coords['freq_x'].values
+        expected_freq_x = np.fft.fftfreq(Nx, dx)
+        npt.assert_almost_equal(actual_freq_x, expected_freq_x)
+
+        actual_freq_y = daft.coords['freq_y'].values
+        expected_freq_y = np.fft.rfftfreq(Ny, dy)
+        npt.assert_almost_equal(actual_freq_y, expected_freq_y)
+
 
 def test_chunks_to_segments():
     N = 32
@@ -401,6 +461,34 @@ def test_cross_spectrum_dask():
     test /= dk**2
     npt.assert_almost_equal(cs.values, test)
     npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.)
+
+
+class TestCrossPhase(object):
+    @pytest.mark.parametrize("dask", [False, True])
+    def test_cross_phase_1d(self, dask):
+        N = 32
+        x = np.linspace(0, 1, num=N, endpoint=False)
+        f = 6
+        phase_offset = np.pi/2
+        signal1 = np.cos(2*np.pi*f*x)  # frequency = 1/(2*pi)
+        signal2 = np.cos(2*np.pi*f*x - phase_offset)
+        da1 = xr.DataArray(data=signal1, name='a', dims=['x'], coords={'x': x})
+        da2 = xr.DataArray(data=signal2, name='b', dims=['x'], coords={'x': x})
+
+        if dask:
+            da1 = da1.chunk({'x': 32})
+            da2 = da2.chunk({'x': 32})
+        cp = xrft.cross_phase(da1, da2, dim='x')
+
+        actual_phase_offset = cp.sel(freq_x=f).values
+        npt.assert_almost_equal(actual_phase_offset, phase_offset)
+        assert cp.name == 'a_b_phase'
+
+        xrt.assert_equal(xrft.cross_phase(da1, da2, dim=None), cp)
+
+        with pytest.raises(ValueError):
+            xrft.cross_phase(da1, da2.isel(x=0).drop('x'))
+
 
 def test_parseval():
     """Test whether the Parseval's relation is satisfied."""
