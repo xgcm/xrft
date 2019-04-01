@@ -9,6 +9,7 @@ dependencies:
   - pytest
   - numpydoc
   - sphinx
+  - sphinxcontrib
   - ipython
   - jupyter
   - matplotlib
