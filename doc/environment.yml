@@ -8,7 +8,7 @@ dependencies:
   - numpy
   - pytest
   - numpydoc
-  - sphinx=2.0.0
+  - sphinx
   - ipython
   - jupyter
   - matplotlib
