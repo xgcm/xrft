@@ -9,7 +9,6 @@ dependencies:
   - pytest
   - numpydoc
   - sphinx
-  - sphinxcontrib
   - ipython
   - jupyter
   - matplotlib
@@ -18,3 +17,4 @@ dependencies:
     - docrep
     - nbsphinx
     - sphinx_rtd_theme
+    - sphinxcontrib-apidoc
