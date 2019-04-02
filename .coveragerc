@@ -6,5 +6,15 @@ omit = */setup.py
        */version.py
        xrft/tests/*
        */__init__.py
+       
 [report]
 include = xrft/*
+exclude_lines =
+    if self.debug:
+    pragma: no cover
+    raise NotImplementedError
+    if __name__ == .__main__.:
+ignore_errors = True
+omit = xrft/test/*
+       xrft/__init__.py
+       xrft/_version.py
