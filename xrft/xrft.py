@@ -236,6 +236,7 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         raise TypeError("Please provide a float argument")
 
     rawdims = da.dims
+    trans = False
     if real is not None:
         transdim = list(rawdims)
         if real not in transdim:
@@ -245,6 +246,7 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
             transdim.remove(real)
             transdim += [real]
             da = da.transpose(*transdim)
+            trans = True
     if dim is None:
         dim = da.dims
 
@@ -341,11 +343,11 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         newcoords[prefix + d + '_spacing'] = this_dk
 
     daft = xr.DataArray(f, dims=newdims, coords=newcoords)
-    if real is None:
-        return daft
-    else:
+    if trans:
         enddims = [prefix + d for d in rawdims if d in dim]
         return daft.transpose(*enddims)
+    else:
+        return daft
 
 
 def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, density=True,
