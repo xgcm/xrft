@@ -190,7 +190,7 @@ def _stack_chunks(da, dim, suffix='_segment'):
     return da
 
 
-def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
+def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         window=False, chunks_to_segments=False):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
@@ -209,11 +209,12 @@ def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
     dim : list, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    real : bool, optional
-        Whether the input array is all real or not. If set to True the
-        redundant negative frequencies will be discarded. Defaults to False.
+    real : list, optional
+        Default is `None` where no transposing will be applied. Otherwise,
+        reorder the dimensions to this order and the real Fourier transform
+        will be taken upon the last dimesion.
     shift : bool, default
-        Whether to shift the fft output. Default is True, unless `real=True`,
+        Whether to shift the fft output. Default is `True`, unless `real=True`,
         in which case shift will be set to False always.
     detrend : str, optional
         If `constant`, the mean across the transform dimensions will be
@@ -236,6 +237,9 @@ def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
     if not isinstance(spacing_tol, float):
         raise TypeError("Please provide a float argument")
 
+    rawdims = da.dims
+    if real is not None and len(real)>0:
+        da = da.transpose(*real)
     if dim is None:
         dim = da.dims
 
@@ -253,11 +257,11 @@ def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
 
     fft = _fft_module(da)
 
-    if real:
+    if real is None:
+        fft_fn = fft.fftn
+    else:
         shift = False
         fft_fn = fft.rfftn
-    else:
-        fft_fn = fft.fftn
 
     if chunks_to_segments:
         da = _stack_chunks(da, dim)
@@ -284,13 +288,13 @@ def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
 
     # calculate frequencies from coordinates
     # coordinates are always loaded eagerly, so we use numpy
-    if real:
+    if real is None:
+        fftfreq = [np.fft.fftfreq]*len(N)
         # Discard negative frequencies from transform along last axis to be
         # consistent with np.fft.rfftn
+    else:
         fftfreq = [np.fft.fftfreq]*(len(N)-1)
         fftfreq.append(np.fft.rfftfreq)
-    else:
-        fftfreq = [np.fft.fftfreq]*len(N)
 
     k = [fftfreq(Nx, dx) for (fftfreq, Nx, dx) in zip(fftfreq, N, delta_x)]
 
@@ -331,7 +335,17 @@ def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
     for this_dk, d in zip(dk, dim):
         newcoords[prefix + d + '_spacing'] = this_dk
 
-    return xr.DataArray(f, dims=newdims, coords=newcoords)
+    daft = xr.DataArray(f, dims=newdims, coords=newcoords)
+    if real is None:
+        return daft
+    else:
+        enddims = list(rawdims)
+        i = 0
+        for d in rawdims:
+            if d in dim:
+                enddims[i] = prefix + d
+            i += 1
+        return daft.transpose(*enddims)
 
 
 def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, density=True,
@@ -475,7 +489,7 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
     return cs
 
 
-def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, detrend=None,
+def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, real=None, detrend=None,
                 window=False, chunks_to_segments=False):
     """
     Calculates the cross-phase between da1 and da2.
@@ -499,6 +513,10 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, detrend=None,
     dim : list, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
+    real : list, optional
+        Default is `None` where no transposing will be applied. Otherwise,
+        reorder the dimensions to this order and the real Fourier transform
+        will be taken upon the last dimesion.
     shift : bool, optional
         Whether to shift the fft output.
     detrend : str, optional
@@ -526,10 +544,10 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, detrend=None,
         dim = [dim]
 
     daft1 = dft(da1, spacing_tol,
-                dim=dim, real=True, shift=False, detrend=detrend,
+                dim=dim, real=real, shift=False, detrend=detrend,
                 window=window, chunks_to_segments=chunks_to_segments)
     daft2 = dft(da2, spacing_tol,
-                dim=dim, real=True, shift=False, detrend=detrend,
+                dim=dim, real=real, shift=False, detrend=detrend,
                 window=window, chunks_to_segments=chunks_to_segments)
 
     if daft1.chunks and daft2.chunks:

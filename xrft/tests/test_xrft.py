@@ -208,7 +208,7 @@ class TestDFTReal(object):
         dx = float(da.x[1] - da.x[0]) if 'x' in da.dims else 1
 
         # defaults with no keyword args
-        ft = xrft.dft(da, real=True, detrend='constant')
+        ft = xrft.dft(da, real=['x'], detrend='constant')
         # check that the frequency dimension was created properly
         assert ft.dims == ('freq_x',)
         # check that the coords are correct
@@ -237,15 +237,16 @@ class TestDFTReal(object):
         dx = float(da.x[1] - da.x[0])
         dy = float(da.y[1] - da.y[0])
 
-        daft = xrft.dft(da, real=True)
-        npt.assert_almost_equal(daft.values, np.fft.rfftn(da.values))
+        daft = xrft.dft(da, real=['y','x'])
+        npt.assert_almost_equal(daft.values,
+                               np.fft.rfftn(da.transpose('y','x')).transpose())
 
         actual_freq_x = daft.coords['freq_x'].values
-        expected_freq_x = np.fft.fftfreq(Nx, dx)
+        expected_freq_x = np.fft.rfftfreq(Nx, dx)
         npt.assert_almost_equal(actual_freq_x, expected_freq_x)
 
         actual_freq_y = daft.coords['freq_y'].values
-        expected_freq_y = np.fft.rfftfreq(Ny, dy)
+        expected_freq_y = np.fft.fftfreq(Ny, dy)
         npt.assert_almost_equal(actual_freq_y, expected_freq_y)
 
 
@@ -478,13 +479,13 @@ class TestCrossPhase(object):
         if dask:
             da1 = da1.chunk({'x': 32})
             da2 = da2.chunk({'x': 32})
-        cp = xrft.cross_phase(da1, da2, dim='x')
+        cp = xrft.cross_phase(da1, da2, dim=['x'], real=['x'])
 
         actual_phase_offset = cp.sel(freq_x=f).values
         npt.assert_almost_equal(actual_phase_offset, phase_offset)
         assert cp.name == 'a_b_phase'
 
-        xrt.assert_equal(xrft.cross_phase(da1, da2, dim=None), cp)
+        xrt.assert_equal(xrft.cross_phase(da1, da2, real=['x']), cp)
 
         with pytest.raises(ValueError):
             xrft.cross_phase(da1, da2.isel(x=0).drop('x'))
