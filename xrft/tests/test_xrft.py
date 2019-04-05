@@ -225,6 +225,9 @@ class TestDFTReal(object):
         # precision issue. Fixed by setting atol
         npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
 
+        with pytest.raises(ValueError):
+            xrft.dft(da, real='y', detrend='constant')
+
     def test_dft_real_2d(self):
         """
         Test the real discrete Fourier transform function on one-dimensional
