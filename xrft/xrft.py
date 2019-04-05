@@ -210,9 +210,9 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
     real : list, optional
-        Default is `None` where no transposing will be applied. Otherwise,
-        reorder the dimensions to this order and the real Fourier transform
-        will be taken upon the last dimesion.
+        Default is `None` where no real Fourier transform (FT) will be taken.
+        Otherwise, reorder the dimensions to this order and uses the real FT
+        along the last dimesion.
     shift : bool, default
         Whether to shift the fft output. Default is `True`, unless `real=True`,
         in which case shift will be set to False always.
@@ -489,7 +489,7 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
     return cs
 
 
-def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, real=None, detrend=None,
+def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, detrend=None,
                 window=False, chunks_to_segments=False):
     """
     Calculates the cross-phase between da1 and da2.
@@ -511,12 +511,8 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, real=None, detrend=None,
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
     dim : list, optional
-        The dimensions along which to take the transformation. If `None`, all
-        dimensions will be transformed.
-    real : list, optional
-        Default is `None` where no transposing will be applied. Otherwise,
-        reorder the dimensions to this order and the real Fourier transform
-        will be taken upon the last dimesion.
+        The dimension along which to take the real Fourier transformation.
+        If `None`, all dimensions will be transformed.
     shift : bool, optional
         Whether to shift the fft output.
     detrend : str, optional
@@ -542,12 +538,15 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, real=None, detrend=None,
             raise ValueError('The two datasets have different dimensions')
     elif not isinstance(dim, list):
         dim = [dim]
+    if len(dim)>1:
+        raise ValueError('Cross phase calculation should only be done along '
+                        'a single dimension.')
 
     daft1 = dft(da1, spacing_tol,
-                dim=dim, real=real, shift=False, detrend=detrend,
+                dim=dim, real=dim, shift=False, detrend=detrend,
                 window=window, chunks_to_segments=chunks_to_segments)
     daft2 = dft(da2, spacing_tol,
-                dim=dim, real=real, shift=False, detrend=detrend,
+                dim=dim, real=dim, shift=False, detrend=detrend,
                 window=window, chunks_to_segments=chunks_to_segments)
 
     if daft1.chunks and daft2.chunks:

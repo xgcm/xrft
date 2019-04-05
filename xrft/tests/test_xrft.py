@@ -479,16 +479,42 @@ class TestCrossPhase(object):
         if dask:
             da1 = da1.chunk({'x': 32})
             da2 = da2.chunk({'x': 32})
-        cp = xrft.cross_phase(da1, da2, dim=['x'], real=['x'])
+        cp = xrft.cross_phase(da1, da2, dim=['x'])
 
         actual_phase_offset = cp.sel(freq_x=f).values
         npt.assert_almost_equal(actual_phase_offset, phase_offset)
         assert cp.name == 'a_b_phase'
 
-        xrt.assert_equal(xrft.cross_phase(da1, da2, real=['x']), cp)
+        xrt.assert_equal(xrft.cross_phase(da1, da2), cp)
 
         with pytest.raises(ValueError):
             xrft.cross_phase(da1, da2.isel(x=0).drop('x'))
+
+        with pytest.raises(ValueError):
+            xrft.cross_phase(da1, da2.rename({'x':'y'}))
+
+    @pytest.mark.parametrize("dask", [False, True])
+    def test_cross_phase_2d(self, dask):
+        Ny, Nx = (32, 16)
+        x = np.linspace(0, 1, num=Nx, endpoint=False)
+        y = np.ones(Ny)
+        f = 6
+        phase_offset = np.pi/2
+        signal1 = np.cos(2*np.pi*f*x)  # frequency = 1/(2*pi)
+        signal2 = np.cos(2*np.pi*f*x - phase_offset)
+        da1 = xr.DataArray(data=signal1*y[:,np.newaxis], name='a',
+                          dims=['y','x'], coords={'y':y, 'x':x})
+        da2 = xr.DataArray(data=signal2*y[:,np.newaxis], name='b',
+                          dims=['y','x'], coords={'y':y, 'x':x})
+        with pytest.raises(ValueError):
+            xrft.cross_phase(da1, da2, dim=['y','x'])
+
+        if dask:
+            da1 = da1.chunk({'x': 16})
+            da2 = da2.chunk({'x': 16})
+        cp = xrft.cross_phase(da1, da2, dim=['x'])
+        actual_phase_offset = cp.sel(freq_x=f).values
+        npt.assert_almost_equal(actual_phase_offset, phase_offset)
 
 
 def test_parseval():
