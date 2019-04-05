@@ -208,7 +208,7 @@ class TestDFTReal(object):
         dx = float(da.x[1] - da.x[0]) if 'x' in da.dims else 1
 
         # defaults with no keyword args
-        ft = xrft.dft(da, real=['x'], detrend='constant')
+        ft = xrft.dft(da, real='x', detrend='constant')
         # check that the frequency dimension was created properly
         assert ft.dims == ('freq_x',)
         # check that the coords are correct
@@ -237,7 +237,7 @@ class TestDFTReal(object):
         dx = float(da.x[1] - da.x[0])
         dy = float(da.y[1] - da.y[0])
 
-        daft = xrft.dft(da, real=['y','x'])
+        daft = xrft.dft(da, real='x')
         npt.assert_almost_equal(daft.values,
                                np.fft.rfftn(da.transpose('y','x')).transpose())
 

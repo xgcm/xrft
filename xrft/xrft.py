@@ -209,10 +209,8 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     dim : list, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    real : list, optional
-        Default is `None` where no real Fourier transform (FT) will be taken.
-        Otherwise, reorder the dimensions to this order and uses the real FT
-        along the last dimesion.
+    real : str, optional
+        Real Fourier transform will be taken along this dimension.
     shift : bool, default
         Whether to shift the fft output. Default is `True`, unless `real=True`,
         in which case shift will be set to False always.
@@ -238,8 +236,15 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         raise TypeError("Please provide a float argument")
 
     rawdims = da.dims
-    if real is not None and len(real)>0:
-        da = da.transpose(*real)
+    if real is not None:
+        transdim = list(rawdims)
+        if real not in transdim:
+            raise ValueError("The dimension along real FT is taken must "
+                            "be one of the existing dimensions.")
+        elif real != transdim[-1]:
+            transdim.remove(real)
+            transdim += [real]
+            da = da.transpose(*transdim)
     if dim is None:
         dim = da.dims
 
@@ -538,10 +543,10 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, detrend=None,
                         'a single dimension.')
 
     daft1 = dft(da1, spacing_tol,
-                dim=dim, real=dim, shift=False, detrend=detrend,
+                dim=dim, real=dim[0], shift=False, detrend=detrend,
                 window=window, chunks_to_segments=chunks_to_segments)
     daft2 = dft(da2, spacing_tol,
-                dim=dim, real=dim, shift=False, detrend=detrend,
+                dim=dim, real=dim[0], shift=False, detrend=detrend,
                 window=window, chunks_to_segments=chunks_to_segments)
 
     if daft1.chunks and daft2.chunks:
