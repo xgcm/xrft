@@ -339,12 +339,7 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     if real is None:
         return daft
     else:
-        enddims = list(rawdims)
-        i = 0
-        for d in rawdims:
-            if d in dim:
-                enddims[i] = prefix + d
-            i += 1
+        enddims = [prefix + d for d in rawdims if d in dim]
         return daft.transpose(*enddims)
 
 
