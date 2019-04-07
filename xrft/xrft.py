@@ -248,7 +248,9 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
             da = da.transpose(*transdim)
             trans = True
     if dim is None:
-        dim = da.dims
+        dim = list(da.dims)
+    if real is not None and real not in dim:
+        dim += [real]
 
     if not da.chunks:
         if np.isnan(da.values).any():

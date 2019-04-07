@@ -243,6 +243,8 @@ class TestDFTReal(object):
         daft = xrft.dft(da, real='x')
         npt.assert_almost_equal(daft.values,
                                np.fft.rfftn(da.transpose('y','x')).transpose())
+        npt.assert_almost_equal(daft.values,
+                               xrft.dft(da, dim=['y'], real='x'))
 
         actual_freq_x = daft.coords['freq_x'].values
         expected_freq_x = np.fft.rfftfreq(Nx, dx)
