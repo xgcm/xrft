@@ -347,15 +347,18 @@ def test_power_spectrum():
     """Test the power spectrum function"""
     N = 16
     da = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
-                    coords={'x':range(N),'y':range(N)}
+                     coords={'x':range(N),'y':range(N)}
                      )
     ps = xrft.power_spectrum(da, window=True, density=False,
                             detrend='constant')
-    daft = xrft.dft(da,
-                    dim=None, shift=True, detrend='constant',
-                    window=True)
+    daft = xrft.dft(da, detrend='constant', window=True)
     npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
     npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
+
+    ps = xrft.power_spectrum(da, real='x', window=True, density=False,
+                            detrend='constant')
+    daft = xrft.dft(da, real='x', detrend='constant', window=True)
+    npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
 
     ### Normalized
     dim = da.dims
