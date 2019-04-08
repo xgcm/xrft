@@ -189,8 +189,21 @@ def _stack_chunks(da, dim, suffix='_segment'):
 
     return da
 
+def _transpose(da, real, trans=False):
+    if real is not None:
+        transdim = list(da.dims)
+        if real not in transdim:
+            raise ValueError("The dimension along real FT is taken must "
+                            "be one of the existing dimensions.")
+        elif real != transdim[-1]:
+            transdim.remove(real)
+            transdim += [real]
+            da = da.transpose(*transdim)
+            trans = True
+    return da, trans
 
-def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
+
+def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         window=False, chunks_to_segments=False):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
@@ -209,11 +222,10 @@ def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
     dim : list, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    real : bool, optional
-        Whether the input array is all real or not. If set to True the
-        redundant negative frequencies will be discarded. Defaults to False.
+    real : str, optional
+        Real Fourier transform will be taken along this dimension.
     shift : bool, default
-        Whether to shift the fft output. Default is True, unless `real=True`,
+        Whether to shift the fft output. Default is `True`, unless `real=True`,
         in which case shift will be set to False always.
     detrend : str, optional
         If `constant`, the mean across the transform dimensions will be
@@ -236,8 +248,12 @@ def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
     if not isinstance(spacing_tol, float):
         raise TypeError("Please provide a float argument")
 
+    rawdims = da.dims
+    da, trans = _transpose(da, real)
     if dim is None:
-        dim = da.dims
+        dim = list(da.dims)
+    if real is not None and real not in dim:
+        dim += [real]
 
     if not da.chunks:
         if np.isnan(da.values).any():
@@ -253,11 +269,11 @@ def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
 
     fft = _fft_module(da)
 
-    if real:
+    if real is None:
+        fft_fn = fft.fftn
+    else:
         shift = False
         fft_fn = fft.rfftn
-    else:
-        fft_fn = fft.fftn
 
     if chunks_to_segments:
         da = _stack_chunks(da, dim)
@@ -284,13 +300,13 @@ def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
 
     # calculate frequencies from coordinates
     # coordinates are always loaded eagerly, so we use numpy
-    if real:
+    if real is None:
+        fftfreq = [np.fft.fftfreq]*len(N)
+    else:
         # Discard negative frequencies from transform along last axis to be
         # consistent with np.fft.rfftn
         fftfreq = [np.fft.fftfreq]*(len(N)-1)
         fftfreq.append(np.fft.rfftfreq)
-    else:
-        fftfreq = [np.fft.fftfreq]*len(N)
 
     k = [fftfreq(Nx, dx) for (fftfreq, Nx, dx) in zip(fftfreq, N, delta_x)]
 
@@ -331,11 +347,16 @@ def dft(da, spacing_tol=1e-3, dim=None, real=False, shift=True, detrend=None,
     for this_dk, d in zip(dk, dim):
         newcoords[prefix + d + '_spacing'] = this_dk
 
-    return xr.DataArray(f, dims=newdims, coords=newcoords)
+    daft = xr.DataArray(f, dims=newdims, coords=newcoords)
+    if trans:
+        enddims = [prefix + d for d in rawdims if d in dim]
+        return daft.transpose(*enddims)
+    else:
+        return daft
 
 
-def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, density=True,
-                  window=False, chunks_to_segments=False):
+def power_spectrum(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
+                   window=False, chunks_to_segments=False, density=True):
     """
     Calculates the power spectrum of da.
 
@@ -354,6 +375,8 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, den
     dim : list, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
+    real : str, optional
+        Real Fourier transform will be taken along this dimension.
     shift : bool, optional
         Whether to shift the fft output.
     detrend : str, optional
@@ -375,19 +398,20 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True, detrend=None, den
         Two-dimensional power spectrum
     """
 
+    daft = dft(da, spacing_tol,
+              dim=dim, real=real, shift=shift, detrend=detrend, window=window,
+              chunks_to_segments=chunks_to_segments)
+
     if dim is None:
-        dim = da.dims
+        dim = list(da.dims)
+    if real is not None and real not in dim:
+        dim += [real]
 
     # the axes along which to take ffts
     axis_num = [da.get_axis_num(d) for d in dim]
 
     N = [da.shape[n] for n in axis_num]
-
-    daft = dft(da, spacing_tol,
-              dim=dim, shift=shift, detrend=detrend, window=window,
-              chunks_to_segments=chunks_to_segments)
-
-    coord = list(daft.coords)
+    # coord = list(daft.coords)
 
     return _power_spectrum(daft, dim, N, density)
 
@@ -405,8 +429,8 @@ def _power_spectrum(daft, dim, N, density):
 
 
 def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
-                  shift=True, detrend=None, density=True, window=False,
-                  chunks_to_segments=False):
+                  shift=True, detrend=None, window=False,
+                  chunks_to_segments=False, density=True):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -447,6 +471,13 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
         Two-dimensional cross spectrum
     """
 
+    daft1 = dft(da1, spacing_tol,
+               dim=dim, shift=shift, detrend=detrend, window=window,
+               chunks_to_segments=chunks_to_segments)
+    daft2 = dft(da2, spacing_tol,
+               dim=dim, shift=shift, detrend=detrend, window=window,
+               chunks_to_segments=chunks_to_segments)
+
     if dim is None:
         dim = da1.dims
         dim2 = da2.dims
@@ -457,13 +488,6 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
     axis_num = [da1.get_axis_num(d) for d in dim]
 
     N = [da1.shape[n] for n in axis_num]
-
-    daft1 = dft(da1, spacing_tol,
-               dim=dim, shift=shift, detrend=detrend, window=window,
-               chunks_to_segments=chunks_to_segments)
-    daft2 = dft(da2, spacing_tol,
-               dim=dim, shift=shift, detrend=detrend, window=window,
-               chunks_to_segments=chunks_to_segments)
 
     cs = (daft1 * np.conj(daft2)).real
 
@@ -497,8 +521,8 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, detrend=None,
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
     dim : list, optional
-        The dimensions along which to take the transformation. If `None`, all
-        dimensions will be transformed.
+        The dimension along which to take the real Fourier transformation.
+        If `None`, all dimensions will be transformed.
     shift : bool, optional
         Whether to shift the fft output.
     detrend : str, optional
@@ -524,12 +548,15 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, detrend=None,
             raise ValueError('The two datasets have different dimensions')
     elif not isinstance(dim, list):
         dim = [dim]
+    if len(dim)>1:
+        raise ValueError('Cross phase calculation should only be done along '
+                        'a single dimension.')
 
     daft1 = dft(da1, spacing_tol,
-                dim=dim, real=True, shift=False, detrend=detrend,
+                dim=dim, real=dim[0], shift=False, detrend=detrend,
                 window=window, chunks_to_segments=chunks_to_segments)
     daft2 = dft(da2, spacing_tol,
-                dim=dim, real=True, shift=False, detrend=detrend,
+                dim=dim, real=dim[0], shift=False, detrend=detrend,
                 window=window, chunks_to_segments=chunks_to_segments)
 
     if daft1.chunks and daft2.chunks:
