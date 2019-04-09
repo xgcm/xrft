@@ -288,7 +288,6 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     for d in dim:
         coord = da[d]
         diff = np.diff(coord)
-        # if pd.core.common.is_timedelta64_dtype(diff):
         if pd.api.types.is_timedelta64_dtype(diff):
             # convert to seconds so we get hertz
             diff = diff.astype('timedelta64[s]').astype('f8')
@@ -411,7 +410,6 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detren
     axis_num = [da.get_axis_num(d) for d in dim]
 
     N = [da.shape[n] for n in axis_num]
-    # coord = list(daft.coords)
 
     return _power_spectrum(daft, dim, N, density)
 
@@ -489,6 +487,10 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
 
     N = [da1.shape[n] for n in axis_num]
 
+    return _cross_spectrum(daft1, daft2, dim, N, density)
+
+
+def _cross_spectrum(daft1, daft2, dim, N, density):
     cs = (daft1 * np.conj(daft2)).real
 
     if density:
@@ -740,8 +742,6 @@ def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
     cs = cross_spectrum(da1, da2, spacing_tol, dim=dim, shift=shift,
                        detrend=detrend, density=density,
                        window=window)
-    # if len(cs.dims) > 2:
-    #     raise ValueError('The data set has too many dimensions')
 
     fftdim = ['freq_' + d for d in dim]
     k = cs[fftdim[1]]
@@ -792,8 +792,5 @@ def fit_loglog(x, y):
     # fig log vs log
     p = np.polyfit(np.log2(x), np.log2(y), 1)
     y_fit = 2**(np.log2(x)*p[0] + p[1])
-    #A = np.vstack([np.log2(x), np.ones(len(x))]).T
-    #a, b = np.linalg.lstsq(A, np.log2(y))[0]
-    #y_fit = 2**(np.log2(x)*a + b)
 
     return y_fit, p[0], p[1]

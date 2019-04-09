@@ -104,98 +104,123 @@ def test_detrend():
     npt.assert_allclose(da_prime[0,0],
                         xrft.detrendn(d4d[0,0], axes=[0,1]))
 
-def test_dft_1d(test_data_1d):
-    """Test the discrete Fourier transform function on one-dimensional data."""
+class TestDFTImag(object):
+    def test_dft_1d(self, test_data_1d):
+        """Test the discrete Fourier transform function on one-dimensional data."""
 
-    # TODO group these tests into a parameterized class
+        da = test_data_1d
+        Nx = len(da)
+        dx = float(da.x[1] - da.x[0]) if 'x' in da.dims else 1
 
-    da = test_data_1d
-    Nx = len(da)
-    dx = float(da.x[1] - da.x[0]) if 'x' in da.dims else 1
-
-    # defaults with no keyword args
-    ft = xrft.dft(da, detrend='constant')
-    # check that the frequency dimension was created properly
-    assert ft.dims == ('freq_x',)
-    # check that the coords are correct
-    freq_x_expected = np.fft.fftshift(np.fft.fftfreq(Nx, dx))
-    npt.assert_allclose(ft['freq_x'], freq_x_expected)
-    # check that a spacing variable was created
-    assert ft['freq_x_spacing'] == freq_x_expected[1] - freq_x_expected[0]
-    # make sure the function is lazy
-    assert isinstance(ft.data, type(da.data))
-    # check that the Fourier transform itself is correct
-    data = (da - da.mean()).values
-    ft_data_expected = np.fft.fftshift(np.fft.fft(data))
-    # because the zero frequency component is zero, there is a numerical
-    # precision issue. Fixed by setting atol
-    npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
+        # defaults with no keyword args
+        ft = xrft.dft(da, detrend='constant')
+        # check that the frequency dimension was created properly
+        assert ft.dims == ('freq_x',)
+        # check that the coords are correct
+        freq_x_expected = np.fft.fftshift(np.fft.fftfreq(Nx, dx))
+        npt.assert_allclose(ft['freq_x'], freq_x_expected)
+        # check that a spacing variable was created
+        assert ft['freq_x_spacing'] == freq_x_expected[1] - freq_x_expected[0]
+        # make sure the function is lazy
+        assert isinstance(ft.data, type(da.data))
+        # check that the Fourier transform itself is correct
+        data = (da - da.mean()).values
+        ft_data_expected = np.fft.fftshift(np.fft.fft(data))
+        # because the zero frequency component is zero, there is a numerical
+        # precision issue. Fixed by setting atol
+        npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
 
 
-    # redo without removing mean
-    ft = xrft.dft(da)
-    ft_data_expected = np.fft.fftshift(np.fft.fft(da))
-    npt.assert_allclose(ft_data_expected, ft.values)
+        # redo without removing mean
+        ft = xrft.dft(da)
+        ft_data_expected = np.fft.fftshift(np.fft.fft(da))
+        npt.assert_allclose(ft_data_expected, ft.values)
 
-    # redo with detrending linear least-square fit
-    ft = xrft.dft(da, detrend='linear')
-    da_prime = sps.detrend(da.values)
-    ft_data_expected = np.fft.fftshift(np.fft.fft(da_prime))
-    npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
+        # redo with detrending linear least-square fit
+        ft = xrft.dft(da, detrend='linear')
+        da_prime = sps.detrend(da.values)
+        ft_data_expected = np.fft.fftshift(np.fft.fft(da_prime))
+        npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
 
-    if 'x' in da and not da.chunks:
-        da['x'].values[-1] *= 2
+        if 'x' in da and not da.chunks:
+            da['x'].values[-1] *= 2
+            with pytest.raises(ValueError):
+                ft = xrft.dft(da)
+
+    def test_dft_1d_time(self):
+        """Test the discrete Fourier transform function on timeseries data."""
+        time = pd.date_range('2000-01-01', '2001-01-01', closed='left')
+        Nt = len(time)
+        da = xr.DataArray(np.random.rand(Nt), coords=[time], dims=['time'])
+
+        ft = xrft.dft(da)
+
+        # check that frequencies are correct
+        dt = (time[1] - time[0]).total_seconds()
+        freq_time_expected = np.fft.fftshift(np.fft.fftfreq(Nt, dt))
+        npt.assert_allclose(ft['freq_time'], freq_time_expected)
+
+    def test_dft_2d(self):
+        """Test the discrete Fourier transform on 2D data"""
+        N = 16
+        da = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
+                        coords={'x':range(N),'y':range(N)}
+                         )
+        ft = xrft.dft(da, shift=False)
+        npt.assert_almost_equal(ft.values, np.fft.fftn(da.values))
+
+        ft = xrft.dft(da, shift=False, window=True, detrend='constant')
+        dim = da.dims
+        window = np.hanning(N) * np.hanning(N)[:, np.newaxis]
+        da_prime = (da - da.mean(dim=dim)).values
+        npt.assert_almost_equal(ft.values, np.fft.fftn(da_prime*window))
+
+    @pytest.mark.parametrize("dask", [False, True])
+    def test_dft_3d_dask(self, dask):
+        """Test the discrete Fourier transform on 3D dask array data"""
+        N=16
+        da = xr.DataArray(np.random.rand(N,N,N), dims=['time','x','y'],
+                          coords={'time':range(N),'x':range(N),
+                                  'y':range(N)}
+                         )
+        if dask:
+            da = da.chunk({'time': 1})
+            daft = xrft.dft(da, dim=['x','y'], shift=False)
+            npt.assert_almost_equal(daft.values,
+                                   np.fft.fftn(da.chunk({'time': 1}).values,
+                                              axes=[1,2])
+                                   )
+            da = da.chunk({'x': 1})
+            with pytest.raises(ValueError):
+                xrft.dft(da, dim=['x'])
+
+            da = da.chunk({'time':N})
+            daft = xrft.dft(da, dim=['time'],
+                            shift=False, detrend='linear')
+            da_prime = sps.detrend(da, axis=0)
+            npt.assert_almost_equal(daft.values,
+                                   np.fft.fftn(da_prime, axes=[0])
+                                   )
+
+    def test_dft_4d(self):
+        """Test the discrete Fourier transform on 2D data"""
+        N = 16
+        da = xr.DataArray(np.random.rand(N,N,N,N),
+                         dims=['time','z','y','x'],
+                         coords={'time':range(N),'z':range(N),
+                                'y':range(N),'x':range(N)}
+                         )
         with pytest.raises(ValueError):
-            ft = xrft.dft(da)
+            xrft.dft(da.chunk({'time':8}), dim=['y','x'], detrend='linear')
+        ft = xrft.dft(da, shift=False)
+        npt.assert_almost_equal(ft.values, np.fft.fftn(da.values))
 
-def test_dft_1d_time():
-    """Test the discrete Fourier transform function on timeseries data."""
-    time = pd.date_range('2000-01-01', '2001-01-01', closed='left')
-    Nt = len(time)
-    da = xr.DataArray(np.random.rand(Nt), coords=[time], dims=['time'])
-
-    ft = xrft.dft(da)
-
-    # check that frequencies are correct
-    dt = (time[1] - time[0]).total_seconds()
-    freq_time_expected = np.fft.fftshift(np.fft.fftfreq(Nt, dt))
-    npt.assert_allclose(ft['freq_time'], freq_time_expected)
-
-def test_dft_2d():
-    """Test the discrete Fourier transform on 2D data"""
-    N = 16
-    da = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
-                    coords={'x':range(N),'y':range(N)}
-                     )
-    ft = xrft.dft(da, shift=False)
-    npt.assert_almost_equal(ft.values, np.fft.fftn(da.values))
-
-    ft = xrft.dft(da, shift=False, window=True, detrend='constant')
-    dim = da.dims
-    window = np.hanning(N) * np.hanning(N)[:, np.newaxis]
-    da_prime = (da - da.mean(dim=dim)).values
-    npt.assert_almost_equal(ft.values, np.fft.fftn(da_prime*window))
-
-
-def test_dft_4d():
-    """Test the discrete Fourier transform on 2D data"""
-    N = 16
-    da = xr.DataArray(np.random.rand(N,N,N,N),
-                     dims=['time','z','y','x'],
-                     coords={'time':range(N),'z':range(N),
-                            'y':range(N),'x':range(N)}
-                     )
-    with pytest.raises(ValueError):
-        xrft.dft(da.chunk({'time':8}), dim=['y','x'], detrend='linear')
-    ft = xrft.dft(da, shift=False)
-    npt.assert_almost_equal(ft.values, np.fft.fftn(da.values))
-
-    da_prime = xrft.detrendn(da[:,0].values, [0,1,2]) # cubic detrend over time, y, and x
-    npt.assert_almost_equal(xrft.dft(da[:,0].drop('z'),
-                                    dim=['time','y','x'],
-                                    shift=False, detrend='linear'
-                                    ).values,
-                            np.fft.fftn(da_prime))
+        da_prime = xrft.detrendn(da[:,0].values, [0,1,2]) # cubic detrend over time, y, and x
+        npt.assert_almost_equal(xrft.dft(da[:,0].drop('z'),
+                                        dim=['time','y','x'],
+                                        shift=False, detrend='linear'
+                                        ).values,
+                                np.fft.fftn(da_prime))
 
 
 class TestDFTReal(object):
@@ -319,157 +344,80 @@ def test_window_single_dim():
     ps.load()
 
 
-def test_dft_3d_dask():
-    """Test the discrete Fourier transform on 3D dask array data"""
-    N=16
-    da = xr.DataArray(np.random.rand(N,N,N), dims=['time','x','y'],
-                      coords={'time':range(N),'x':range(N),
-                              'y':range(N)}
-                     )
-    daft = xrft.dft(da.chunk({'time': 1}), dim=['x','y'], shift=False)
-    # assert hasattr(daft.data, 'dask')
-    npt.assert_almost_equal(daft.values,
-                        np.fft.fftn(da.chunk({'time': 1}).values, axes=[1,2])
-                           )
+class TestSpectrum(object):
+    @pytest.mark.parametrize("dask", [False, True])
+    def test_power_spectrum(self, dask):
+        """Test the power spectrum function"""
+        N = 16
+        da = xr.DataArray(np.random.rand(2,N,N), dims=['time','y','x'],
+                         coords={'time':np.array(['2019-04-18', '2019-04-19'],
+                                                dtype='datetime64'),
+                                'y':range(N),'x':range(N)}
+                         )
+        if dask:
+            da = da.chunk({'time': 1})
+        ps = xrft.power_spectrum(da, dim=['y','x'], window=True, density=False,
+                                detrend='constant')
+        daft = xrft.dft(da, dim=['y','x'], detrend='constant', window=True)
+        npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
+        npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
-    with pytest.raises(ValueError):
-        xrft.dft(da.chunk({'time': 1, 'x': 1}), dim=['x'])
+        ps = xrft.power_spectrum(da, dim=['y'], real='x', window=True,
+                                density=False, detrend='constant')
+        daft = xrft.dft(da, dim=['y'], real='x', detrend='constant', window=True)
+        npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
 
-    daft = xrft.dft(da.chunk({'x': 1}), dim=['time'],
-                    shift=False, detrend='linear')
-    # assert hasattr(daft.data, 'dask')
-    da_prime = sps.detrend(da.chunk({'x': 1}), axis=0)
-    npt.assert_almost_equal(daft.values,
-                        np.fft.fftn(da_prime, axes=[0])
-                           )
+        ### Normalized
+        ps = xrft.power_spectrum(da, dim=['y','x'], window=True, detrend='constant')
+        daft = xrft.dft(da, dim=['y','x'], window=True, detrend='constant')
+        test = np.real(daft*np.conj(daft))/N**4
+        dk = np.diff(np.fft.fftfreq(N, 1.))[0]
+        test /= dk**2
+        npt.assert_almost_equal(ps.values, test)
+        npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
-def test_power_spectrum():
-    """Test the power spectrum function"""
-    N = 16
-    da = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
-                     coords={'x':range(N),'y':range(N)}
-                     )
-    ps = xrft.power_spectrum(da, window=True, density=False,
-                            detrend='constant')
-    daft = xrft.dft(da, detrend='constant', window=True)
-    npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
-    npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
+        ### Remove least-square fit
+        ps = xrft.power_spectrum(da, dim=['y','x'],
+                                window=True, density=False, detrend='linear'
+                                )
+        daft = xrft.dft(da, dim=['y','x'], window=True, detrend='linear')
+        npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
+        npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
-    ps = xrft.power_spectrum(da, real='x', window=True, density=False,
-                            detrend='constant')
-    daft = xrft.dft(da, real='x', detrend='constant', window=True)
-    npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
+    @pytest.mark.parametrize("dask", [False, True])
+    def test_cross_spectrum(self, dask):
+        """Test the cross spectrum function"""
+        N = 16
+        dim = ['x','y']
+        da = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
+                          coords={'time':np.array(['2019-04-18', '2019-04-19'],
+                                                 dtype='datetime64'),
+                                 'x':range(N), 'y':range(N)})
+        da2 = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
+                          coords={'time':np.array(['2019-04-18', '2019-04-19'],
+                                                 dtype='datetime64'),
+                                  'x':range(N), 'y':range(N)})
+        if dask:
+            da = da.chunk({'time': 1})
+            da2 = da2.chunk({'time': 1})
 
-    ### Normalized
-    dim = da.dims
-    ps = xrft.power_spectrum(da, window=True, detrend='constant')
-    daft = xrft.dft(da, window=True, detrend='constant')
-    coord = list(daft.coords)
-    test = np.real(daft*np.conj(daft))/N**4
-    for i in range(len(dim)):
-        test /= daft[coord[-i-1]].values
-    npt.assert_almost_equal(ps.values, test)
-    npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
+        daft = xrft.dft(da, dim=dim, shift=True, detrend='constant',
+                        window=True)
+        daft2 = xrft.dft(da2, dim=dim, shift=True, detrend='constant',
+                        window=True)
+        cs = xrft.cross_spectrum(da, da2, dim=dim, window=True, density=False,
+                                detrend='constant')
+        npt.assert_almost_equal(cs.values, np.real(daft*np.conj(daft2)))
+        npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.)
 
-    ### Remove mean
-    da = xr.DataArray(np.random.rand(5,20,30),
-                  dims=['time', 'y', 'x'],
-                  coords={'time': np.arange(5),
-                        'y': np.arange(20), 'x': np.arange(30)})
-    ps = xrft.power_spectrum(da, dim=['y', 'x'],
-                            window=True, density=False, detrend='constant'
-                            )
-    daft = xrft.dft(da, dim=['y','x'], window=True, detrend='constant')
-    npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
-    npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
+        cs = xrft.cross_spectrum(da, da2, dim=dim, shift=True, window=True,
+                                detrend='constant')
+        test = (daft * np.conj(daft2)).real.values/N**4
 
-    ### Remove least-square fit
-    da_prime = np.zeros_like(da.values)
-    for t in range(5):
-        da_prime[t] = numpy_detrend(da[t].values)
-    da_prime = xr.DataArray(da_prime, dims=da.dims, coords=da.coords)
-    ps = xrft.power_spectrum(da_prime, dim=['y', 'x'],
-                            window=True, density=False, detrend='constant'
-                            )
-    daft = xrft.dft(da_prime, dim=['y','x'], window=True, detrend='constant')
-    npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
-    npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
-
-def test_power_spectrum_dask():
-    """Test the power spectrum function on dask data"""
-    N = 16
-    dim = ['x','y']
-    da = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
-                      coords={'time':range(2),'x':range(N),
-                              'y':range(N)}).chunk({'time': 1}
-                     )
-    ps = xrft.power_spectrum(da, dim=dim, density=False)
-    daft = xrft.dft(da, dim=['x','y'])
-    npt.assert_almost_equal(ps.values, (daft * np.conj(daft)).real.values)
-
-    ps = xrft.power_spectrum(da, dim=dim, window=True, detrend='constant')
-    daft = xrft.dft(da, dim=dim, window=True, detrend='constant')
-    coord = list(daft.coords)
-    test = (daft * np.conj(daft)).real/N**4
-    for i in dim:
-        test /= daft['freq_' + i + '_spacing']
-    npt.assert_almost_equal(ps.values, test)
-    npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
-
-def test_cross_spectrum():
-    """Test the cross spectrum function"""
-    N = 16
-    da = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
-                    coords={'x':range(N),'y':range(N)}
-                     )
-    da2 = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
-                    coords={'x':range(N),'y':range(N)}
-                     )
-    cs = xrft.cross_spectrum(da, da2, window=True, density=False,
-                            detrend='constant')
-    daft = xrft.dft(da,
-                    dim=None, shift=True, detrend='constant',
-                    window=True)
-    daft2 = xrft.dft(da2,
-                    dim=None, shift=True, detrend='constant',
-                    window=True)
-    npt.assert_almost_equal(cs.values, np.real(daft*np.conj(daft2)))
-    npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.)
-
-def test_cross_spectrum_dask():
-    """Test the power spectrum function on dask data"""
-    N = 16
-    dim = ['x','y']
-    da = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
-                      coords={'time':range(2),'x':range(N),
-                              'y':range(N)}).chunk({'time': 1}
-                     )
-    da2 = xr.DataArray(np.random.rand(2,N,N), dims=['time','x','y'],
-                      coords={'time':range(2),'x':range(N),
-                              'y':range(N)}).chunk({'time': 1}
-                     )
-    cs = xrft.cross_spectrum(da, da2, dim=dim, density=False)
-    daft = xrft.dft(da, dim=dim)
-    daft2 = xrft.dft(da2, dim=dim)
-    npt.assert_almost_equal(cs.values, (daft * np.conj(daft2)).real.values)
-
-    cs = xrft.cross_spectrum(da, da2,
-                            dim=dim, shift=True, window=True,
-                            detrend='constant')
-    daft = xrft.dft(da,
-                    dim=dim, shift=True, window=True,
-                    detrend='constant')
-    daft2 = xrft.dft(da2,
-                    dim=dim, shift=True, window=True,
-                    detrend='constant')
-    coord = list(daft.coords)
-    test = (daft * np.conj(daft2)).real.values/N**4
-    # for i in dim:
-    #     test /= daft['freq_' + i + '_spacing']
-    dk = np.diff(np.fft.fftfreq(N, 1.))[0]
-    test /= dk**2
-    npt.assert_almost_equal(cs.values, test)
-    npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.)
+        dk = np.diff(np.fft.fftfreq(N, 1.))[0]
+        test /= dk**2
+        npt.assert_almost_equal(cs.values, test)
+        npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.)
 
 
 class TestCrossPhase(object):
@@ -587,7 +535,6 @@ def _synthetic_field(N, dL, amp, s):
     ########
     r_kl = np.ma.masked_invalid(np.sqrt(amp*.5*(np.pi)**(-1)
                                 *K**(s-1.))).filled(0.)
-    #r = np.ma.masked_invalid(np.abs(k)**(-slope/2.)).filled(0.)
     ########
     # phase
     ########
@@ -628,16 +575,6 @@ def _synthetic_field(N, dL, amp, s):
 
     phi_corner_leftbot = 2.*np.pi*np.random.random() - np.pi
 
-
-#     print(phi[N/2-1,N-1], phi[N/2+1,1])
-#     print(phi[N/2+1,N/2+1], phi[N/2-1,N/2-1])
-
-
-#     phi[:N/2, :] = -np.rot90(np.rot90(phi[N/2:, :]))
-#     phi[:N/2, :] = -phi[N/2:, :][::-1,::-1]
-#     i, j = 25, 40
-#     print(phi[N/2+j,N/2+i], -phi[N/2-j,N/2-i])
-
     for i in range(1, N_2):
         for j in range(1, N_2):
             assert (phi[N_2+j, N_2+i] == -phi[N_2-j, N_2-i])
@@ -654,12 +591,9 @@ def _synthetic_field(N, dL, amp, s):
     #########
     # complex fourier amplitudes
     #########
-    #a = r + 1j*th
     F_theta = r_kl * np.exp(1j * phi)
 
     # check that symmetry of FT is satisfied
-    #np.testing.assert_almost_equal(a[1:N/2], a[-1:-N/2:-1].conj())
-
     theta = np.fft.ifft2(np.fft.ifftshift(F_theta))
     return np.real(theta)
 
@@ -703,9 +637,6 @@ def test_isotropic_cs():
     for d in dim:
         coord = da[d]
         diff = np.diff(coord)
-        # if pd.core.common.is_timedelta64_dtype(diff):
-        #     # convert to seconds so we get hertz
-        #     diff = diff.astype('timedelta64[s]').astype('f8')
         delta = diff[0]
         delta_x.append(delta)
 
