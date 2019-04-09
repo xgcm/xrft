@@ -5,7 +5,7 @@
 xrft: Fourier transforms for xarray data
 ==============================================
 
-xrft is a Python package for
+**xrft** is a Python package for
 taking the discrete Fourier transform (DFT) on xarray_ and dask_ arrays.
 It is:
 
@@ -21,20 +21,15 @@ It is:
     If you find any bugs or would like to request any enhancements,
     please `raise an issue on GitHub <https://github.com/xgcm/xrft/issues>`_.
 
-Contents
---------
+Documentation
+-------------
 
 .. toctree::
    :maxdepth: 1
-   :caption: Overview
+   :caption: Getting Started
 
-   why
+   why-xrft
    limitations
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Installation
-
    installation
 
 .. toctree::
@@ -46,8 +41,9 @@ Contents
 
 .. toctree::
    :maxdepth: 1
-   :caption: API
+   :caption: Help & reference
 
+   whats-new
    api
 
 
