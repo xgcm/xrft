@@ -104,7 +104,7 @@ def test_detrend():
     npt.assert_allclose(da_prime[0,0],
                         xrft.detrendn(d4d[0,0], axes=[0,1]))
 
-class TestDFTimag(object):
+class TestDFTImag(object):
     def test_dft_1d(self, test_data_1d):
         """Test the discrete Fourier transform function on one-dimensional data."""
 
