@@ -368,25 +368,19 @@ class TestSpectrum(object):
         npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
 
         ### Normalized
-        dim = da.dims[1:]
         ps = xrft.power_spectrum(da, dim=['y','x'], window=True, detrend='constant')
         daft = xrft.dft(da, dim=['y','x'], window=True, detrend='constant')
-        coord = list(daft.coords)
         test = np.real(daft*np.conj(daft))/N**4
-        for i in range(len(dim)):
-            test /= daft[coord[-i-1]].values
+        dk = np.diff(np.fft.fftfreq(N, 1.))[0]
+        test /= dk**2
         npt.assert_almost_equal(ps.values, test)
         npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
         ### Remove least-square fit
-        da_prime = np.zeros_like(da.values)
-        for t in range(2):
-            da_prime[t] = numpy_detrend(da[t].values)
-        da_prime = xr.DataArray(da_prime, dims=da.dims, coords=da.coords)
-        ps = xrft.power_spectrum(da_prime, dim=['y', 'x'],
-                                window=True, density=False, detrend='constant'
+        ps = xrft.power_spectrum(da, dim=['y','x'],
+                                window=True, density=False, detrend='linear'
                                 )
-        daft = xrft.dft(da_prime, dim=['y','x'], window=True, detrend='constant')
+        daft = xrft.dft(da, dim=['y','x'], window=True, detrend='linear')
         npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
         npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
