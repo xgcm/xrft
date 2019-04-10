@@ -28,7 +28,7 @@ TESTS_REQUIRE = ['pytest >= 2.8', 'coverage']
 
 DESCRIPTION = "Discrete Fourier Transform with xarray"
 def readme():
-    with open('README.md') as f:
+    with open('README.rst') as f:
         return f.read()
 
 setup(name=DISTNAME,

@@ -666,10 +666,7 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
 
     k_coords = {'freq_r': kr}
 
-    newdims = []
-    for i in range(ps.ndim-1):
-        if i not in axis_num:
-            newdims.append(ps.dims[i])
+    newdims = [d for d in da.dims if d not in dim]
     newdims.append('freq_r')
 
     newcoords = {}
@@ -678,10 +675,6 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
             newcoords[d] = da.coords[d].values
         else:
             newcoords[d] = k_coords[d]
-
-    # dk = [l[1] - l[0] for l in kr]
-    # for this_dk, d in zip(dk, dim):
-    #     newcoords[prefix + d + '_spacing'] = this_dk
 
     return xr.DataArray(iso_ps, dims=newdims, coords=newcoords)
 
@@ -754,10 +747,7 @@ def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
 
     k_coords = {'freq_r': kr}
 
-    newdims = []
-    for i in range(cs.ndim-1):
-        if i not in axis_num:
-            newdims.append(cs.dims[i])
+    newdims = [d for d in da1.dims if d not in dim]
     newdims.append('freq_r')
 
     newcoords = {}
