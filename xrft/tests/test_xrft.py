@@ -617,13 +617,15 @@ def test_isotropic_ps():
                   dims=['time','zz','z','y', 'x'],
                   coords={'time': np.array(['2019-04-18', '2019-04-19'],
                                           dtype='datetime64'),
-                         'zz': np.arange(5),'z': np.arange(5),
+                         'zz': np.arange(5), 'z': np.arange(5),
                          'y': np.arange(16), 'x': np.arange(32)})
     with pytest.raises(ValueError):
         xrft.isotropic_powerspectrum(da, dim=['y','x'])
-    da = da[:,0,0,:,:].drop(['z','zz'])
+    da = da[:,0,:,:,:].drop(['zz'])
+    with pytest.raises(ValueError):
+        xrft.isotropic_powerspectrum(da, dim=['z','y','x'])
     iso_ps = xrft.isotropic_powerspectrum(da, dim=['y','x']).values
-    npt.assert_almost_equal(np.ma.masked_invalid(iso_ps[:,1:]).mask.sum(), 0.)
+    npt.assert_almost_equal(np.ma.masked_invalid(iso_ps[:,:,1:]).mask.sum(), 0.)
 
 def test_isotropic_cs():
     """Test isotropic cross spectrum"""
@@ -632,14 +634,6 @@ def test_isotropic_cs():
                     dims=['y','x'], coords={'y':range(N),'x':range(N)})
     da2 = xr.DataArray(np.random.rand(N,N),
                     dims=['y','x'], coords={'y':range(N),'x':range(N)})
-
-    # dim = da.dims
-    # delta_x = []
-    # for d in dim:
-    #     coord = da[d]
-    #     diff = np.diff(coord)
-    #     delta = diff[0]
-    #     delta_x.append(delta)
 
     iso_cs = xrft.isotropic_crossspectrum(da, da2, window=True)
     npt.assert_almost_equal(np.ma.masked_invalid(iso_cs[1:]).mask.sum(), 0.)
@@ -650,18 +644,28 @@ def test_isotropic_cs():
     with pytest.raises(ValueError):
         xrft.isotropic_crossspectrum(da, da2)
 
-    da = xr.DataArray(np.random.rand(5,20,30),
-                  dims=['time', 'y', 'x'],
-                  coords={'time': np.arange(5), 'y': np.arange(20),
-                          'x': np.arange(30)}).chunk({'time':1})
-    da2 = xr.DataArray(np.random.rand(5,20,30),
-                  dims=['time', 'y', 'x'],
-                  coords={'time': np.arange(5), 'y': np.arange(20),
-                          'x': np.arange(30)}).chunk({'time':1})
+    da = xr.DataArray(np.random.rand(2,5,5,16,32),
+                  dims=['time','zz','z','y', 'x'],
+                  coords={'time': np.array(['2019-04-18', '2019-04-19'],
+                                          dtype='datetime64'),
+                         'zz': np.arange(5), 'z': np.arange(5),
+                         'y': np.arange(16), 'x': np.arange(32)})
+    da2 = xr.DataArray(np.random.rand(2,5,5,16,32),
+                  dims=['time','zz','z','y', 'x'],
+                  coords={'time': np.array(['2019-04-18', '2019-04-19'],
+                                          dtype='datetime64'),
+                         'zz': np.arange(5), 'z': np.arange(5),
+                         'y': np.arange(16), 'x': np.arange(32)})
+    with pytest.raises(ValueError):
+        xrft.isotropic_crossspectrum(da, da2, dim=['y','x'])
+    da = da[:,0,:,:,:].drop(['zz'])
+    da2 = da2[:,0,:,:,:].drop(['zz'])
+    with pytest.raises(ValueError):
+        xrft.isotropic_crossspectrum(da, da2, dim=['z','y','x'])
 
     iso_cs = xrft.isotropic_crossspectrum(da, da2, dim=['y','x'],
                                          window=True).values
-    npt.assert_almost_equal(np.ma.masked_invalid(iso_cs[:,1:]).mask.sum(), 0.)
+    npt.assert_almost_equal(np.ma.masked_invalid(iso_cs[:,:,1:]).mask.sum(), 0.)
 
 def test_spacing_tol(test_data_1d):
     da = test_data_1d
