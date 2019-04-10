@@ -573,14 +573,10 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, detrend=None,
     return cp
 
 
-def _azimuthal_avg(k, l, f, fftdim, N, nfactor):
-    """
-    Takes the azimuthal average of a given field.
-    """
+def _azimuthal_wvnum(k, l, N, nfactor):
     k = k.values
     l = l.values
-    kk, ll = np.meshgrid(k, l)
-    K = np.sqrt(kk**2 + ll**2)
+    K = np.sqrt(k[np.newaxis,:]**2 + l[:,np.newaxis]**2)
     nbins = int(N/nfactor)
     if k.max() > l.max():
         ki = np.linspace(0., l.max(), nbins)
@@ -592,16 +588,17 @@ def _azimuthal_avg(k, l, f, fftdim, N, nfactor):
 
     kr = np.bincount(kidx, weights=K.ravel()) / area
 
-    if f.ndim == 2:
-        iso_f = np.ma.masked_invalid(np.bincount(kidx,
-                                    weights=f.data.ravel())
-                                    / area) * kr
-    else:
-        raise ValueError('The data has too many or few dimensions. '
-                        'The input should only have the two dimensions '
-                        'to take the azimuthal averaging over.')
+    return kidx, area, kr
 
-    return kr, iso_f
+def _azimuthal_avg(kidx, f, area, kr):
+    """
+    Takes the azimuthal average of a given field.
+    """
+
+    iso_f = np.ma.masked_invalid(np.bincount(kidx, weights=f)
+                                / area) * kr
+
+    return iso_f
 
 def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
                            detrend=None, density=True, window=False, nfactor=4):
@@ -661,8 +658,25 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
 
     axis_num = [da.get_axis_num(d) for d in dim]
     N = [da.shape[n] for n in axis_num]
-    kr, iso_ps = _azimuthal_avg(k, l, ps, fftdim,
-                                np.asarray(N).min(), nfactor)
+    M = [da.shape[n] for n in [da.get_axis_num(d) for d in da.dims] if n not in axis_num]
+    shape = M.copy()
+
+    kidx, area, kr = _azimuthal_wvnum(k, l, np.asarray(N).min(), nfactor)
+    M.append(len(kr))
+    shape.append(np.prod(N))
+    f = ps.data.reshape(shape)
+    iso_ps = np.zeros(M)
+    if len(M) == 1:
+        iso_ps = _azimuthal_avg(kidx, f, area, kr)
+    elif len(M) == 2:
+        for j in range(M[0]):
+            iso_ps[j] = _azimuthal_avg(kidx, f[j], area, kr)
+    elif len(M) == 3:
+        for j in range(M[0]):
+            for i in range(M[1]):
+                iso_ps[j,i] = _azimuthal_avg(kidx, f[j,i], area, kr)
+    else:
+        raise ValueError("Arrays with more than 4 dimensions is not supported.")
 
     k_coords = {'freq_r': kr}
 
@@ -742,8 +756,25 @@ def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
 
     axis_num = [da1.get_axis_num(d) for d in dim]
     N = [da1.shape[n] for n in axis_num]
-    kr, iso_cs = _azimuthal_avg(k, l, cs, fftdim,
-                                np.asarray(N).min(), nfactor)
+    M = [da1.shape[n] for n in [da1.get_axis_num(d) for d in da1.dims] if n not in axis_num]
+    shape = M.copy()
+
+    kidx, area, kr = _azimuthal_wvnum(k, l, np.asarray(N).min(), nfactor)
+    M.append(len(kr))
+    shape.append(np.prod(N))
+    f = cs.data.reshape(shape)
+    iso_cs = np.zeros(M)
+    if len(M) == 1:
+        iso_cs = _azimuthal_avg(kidx, f, area, kr)
+    elif len(M) == 2:
+        for j in range(M[0]):
+            iso_cs[j] = _azimuthal_avg(kidx, f[j], area, kr)
+    elif len(M) == 3:
+        for j in range(M[0]):
+            for i in range(M[1]):
+                iso_cs[j,i] = _azimuthal_avg(kidx, f[j,i], area, kr)
+    else:
+        raise ValueError("Arrays with more than 4 dimensions is not supported.")
 
     k_coords = {'freq_r': kr}
 
