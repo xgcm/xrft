@@ -9,7 +9,7 @@ AUTHOR = 'xrft Developers'
 AUTHOR_EMAIL = 'takaya@ldeo.columbia.edu'
 URL = 'https://github.com/xgcm/xrft'
 CLASSIFIERS = [
-    'Development Status :: 3 - Beta',
+    'Development Status :: 4 - Beta',
     'License :: OSI Approved :: Apache Software License',
     'Operating System :: OS Independent',
     'Intended Audience :: Science/Research',
