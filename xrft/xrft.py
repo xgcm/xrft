@@ -659,7 +659,7 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
     axis_num = [da.get_axis_num(d) for d in dim]
     N = [da.shape[n] for n in axis_num]
     M = [da.shape[n] for n in [da.get_axis_num(d) for d in da.dims] if n not in axis_num]
-    shape = M.copy()
+    shape = list(M)
 
     kidx, area, kr = _azimuthal_wvnum(k, l, np.asarray(N).min(), nfactor)
     M.append(len(kr))
@@ -757,7 +757,7 @@ def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
     axis_num = [da1.get_axis_num(d) for d in dim]
     N = [da1.shape[n] for n in axis_num]
     M = [da1.shape[n] for n in [da1.get_axis_num(d) for d in da1.dims] if n not in axis_num]
-    shape = M.copy()
+    shape = list(M)
 
     kidx, area, kr = _azimuthal_wvnum(k, l, np.asarray(N).min(), nfactor)
     M.append(len(kr))
