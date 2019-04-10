@@ -747,7 +747,7 @@ def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
 
     k_coords = {'freq_r': kr}
 
-    newdims = [d for d in da.dims if d not in dim]
+    newdims = [d for d in da1.dims if d not in dim]
     newdims.append('freq_r')
 
     newcoords = {}
