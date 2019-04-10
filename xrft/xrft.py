@@ -511,7 +511,7 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, detrend=None,
     .. math::
         da1' = da1 - \overline{da1};\ \ da2' = da2 - \overline{da2}
     .. math::
-        cp = \text{Arg} \mathbb{F}(da1')^* {\mathbb{F}(da2')}
+        cp = \text{Arg} [\mathbb{F}(da1')^*, \mathbb{F}(da2')]
 
     Parameters
     ----------
@@ -624,7 +624,8 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
     azimuthal average.
 
     .. math::
-        iso_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
+        \text{iso}_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
+
     where :math:`N` is the number of azimuthal bins.
 
     Parameters
@@ -706,7 +707,8 @@ def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
     azimuthal average.
 
     .. math::
-        iso_{cs} = k_r N^{-1} \sum_{N} (\mathbb{F}(da1') {\mathbb{F}(da2')}^*)
+        \text{iso}_{cs} = k_r N^{-1} \sum_{N} (\mathbb{F}(da1') {\mathbb{F}(da2')}^*)
+
     where :math:`N` is the number of azimuthal bins.
 
     Parameters
