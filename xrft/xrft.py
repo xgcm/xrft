@@ -219,7 +219,7 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     spacing_tol: float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
-    dim : list, optional
+    dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
     real : str, optional
@@ -252,6 +252,9 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     da, trans = _transpose(da, real)
     if dim is None:
         dim = list(da.dims)
+    else:
+        if isinstance(dim, str):
+            dim = [dim,]
     if real is not None and real not in dim:
         dim += [real]
 
@@ -371,7 +374,7 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detren
     spacing_tol: float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
-    dim : list, optional
+    dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
     real : str, optional
@@ -403,6 +406,9 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detren
 
     if dim is None:
         dim = list(da.dims)
+    else:
+        if isinstance(dim, str):
+            dim = [dim,]
     if real is not None and real not in dim:
         dim += [real]
 
@@ -446,7 +452,7 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
     spacing_tol: float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
-    dim : list, optional
+    dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
     shift : bool, optional
@@ -481,6 +487,10 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
         dim2 = da2.dims
         if dim != dim2:
             raise ValueError('The two datasets have different dimensions')
+    else:
+        if isinstance(dim, str):
+            dim = [dim,]
+            dim2 = [dim,]
 
     # the axes along which to take ffts
     axis_num = [da1.get_axis_num(d) for d in dim]
