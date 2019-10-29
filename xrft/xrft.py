@@ -203,19 +203,19 @@ def _transpose(da, real, trans=False):
     return da, trans
 
 
-def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
-        window=False, chunks_to_segments=False):
+def dft(da, direction='forward', spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
+        window=False, chunks_to_segments=False, prefix = 'freq_'):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
     specified dimensions.
-
     .. math::
         daft = \mathbb{F}(da - \overline{da})
-
     Parameters
     ----------
     da : `xarray.DataArray`
         The data to be transformed
+    direction : str, optional
+        direction of the fourier transform. Default is `forward`. Inverse fourier transform is obtained with `backward`
     spacing_tol: float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
@@ -238,12 +238,13 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         dim.
     chunks_to_segments : bool, optional
         Whether the data is chunked along the axis to take FFT.
-
+    prefix : str, optional
+        Prefix added to coordinate name.
     Returns
     -------
     daft : `xarray.DataArray`
         The output of the Fourier transformation, with appropriate dimensions.
-    """
+    """    
     # check for proper spacing tolerance input
     if not isinstance(spacing_tol, float):
         raise TypeError("Please provide a float argument")
@@ -270,10 +271,21 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     fft = _fft_module(da)
 
     if real is None:
-        fft_fn = fft.fftn
+        if direction=='forward':
+            fft_fn = fft.fftn
+        elif direction=='backward':
+            fft_fn = fft.ifftn
+        else:
+            raise ValueError("Unknown direction")
     else:
         shift = False
-        fft_fn = fft.rfftn
+        if direction=='forward':
+            fft_fn = fft.rfftn
+        elif direction=='backward':
+            fft_fn = fft.irfftn
+        else:
+            raise ValueError("Unknown direction")
+        
 
     if chunks_to_segments:
         da = _stack_chunks(da, dim)
@@ -285,6 +297,8 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
 
     # verify even spacing of input coordinates
     delta_x = []
+    shift_axes = [] # axes that will have to be ffftshifted prior to fft_fn
+    lag = []# lag of coordinates assuring forth and back coordinate compatibility
     for d in dim:
         coord = da[d]
         diff = np.diff(coord)
@@ -292,9 +306,21 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
             # convert to seconds so we get hertz
             diff = diff.astype('timedelta64[s]').astype('f8')
         delta = diff[0]
-        if not np.allclose(diff, diff[0], rtol=spacing_tol):
-            raise ValueError("Can't take Fourier transform because "
-                             "coodinate %s is not evenly spaced" % d)
+        if np.allclose(diff, diff[0], rtol=spacing_tol): # coordinates are ordered
+            lag.append(coord.data[len(coord.data)//2]) # lag of coordinates
+            if direction=='backward':
+                if np.abs(coord.data[len(coord.data)//2])<spacing_tol: # coordinates are correctly centered
+                    shift_axes.append(d)
+                else:
+                    raise ValueError("Can't take backward Fourier transform because "
+                                 "coordinate %s is not centered on zero frequency" % d)    
+        elif np.allclose(np.diff(np.fft.fftshift(coord)), diff[0], rtol=spacing_tol):#fftshift-ordered coordinates
+            lag.append(coord.data[0]) # lag of coordinate
+            if direction=='forward':
+                shift_axes.append(d)
+        else:
+            raise ValueError("Can't take Fourier transform because coordinate %s is not evenly spaced" % d)
+        
         delta_x.append(delta)
 
     # calculate frequencies from coordinates
@@ -318,22 +344,32 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         da = _apply_detrend(da, axis_num)
 
     if window:
-        da = _apply_window(da, dim)
-
-    f = fft_fn(da.data, axes=axis_num)
-
-    if shift:
-        f = fft.fftshift(f, axes=axis_num)
+        da = _apply_window(da, dim)   
+    
+    if direction=='backward':
+        f = fft_fn(np.fft.ifftshift(da.data, axes=da.get_axis_num(shift_axes)), axes=axis_num)
         k = [np.fft.fftshift(l) for l in k]
+        if not shift:
+            f = np.fft.ifftshift(f, axes=axis_num)
+            k = [np.fft.ifftshift(l) for l in k]
+    
+    if direction=='forward':
+        f = fft_fn(np.fft.fftshift(da.data, axes=da.get_axis_num(shift_axes)), axes=axis_num)
+        if shift:
+            f = np.fft.fftshift(f, axes=axis_num)
+            k = [np.fft.fftshift(l) for l in k] 
 
     # set up new coordinates for dataarray
-    prefix = 'freq_'
-    k_names = [prefix + d for d in dim]
+    k_names = [prefix + d if d[:len(prefix)]!=prefix else d[len(prefix):] for d in dim]
     k_coords = {key: val for (key,val) in zip(k_names, k)}
-
+    
+    phase = 1.
+    for (key, val),l in zip(k_coords.items(),lag):
+        phase = phase*xr.DataArray(np.exp(-1j*2.*np.pi*val*l), dims=key, coords={key:val}) # taking advantage of xarray automatic broacasting and ordered coordinates
+    
     newdims = list(da.dims)
     for anum, d in zip(axis_num, dim):
-        newdims[anum] = prefix + d
+        newdims[anum] = prefix + d if d[:len(prefix)]!=prefix else d[len(prefix):]
 
     newcoords = {}
     for d in newdims:
@@ -344,14 +380,25 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
 
     dk = [l[1] - l[0] for l in k]
     for this_dk, d in zip(dk, dim):
-        newcoords[prefix + d + '_spacing'] = this_dk
-
+        newcoords[str(prefix + d if d[:len(prefix)]!=prefix else d[len(prefix):])+ '_spacing'] = this_dk
+    
     daft = xr.DataArray(f, dims=newdims, coords=newcoords)
+    daft = daft*phase # Taking absolute phase into account
+    
     if trans:
-        enddims = [prefix + d for d in rawdims if d in dim]
+        enddims = [prefix + d if d[:len(prefix)]!=prefix else d[len(prefix):] for d in rawdims if d in dim] 
         return daft.transpose(*enddims)
     else:
         return daft
+
+    
+def idft(da, **kwargs):
+    """
+    Perform inverse discrete Fourier transform of xarray data-array `da` along the
+    specified dimensions. See dft for details
+    """
+    kwargs.update({'direction':'backward'})
+    return dft(da,**kwargs)
 
 
 def power_spectrum(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
