@@ -174,9 +174,15 @@ class TestDFTImag(object):
         window = np.hanning(N) * np.hanning(N)[:, np.newaxis]
         da_prime = (da - da.mean(dim=dim)).values
         npt.assert_almost_equal(ft.values, np.fft.fftn(da_prime*window))
+
+    def test_dim_dft(self):
+        N = 16
+        da = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
+                        coords={'x':range(N),'y':range(N)}
+                         )
         npt.assert_array_equal(xrft.dft(da, dim='y', shift=False).values,
-                        xrft.dft(da, dim=['y'], shift=False).values
-                        )
+                              xrft.dft(da, dim=['y'], shift=False).values
+                              )
         assert xrft.dft(da, dim='y').dims == ('x','freq_y')
 
     @pytest.mark.parametrize("dask", [False, True])
@@ -376,10 +382,6 @@ class TestSpectrum(object):
                                 density=False, detrend='constant')
         daft = xrft.dft(da, dim=['y'], real='x', detrend='constant', window=True)
         npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
-        npt.assert_array_equal(ps.values, xrft.power_spectrum(da, dim='y',
-                                                              real='x', window=True,
-                                                              density=False,
-                                                              detrend='constant'))
 
         ### Normalized
         ps = xrft.power_spectrum(da, dim=['y','x'], window=True, detrend='constant')
@@ -397,6 +399,21 @@ class TestSpectrum(object):
         daft = xrft.dft(da, dim=['y','x'], window=True, detrend='linear')
         npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
         npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
+
+    def test_ps_dim(self):
+        N = 16
+        da = xr.DataArray(np.random.rand(2,N,N), dims=['time','y','x'],
+                         coords={'time':np.array(['2019-04-18', '2019-04-19'],
+                                                dtype='datetime64'),
+                                'y':range(N),'x':range(N)}
+                         )
+        ps = xrft.power_spectrum(da, dim=['y'], real='x', window=True,
+                                density=False, detrend='constant')
+        npt.assert_array_equal(ps.values,
+                               xrft.power_spectrum(da, dim='y',
+                                                  real='x', window=True,
+                                                  density=False,
+                                                  detrend='constant').values)
 
     @pytest.mark.parametrize("dask", [False, True])
     def test_cross_spectrum(self, dask):
