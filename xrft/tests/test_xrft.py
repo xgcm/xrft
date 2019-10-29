@@ -400,21 +400,6 @@ class TestSpectrum(object):
         npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
         npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
-    def test_ps_dim(self):
-        N = 16
-        da = xr.DataArray(np.random.rand(2,N,N), dims=['time','y','x'],
-                         coords={'time':np.array(['2019-04-18', '2019-04-19'],
-                                                dtype='datetime64'),
-                                'y':range(N),'x':range(N)}
-                         )
-        ps = xrft.power_spectrum(da, dim=['y'], real='x', window=True,
-                                density=False, detrend='constant')
-        npt.assert_array_equal(ps.values,
-                               xrft.power_spectrum(da, dim='y',
-                                                  real='x', window=True,
-                                                  density=False,
-                                                  detrend='constant').values)
-
     @pytest.mark.parametrize("dask", [False, True])
     def test_cross_spectrum(self, dask):
         """Test the cross spectrum function"""
@@ -449,13 +434,37 @@ class TestSpectrum(object):
         test /= dk**2
         npt.assert_almost_equal(cs.values, test)
         npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.)
-        npt.assert_array_equal(xrft.cross_spectrum(da, da2, dim=['x'],
+
+    def test_spectrum_dim(self):
+        N = 16
+        da = xr.DataArray(np.random.rand(2,N,N), dims=['time','y','x'],
+                         coords={'time':np.array(['2019-04-18', '2019-04-19'],
+                                                dtype='datetime64'),
+                                'y':range(N),'x':range(N)}
+                         )
+
+        ps = xrft.power_spectrum(da, dim='y', real='x', window=True,
+                                density=False, detrend='constant')
+        npt.assert_array_equal(ps.values,
+                               xrft.power_spectrum(da, dim=['y'],
+                                                  real='x', window=True,
+                                                  density=False,
+                                                  detrend='constant').values)
+
+        da2 = xr.DataArray(np.random.rand(2,N,N), dims=['time','y','x'],
+                          coords={'time':np.array(['2019-04-18', '2019-04-19'],
+                                                 dtype='datetime64'),
+                                  'y':range(N), 'x':range(N)})
+        cs = xrft.cross_spectrum(da, da2, dim='y',
+                                shift=True, window=True,
+                                detrend='constant')
+        npt.assert_array_equal(xrft.cross_spectrum(da, da2, dim=['y'],
                                                   shift=True, window=True,
-                                                  detrend='constant'),
-                               xrft.cross_spectrum(da, da2, dim='x',
-                                                  shift=True, window=True,
-                                                  detrend='constant')
+                                                  detrend='constant').values,
+                              cs.values
                               )
+        assert ps.dims == ('time','freq_y','freq_x')
+        assert cs.dims == ('time','freq_y','x')
 
 
 class TestCrossPhase(object):
