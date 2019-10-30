@@ -175,6 +175,16 @@ class TestDFTImag(object):
         da_prime = (da - da.mean(dim=dim)).values
         npt.assert_almost_equal(ft.values, np.fft.fftn(da_prime*window))
 
+    def test_dim_dft(self):
+        N = 16
+        da = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
+                        coords={'x':range(N),'y':range(N)}
+                         )
+        npt.assert_array_equal(xrft.dft(da, dim='y', shift=False).values,
+                              xrft.dft(da, dim=['y'], shift=False).values
+                              )
+        assert xrft.dft(da, dim='y').dims == ('x','freq_y')
+
     @pytest.mark.parametrize("dask", [False, True])
     def test_dft_3d_dask(self, dask):
         """Test the discrete Fourier transform on 3D dask array data"""
@@ -193,13 +203,19 @@ class TestDFTImag(object):
             da = da.chunk({'x': 1})
             with pytest.raises(ValueError):
                 xrft.dft(da, dim=['x'])
+            with pytest.raises(ValueError):
+                xrft.dft(da, dim='x')
 
             da = da.chunk({'time':N})
             daft = xrft.dft(da, dim=['time'],
-                            shift=False, detrend='linear')
+                           shift=False, detrend='linear')
             da_prime = sps.detrend(da, axis=0)
             npt.assert_almost_equal(daft.values,
                                    np.fft.fftn(da_prime, axes=[0])
+                                   )
+            npt.assert_array_equal(daft.values,
+                                   xrft.dft(da, dim='time',
+                                            shift=False, detrend='linear')
                                    )
 
     def test_dft_4d(self):
@@ -418,6 +434,37 @@ class TestSpectrum(object):
         test /= dk**2
         npt.assert_almost_equal(cs.values, test)
         npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.)
+
+    def test_spectrum_dim(self):
+        N = 16
+        da = xr.DataArray(np.random.rand(2,N,N), dims=['time','y','x'],
+                         coords={'time':np.array(['2019-04-18', '2019-04-19'],
+                                                dtype='datetime64'),
+                                'y':range(N),'x':range(N)}
+                         )
+
+        ps = xrft.power_spectrum(da, dim='y', real='x', window=True,
+                                density=False, detrend='constant')
+        npt.assert_array_equal(ps.values,
+                               xrft.power_spectrum(da, dim=['y'],
+                                                  real='x', window=True,
+                                                  density=False,
+                                                  detrend='constant').values)
+
+        da2 = xr.DataArray(np.random.rand(2,N,N), dims=['time','y','x'],
+                          coords={'time':np.array(['2019-04-18', '2019-04-19'],
+                                                 dtype='datetime64'),
+                                  'y':range(N), 'x':range(N)})
+        cs = xrft.cross_spectrum(da, da2, dim='y',
+                                shift=True, window=True,
+                                detrend='constant')
+        npt.assert_array_equal(xrft.cross_spectrum(da, da2, dim=['y'],
+                                                  shift=True, window=True,
+                                                  detrend='constant').values,
+                              cs.values
+                              )
+        assert ps.dims == ('time','freq_y','freq_x')
+        assert cs.dims == ('time','freq_y','x')
 
 
 class TestCrossPhase(object):
