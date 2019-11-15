@@ -1,23 +1,26 @@
-import warnings
 import operator
-import functools as ft
 from functools import reduce
 
-import numpy as np
-import xarray as xr
-import pandas as pd
-
 import dask.array as dsar
+import numpy as np
+import pandas as pd
+import scipy.linalg as spl
+import scipy.signal as sps
+import xarray as xr
 from dask import delayed
 
-import scipy.signal as sps
-import scipy.linalg as spl
+__all__ = [
+    "detrendn",
+    "detrend_wrap",
+    "dft",
+    "power_spectrum",
+    "cross_spectrum",
+    "cross_phase",
+    "isotropic_powerspectrum",
+    "isotropic_crossspectrum",
+    "fit_loglog",
+]
 
-
-__all__ = ["detrendn", "detrend_wrap",
-           "dft","power_spectrum", "cross_spectrum", "cross_phase",
-           "isotropic_powerspectrum", "isotropic_crossspectrum",
-           "fit_loglog"]
 
 def _fft_module(da):
     if da.chunks:
@@ -25,27 +28,35 @@ def _fft_module(da):
     else:
         return np.fft
 
-def _apply_window(da, dims, window_type='hanning'):
+
+def _apply_window(da, dims, window_type="hanning"):
     """Creating windows in dimensions dims."""
 
-    if window_type not in ['hanning']:
+    if window_type not in ["hanning"]:
         raise NotImplementedError("Only hanning window is supported for now.")
 
     numpy_win_func = getattr(np, window_type)
 
     if da.chunks:
+
         def dask_win_func(n):
             return dsar.from_delayed(
-                delayed(numpy_win_func, pure=True)(n),
-                (n,), float)
+                delayed(numpy_win_func, pure=True)(n), (n,), float
+            )
+
         win_func = dask_win_func
     else:
         win_func = numpy_win_func
 
-    windows = [xr.DataArray(win_func(len(da[d])),
-               dims=da[d].dims, coords=da[d].coords) for d in dims]
+    windows = [
+        xr.DataArray(
+            win_func(len(da[d])), dims=da[d].dims, coords=da[d].coords
+        )
+        for d in dims
+    ]
 
     return da * reduce(operator.mul, windows[::-1])
+
 
 def detrendn(da, axes=None):
     """
@@ -69,37 +80,40 @@ def detrendn(da, axes=None):
             M.append(da.shape[n])
 
     if len(N) == 2:
-        G = np.ones((N[0]*N[1],3))
+        G = np.ones((N[0] * N[1], 3))
         for i in range(N[0]):
-            G[N[1]*i:N[1]*i+N[1], 1] = i+1
-            G[N[1]*i:N[1]*i+N[1], 2] = np.arange(1, N[1]+1)
+            G[N[1] * i : N[1] * i + N[1], 1] = i + 1
+            G[N[1] * i : N[1] * i + N[1], 2] = np.arange(1, N[1] + 1)
         if type(da) == xr.DataArray:
-            d_obs = np.reshape(da.copy().values, (N[0]*N[1],1))
+            d_obs = np.reshape(da.copy().values, (N[0] * N[1], 1))
         else:
-            d_obs = np.reshape(da.copy(), (N[0]*N[1],1))
+            d_obs = np.reshape(da.copy(), (N[0] * N[1], 1))
     elif len(N) == 3:
         if type(da) == xr.DataArray:
             if da.ndim > 3:
-                raise NotImplementedError("Cubic detrend is not implemented "
-                                         "for 4-dimensional `xarray.DataArray`."
-                                         " We suggest converting it to "
-                                         "`dask.array`.")
+                raise NotImplementedError(
+                    "Cubic detrend is not implemented "
+                    "for 4-dimensional `xarray.DataArray`."
+                    " We suggest converting it to "
+                    "`dask.array`."
+                )
             else:
-                d_obs = np.reshape(da.copy().values, (N[0]*N[1]*N[2],1))
+                d_obs = np.reshape(da.copy().values, (N[0] * N[1] * N[2], 1))
         else:
-            d_obs = np.reshape(da.copy(), (N[0]*N[1]*N[2],1))
+            d_obs = np.reshape(da.copy(), (N[0] * N[1] * N[2], 1))
 
-        G = np.ones((N[0]*N[1]*N[2],4))
-        G[:,3] = np.tile(np.arange(1,N[2]+1), N[0]*N[1])
-        ys = np.zeros(N[1]*N[2])
+        G = np.ones((N[0] * N[1] * N[2], 4))
+        G[:, 3] = np.tile(np.arange(1, N[2] + 1), N[0] * N[1])
+        ys = np.zeros(N[1] * N[2])
         for i in range(N[1]):
-            ys[N[2]*i:N[2]*i+N[2]] = i+1
-        G[:,2] = np.tile(ys, N[0])
+            ys[N[2] * i : N[2] * i + N[2]] = i + 1
+        G[:, 2] = np.tile(ys, N[0])
         for i in range(N[0]):
-            G[len(ys)*i:len(ys)*i+len(ys),1] = i+1
+            G[len(ys) * i : len(ys) * i + len(ys), 1] = i + 1
     else:
-        raise NotImplementedError("Detrending over more than 4 axes is "
-                                 "not implemented.")
+        raise NotImplementedError(
+            "Detrending over more than 4 axes is " "not implemented."
+        )
 
     m_est = np.dot(np.dot(spl.inv(np.dot(G.T, G)), G.T), d_obs)
     d_est = np.dot(G, m_est)
@@ -108,14 +122,17 @@ def detrendn(da, axes=None):
 
     return da - lin_trend
 
+
 def detrend_wrap(detrend_func):
     """
     Wrapper function for `xrft.detrendn`.
     """
+
     def func(a, axes=None):
         if len(axes) > 3:
-            raise ValueError("Detrending is only supported up to "
-                            "3 dimensions.")
+            raise ValueError(
+                "Detrending is only supported up to " "3 dimensions."
+            )
         if axes is None:
             axes = tuple(range(a.ndim))
         else:
@@ -124,41 +141,47 @@ def detrend_wrap(detrend_func):
 
         for each_axis in axes:
             if len(a.chunks[each_axis]) != 1:
-                raise ValueError('The axis along the detrending is upon '
-                                'cannot be chunked.')
+                raise ValueError(
+                    "The axis along the detrending is upon "
+                    "cannot be chunked."
+                )
 
         if len(axes) == 1:
-            return dsar.map_blocks(sps.detrend, a, axis=axes[0],
-                                   chunks=a.chunks, dtype=a.dtype
-                                  )
+            return dsar.map_blocks(
+                sps.detrend, a, axis=axes[0], chunks=a.chunks, dtype=a.dtype
+            )
         else:
             for each_axis in range(a.ndim):
                 if each_axis not in axes:
                     if len(a.chunks[each_axis]) != a.shape[each_axis]:
-                        raise ValueError("The axes other than ones to detrend "
-                                        "over should have a chunk length of 1.")
-            return dsar.map_blocks(detrend_func, a, axes,
-                                   chunks=a.chunks, dtype=a.dtype
-                                  )
+                        raise ValueError(
+                            "The axes other than ones to detrend "
+                            "over should have a chunk length of 1."
+                        )
+            return dsar.map_blocks(
+                detrend_func, a, axes, chunks=a.chunks, dtype=a.dtype
+            )
 
     return func
+
 
 def _apply_detrend(da, axis_num):
     """Wrapper function for applying detrending"""
     if da.chunks:
         func = detrend_wrap(detrendn)
-        da = xr.DataArray(func(da.data, axes=axis_num),
-                         dims=da.dims, coords=da.coords)
+        da = xr.DataArray(
+            func(da.data, axes=axis_num), dims=da.dims, coords=da.coords
+        )
     else:
         if da.ndim == 1:
-            da = xr.DataArray(sps.detrend(da),
-                             dims=da.dims, coords=da.coords)
+            da = xr.DataArray(sps.detrend(da), dims=da.dims, coords=da.coords)
         else:
             da = detrendn(da, axes=axis_num)
 
     return da
 
-def _stack_chunks(da, dim, suffix='_segment'):
+
+def _stack_chunks(da, dim, suffix="_segment"):
     """Reshape a DataArray so there is only one chunk along dimension `dim`"""
     data = da.data
     attr = da.attrs
@@ -172,29 +195,33 @@ def _stack_chunks(da, dim, suffix='_segment'):
                 raise ValueError("Chunk lengths need to be the same.")
             n = len(da[d])
             chunklen = da.chunks[axis_num][0]
-            coord_rs = da[d].data.reshape((int(n/chunklen),int(chunklen)))
+            coord_rs = da[d].data.reshape((int(n / chunklen), int(chunklen)))
             newdims.append(d + suffix)
             newdims.append(d)
-            newshape.append(int(n/chunklen))
+            newshape.append(int(n / chunklen))
             newshape.append(int(chunklen))
-            newcoords[d+suffix] = range(int(n/chunklen))
+            newcoords[d + suffix] = range(int(n / chunklen))
             newcoords[d] = coord_rs[0]
         else:
             newdims.append(d)
             newshape.append(len(da[d]))
             newcoords[d] = da[d].data
 
-    da = xr.DataArray(data.reshape(newshape), dims=newdims, coords=newcoords,
-                     attrs=attr)
+    da = xr.DataArray(
+        data.reshape(newshape), dims=newdims, coords=newcoords, attrs=attr
+    )
 
     return da
+
 
 def _transpose(da, real, trans=False):
     if real is not None:
         transdim = list(da.dims)
         if real not in transdim:
-            raise ValueError("The dimension along real FT is taken must "
-                            "be one of the existing dimensions.")
+            raise ValueError(
+                "The dimension along real FT is taken must "
+                "be one of the existing dimensions."
+            )
         elif real != transdim[-1]:
             transdim.remove(real)
             transdim += [real]
@@ -203,8 +230,32 @@ def _transpose(da, real, trans=False):
     return da, trans
 
 
-def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
-        window=False, chunks_to_segments=False):
+def _copy_coords_from_to(xro_from, xro_to):
+    """Copy coords from one xr object to another."""
+    if isinstance(xro_from, xr.DataArray) and isinstance(xro_to, xr.DataArray):
+        for c in xro_from.coords:
+            xro_to[c] = xro_from[c]
+        return xro_to
+    elif isinstance(xro_from, xr.Dataset) and isinstance(xro_to, xr.Dataset):
+        xro_to = xro_to.assign_coords(**xro_from.coords)
+    else:
+        raise ValueError(
+            f"xro_from and xro_to must be both either xr.DataArray or",
+            f"xr.Dataset, found {type(xro_from)} {type(xro_to)}.",
+        )
+    return xro_to
+
+
+def dft(
+    da,
+    spacing_tol=1e-3,
+    dim=None,
+    real=None,
+    shift=True,
+    detrend=None,
+    window=False,
+    chunks_to_segments=False,
+):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
     specified dimensions.
@@ -254,7 +305,7 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         dim = list(da.dims)
     else:
         if isinstance(dim, str):
-            dim = [dim,]
+            dim = [dim]
     if real is not None and real not in dim:
         dim += [real]
 
@@ -262,13 +313,15 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         if np.isnan(da.values).any():
             raise ValueError("Data cannot take Nans")
     else:
-        if detrend=='linear' and len(dim)>1:
+        if detrend == "linear" and len(dim) > 1:
             for d in da.dims:
                 a_n = da.get_axis_num(d)
-                if d not in dim and da.chunks[a_n][0]>1:
-                    raise ValueError("Linear detrending utilizes the `dask.map_blocks` "
-                                    "API so the dimensions not being detrended "
-                                    "must have the chunk length of 1.")
+                if d not in dim and da.chunks[a_n][0] > 1:
+                    raise ValueError(
+                        "Linear detrending utilizes the `dask.map_blocks` "
+                        "API so the dimensions not being detrended "
+                        "must have the chunk length of 1."
+                    )
 
     fft = _fft_module(da)
 
@@ -293,31 +346,33 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         diff = np.diff(coord)
         if pd.api.types.is_timedelta64_dtype(diff):
             # convert to seconds so we get hertz
-            diff = diff.astype('timedelta64[s]').astype('f8')
+            diff = diff.astype("timedelta64[s]").astype("f8")
         delta = diff[0]
         if not np.allclose(diff, diff[0], rtol=spacing_tol):
-            raise ValueError("Can't take Fourier transform because "
-                             "coodinate %s is not evenly spaced" % d)
+            raise ValueError(
+                "Can't take Fourier transform because "
+                "coodinate %s is not evenly spaced" % d
+            )
         delta_x.append(delta)
 
     # calculate frequencies from coordinates
     # coordinates are always loaded eagerly, so we use numpy
     if real is None:
-        fftfreq = [np.fft.fftfreq]*len(N)
+        fftfreq = [np.fft.fftfreq] * len(N)
     else:
         # Discard negative frequencies from transform along last axis to be
         # consistent with np.fft.rfftn
-        fftfreq = [np.fft.fftfreq]*(len(N)-1)
+        fftfreq = [np.fft.fftfreq] * (len(N) - 1)
         fftfreq.append(np.fft.rfftfreq)
 
     k = [fftfreq(Nx, dx) for (fftfreq, Nx, dx) in zip(fftfreq, N, delta_x)]
 
-    if detrend == 'constant':
+    if detrend == "constant":
         da = da - da.mean(dim=dim)
-    elif detrend == 'linear':
+    elif detrend == "linear":
         for d in da.dims:
             if d not in dim:
-                da = da.chunk({d:1})
+                da = da.chunk({d: 1})
         da = _apply_detrend(da, axis_num)
 
     if window:
@@ -330,9 +385,9 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         k = [np.fft.fftshift(l) for l in k]
 
     # set up new coordinates for dataarray
-    prefix = 'freq_'
+    prefix = "freq_"
     k_names = [prefix + d for d in dim]
-    k_coords = {key: val for (key,val) in zip(k_names, k)}
+    k_coords = {key: val for (key, val) in zip(k_names, k)}
 
     newdims = list(da.dims)
     for anum, d in zip(axis_num, dim):
@@ -347,9 +402,17 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
 
     dk = [l[1] - l[0] for l in k]
     for this_dk, d in zip(dk, dim):
-        newcoords[prefix + d + '_spacing'] = this_dk
+        newcoords[prefix + d + "_spacing"] = this_dk
 
     daft = xr.DataArray(f, dims=newdims, coords=newcoords)
+
+    # ensure to keep coords, also multi-dim coords, if input da has coords
+    if len(da.coords) > 1:
+        if (da.drop(dim).coords != daft.coords) and (
+            len(da.drop(dim).coords) > 0
+        ):
+            daft = _copy_coords_from_to(da.drop(dim), daft)
+
     if trans:
         enddims = [prefix + d for d in rawdims if d in dim]
         return daft.transpose(*enddims)
@@ -357,8 +420,17 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         return daft
 
 
-def power_spectrum(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
-                   window=False, chunks_to_segments=False, density=True):
+def power_spectrum(
+    da,
+    spacing_tol=1e-3,
+    dim=None,
+    real=None,
+    shift=True,
+    detrend=None,
+    window=False,
+    chunks_to_segments=False,
+    density=True,
+):
     """
     Calculates the power spectrum of da.
 
@@ -400,15 +472,22 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detren
         Two-dimensional power spectrum
     """
 
-    daft = dft(da, spacing_tol,
-              dim=dim, real=real, shift=shift, detrend=detrend, window=window,
-              chunks_to_segments=chunks_to_segments)
+    daft = dft(
+        da,
+        spacing_tol,
+        dim=dim,
+        real=real,
+        shift=shift,
+        detrend=detrend,
+        window=window,
+        chunks_to_segments=chunks_to_segments,
+    )
 
     if dim is None:
         dim = list(da.dims)
     else:
         if isinstance(dim, str):
-            dim = [dim,]
+            dim = [dim]
     if real is not None and real not in dim:
         dim += [real]
 
@@ -427,14 +506,22 @@ def _power_spectrum(daft, dim, N, density):
     if density:
         ps /= (np.asarray(N).prod()) ** 2
         for i in dim:
-            ps /= daft['freq_' + i + '_spacing']
+            ps /= daft["freq_" + i + "_spacing"]
 
     return ps
 
 
-def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
-                  shift=True, detrend=None, window=False,
-                  chunks_to_segments=False, density=True):
+def cross_spectrum(
+    da1,
+    da2,
+    spacing_tol=1e-3,
+    dim=None,
+    shift=True,
+    detrend=None,
+    window=False,
+    chunks_to_segments=False,
+    density=True,
+):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -475,22 +562,34 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
         Two-dimensional cross spectrum
     """
 
-    daft1 = dft(da1, spacing_tol,
-               dim=dim, shift=shift, detrend=detrend, window=window,
-               chunks_to_segments=chunks_to_segments)
-    daft2 = dft(da2, spacing_tol,
-               dim=dim, shift=shift, detrend=detrend, window=window,
-               chunks_to_segments=chunks_to_segments)
+    daft1 = dft(
+        da1,
+        spacing_tol,
+        dim=dim,
+        shift=shift,
+        detrend=detrend,
+        window=window,
+        chunks_to_segments=chunks_to_segments,
+    )
+    daft2 = dft(
+        da2,
+        spacing_tol,
+        dim=dim,
+        shift=shift,
+        detrend=detrend,
+        window=window,
+        chunks_to_segments=chunks_to_segments,
+    )
 
     if dim is None:
         dim = da1.dims
         dim2 = da2.dims
         if dim != dim2:
-            raise ValueError('The two datasets have different dimensions')
+            raise ValueError("The two datasets have different dimensions")
     else:
         if isinstance(dim, str):
-            dim = [dim,]
-            dim2 = [dim,]
+            dim = [dim]
+            dim2 = [dim]
 
     # the axes along which to take ffts
     axis_num = [da1.get_axis_num(d) for d in dim]
@@ -504,15 +603,22 @@ def _cross_spectrum(daft1, daft2, dim, N, density):
     cs = (daft1 * np.conj(daft2)).real
 
     if density:
-        cs /= (np.asarray(N).prod())**2
+        cs /= (np.asarray(N).prod()) ** 2
         for i in dim:
-            cs /= daft1['freq_' + i + '_spacing']
+            cs /= daft1["freq_" + i + "_spacing"]
 
     return cs
 
 
-def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, detrend=None,
-                window=False, chunks_to_segments=False):
+def cross_phase(
+    da1,
+    da2,
+    spacing_tol=1e-3,
+    dim=None,
+    detrend=None,
+    window=False,
+    chunks_to_segments=False,
+):
     """
     Calculates the cross-phase between da1 and da2.
 
@@ -557,25 +663,47 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, detrend=None,
         dim = da1.dims
         dim2 = da2.dims
         if dim != dim2:
-            raise ValueError('The two datasets have different dimensions')
+            raise ValueError("The two datasets have different dimensions")
     elif not isinstance(dim, list):
         dim = [dim]
-    if len(dim)>1:
-        raise ValueError('Cross phase calculation should only be done along '
-                        'a single dimension.')
+    if len(dim) > 1:
+        raise ValueError(
+            "Cross phase calculation should only be done along "
+            "a single dimension."
+        )
 
-    daft1 = dft(da1, spacing_tol,
-                dim=dim, real=dim[0], shift=False, detrend=detrend,
-                window=window, chunks_to_segments=chunks_to_segments)
-    daft2 = dft(da2, spacing_tol,
-                dim=dim, real=dim[0], shift=False, detrend=detrend,
-                window=window, chunks_to_segments=chunks_to_segments)
+    daft1 = dft(
+        da1,
+        spacing_tol,
+        dim=dim,
+        real=dim[0],
+        shift=False,
+        detrend=detrend,
+        window=window,
+        chunks_to_segments=chunks_to_segments,
+    )
+    daft2 = dft(
+        da2,
+        spacing_tol,
+        dim=dim,
+        real=dim[0],
+        shift=False,
+        detrend=detrend,
+        window=window,
+        chunks_to_segments=chunks_to_segments,
+    )
 
     if daft1.chunks and daft2.chunks:
-        _cross_phase = lambda a, b: dsar.angle(a * dsar.conj(b))
+
+        def _cross_phase(a, b):
+            return dsar.angle(a * dsar.conj(b))
+
     else:
-        _cross_phase = lambda a, b: np.angle(a * np.conj(b))
-    cp = xr.apply_ufunc(_cross_phase, daft1, daft2, dask='allowed')
+
+        def _cross_phase(a, b):
+            return np.angle(a * np.conj(b))
+
+    cp = xr.apply_ufunc(_cross_phase, daft1, daft2, dask="allowed")
 
     if da1.name and da2.name:
         cp.name = "{}_{}_phase".format(da1.name, da2.name)
@@ -586,12 +714,12 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, detrend=None,
 def _azimuthal_wvnum(k, l, N, nfactor):
     k = k.values
     l = l.values
-    K = np.sqrt(k[np.newaxis,:]**2 + l[:,np.newaxis]**2)
-    nbins = int(N/nfactor)
+    K = np.sqrt(k[np.newaxis, :] ** 2 + l[:, np.newaxis] ** 2)
+    nbins = int(N / nfactor)
     if k.max() > l.max():
-        ki = np.linspace(0., l.max(), nbins)
+        ki = np.linspace(0.0, l.max(), nbins)
     else:
-        ki = np.linspace(0., k.max(), nbins)
+        ki = np.linspace(0.0, k.max(), nbins)
 
     kidx = np.digitize(np.ravel(K), ki)
     area = np.bincount(kidx)
@@ -600,15 +728,16 @@ def _azimuthal_wvnum(k, l, N, nfactor):
 
     return kidx, area, kr
 
+
 def _azimuthal_avg(kidx, f, area, kr):
     """
     Takes the azimuthal average of a given field.
     """
 
-    iso_f = np.ma.masked_invalid(np.bincount(kidx, weights=f)
-                                / area) * kr
+    iso_f = np.ma.masked_invalid(np.bincount(kidx, weights=f) / area) * kr
 
     return iso_f
+
 
 def _azi_wrapper(M, kidx, f, area, kr):
     iso = np.zeros(M)
@@ -620,14 +749,25 @@ def _azi_wrapper(M, kidx, f, area, kr):
     elif len(M) == 3:
         for j in range(M[0]):
             for i in range(M[1]):
-                iso[j,i] = _azimuthal_avg(kidx, f[j,i], area, kr)
+                iso[j, i] = _azimuthal_avg(kidx, f[j, i], area, kr)
     else:
-        raise ValueError("Arrays with more than 4 dimensions are not supported.")
+        raise ValueError(
+            "Arrays with more than 4 dimensions are not supported."
+        )
 
     return iso
 
-def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
-                           detrend=None, density=True, window=False, nfactor=4):
+
+def isotropic_powerspectrum(
+    da,
+    spacing_tol=1e-3,
+    dim=None,
+    shift=True,
+    detrend=None,
+    density=True,
+    window=False,
+    nfactor=4,
+):
     """
     Calculates the isotropic spectrum from the
     two-dimensional power spectrum by taking the
@@ -643,8 +783,8 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
     da : `xarray.DataArray`
         The data to be transformed
     spacing_tol: float, optional
-        Spacing tolerance. Fourier transform should not be applied to uneven grid but
-        this restriction can be relaxed with this setting. Use caution.
+        Spacing tolerance. Fourier transform should not be applied to uneven
+        grid but this restriction can be relaxed with this setting. Use caution.
     dim : list, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
@@ -673,19 +813,29 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
     if dim is None:
         dim = da.dims
     if len(dim) != 2:
-        raise ValueError('The Fourier transform should be two dimensional')
+        raise ValueError("The Fourier transform should be two dimensional")
 
-    ps = power_spectrum(da, spacing_tol, dim=dim, shift=shift,
-                       detrend=detrend, density=density,
-                       window=window)
+    ps = power_spectrum(
+        da,
+        spacing_tol,
+        dim=dim,
+        shift=shift,
+        detrend=detrend,
+        density=density,
+        window=window,
+    )
 
-    fftdim = ['freq_' + d for d in dim]
+    fftdim = ["freq_" + d for d in dim]
     k = ps[fftdim[1]]
     l = ps[fftdim[0]]
 
     axis_num = [da.get_axis_num(d) for d in dim]
     N = [da.shape[n] for n in axis_num]
-    M = [da.shape[n] for n in [da.get_axis_num(d) for d in da.dims] if n not in axis_num]
+    M = [
+        da.shape[n]
+        for n in [da.get_axis_num(d) for d in da.dims]
+        if n not in axis_num
+    ]
     shape = list(M)
 
     kidx, area, kr = _azimuthal_wvnum(k, l, np.asarray(N).min(), nfactor)
@@ -694,10 +844,10 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
     f = ps.data.reshape(shape)
     iso_ps = _azi_wrapper(M, kidx, f, area, kr)
 
-    k_coords = {'freq_r': kr}
+    k_coords = {"freq_r": kr}
 
     newdims = [d for d in da.dims if d not in dim]
-    newdims.append('freq_r')
+    newdims.append("freq_r")
 
     newcoords = {}
     for d in newdims:
@@ -708,9 +858,18 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
 
     return xr.DataArray(iso_ps, dims=newdims, coords=newcoords)
 
-def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
-                           dim=None, shift=True, detrend=None,
-                           density=True, window=False, nfactor=4):
+
+def isotropic_crossspectrum(
+    da1,
+    da2,
+    spacing_tol=1e-3,
+    dim=None,
+    shift=True,
+    detrend=None,
+    density=True,
+    window=False,
+    nfactor=4,
+):
     """
     Calculates the isotropic spectrum from the
     two-dimensional power spectrumby taking the
@@ -728,8 +887,8 @@ def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
     da2 : `xarray.DataArray`
         The data to be transformed
     spacing_tol: float (default)
-        Spacing tolerance. Fourier transform should not be applied to uneven grid but
-        this restriction can be relaxed with this setting. Use caution.
+        Spacing tolerance. Fourier transform should not be applied to uneven
+        grid but this restriction can be relaxed with this setting. Use caution.
     dim : list (optional)
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
@@ -759,21 +918,32 @@ def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
         dim = da1.dims
         dim2 = da2.dims
         if dim != dim2:
-            raise ValueError('The two datasets have different dimensions')
+            raise ValueError("The two datasets have different dimensions")
     if len(dim) != 2:
-        raise ValueError('The Fourier transform should be two dimensional')
+        raise ValueError("The Fourier transform should be two dimensional")
 
-    cs = cross_spectrum(da1, da2, spacing_tol, dim=dim, shift=shift,
-                       detrend=detrend, density=density,
-                       window=window)
+    cs = cross_spectrum(
+        da1,
+        da2,
+        spacing_tol,
+        dim=dim,
+        shift=shift,
+        detrend=detrend,
+        density=density,
+        window=window,
+    )
 
-    fftdim = ['freq_' + d for d in dim]
+    fftdim = ["freq_" + d for d in dim]
     k = cs[fftdim[1]]
     l = cs[fftdim[0]]
 
     axis_num = [da1.get_axis_num(d) for d in dim]
     N = [da1.shape[n] for n in axis_num]
-    M = [da1.shape[n] for n in [da1.get_axis_num(d) for d in da1.dims] if n not in axis_num]
+    M = [
+        da1.shape[n]
+        for n in [da1.get_axis_num(d) for d in da1.dims]
+        if n not in axis_num
+    ]
     shape = list(M)
 
     kidx, area, kr = _azimuthal_wvnum(k, l, np.asarray(N).min(), nfactor)
@@ -782,10 +952,10 @@ def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
     f = cs.data.reshape(shape)
     iso_cs = _azi_wrapper(M, kidx, f, area, kr)
 
-    k_coords = {'freq_r': kr}
+    k_coords = {"freq_r": kr}
 
     newdims = [d for d in da1.dims if d not in dim]
-    newdims.append('freq_r')
+    newdims.append("freq_r")
 
     newcoords = {}
     for d in newdims:
@@ -795,6 +965,7 @@ def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
             newcoords[d] = k_coords[d]
 
     return xr.DataArray(iso_cs, dims=newdims, coords=newcoords)
+
 
 def fit_loglog(x, y):
     """
@@ -818,6 +989,6 @@ def fit_loglog(x, y):
     """
     # fig log vs log
     p = np.polyfit(np.log2(x), np.log2(y), 1)
-    y_fit = 2**(np.log2(x)*p[0] + p[1])
+    y_fit = 2 ** (np.log2(x) * p[0] + p[1])
 
     return y_fit, p[0], p[1]
