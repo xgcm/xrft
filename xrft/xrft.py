@@ -250,7 +250,7 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
 
     # check for xr.da input
     if not isinstance(da, xr.DataArray):
-        raise TypeError(f"Please provide xr.DataArray, found {type(da)}")
+        raise TypeError("Please provide xr.DataArray, found", type(da)")
 
     rawdims = da.dims
     da, trans = _transpose(da, real)
