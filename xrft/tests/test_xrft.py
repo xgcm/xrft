@@ -23,7 +23,7 @@ def sample_data_3d():
                 coords={'lon': (['x', 'y'], lon),
                         'lat': (['x', 'y'], lat),
                         'time': np.arange(10)})
-    return ds.temp
+    return ds
 
 
 @pytest.fixture(params=['numpy', 'dask', 'nocoords'])
@@ -748,8 +748,13 @@ def test_spacing_tol_float_value(test_data_1d):
 @pytest.mark.parametrize("dim", ["time"])
 def test_keep_coords(sample_data_3d, func, dim):
     """Test whether xrft keeps multi-dim coords from rasm sample data."""
-    ds = sample_data_3d
+    ds = sample_data_3d.temp
     ps = getattr(xrft, func)(ds, dim=dim)
     # check that all coords except dim from ds are kept in ps
     for c in ds.drop(dim).coords:
         assert c in ps.coords
+
+
+def test_dataset_type_error(sample_data_3d):
+    with pytest.raises(TypeError):
+        xrft.dft(sample_data_3d)
