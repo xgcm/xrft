@@ -248,6 +248,10 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     if not isinstance(spacing_tol, float):
         raise TypeError("Please provide a float argument")
 
+    # check for xr.da input
+    if not isinstance(da, xr.DataArray):
+        raise TypeError(f"Please provide xr.DataArray, found {type(da)}")
+
     rawdims = da.dims
     da, trans = _transpose(da, real)
     if dim is None:
@@ -339,6 +343,10 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         newdims[anum] = prefix + d
 
     newcoords = {}
+    # keep former coords
+    if len(da.coords) > 1:
+        for c in da.drop(dim).coords:
+            newcoords[c] = da[c]
     for d in newdims:
         if d in k_coords:
             newcoords[d] = k_coords[d]

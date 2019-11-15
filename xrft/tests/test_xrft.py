@@ -735,3 +735,14 @@ def test_spacing_tol_float_value(test_data_1d):
     da = test_data_1d
     with pytest.raises(TypeError):
         xrft.dft(da, spacing_tol='string')
+
+@pytest.mark.parametrize("func", ("dft", "power_spectrum"))
+@pytest.mark.parametrize("dim", ["time"])
+def test_keep_coords(func, dim):
+    """Test whether xrft keeps multi-dim coords from rasm sample data."""
+    ds = xr.tutorial.load_dataset("rasm").fillna(0.0)["Tair"]
+    ds["time"] = np.arange(ds.time.size)
+    ps = getattr(xrft, func)(ds, dim=dim)
+    # check that all coords except dim from ds are kept in ps
+    for c in ds.drop(dim).coords:
+        assert c in ps.coords
