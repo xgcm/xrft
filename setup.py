@@ -24,7 +24,7 @@ CLASSIFIERS = [
 
 INSTALL_REQUIRES = ['xarray', 'dask', 'numpy', 'future', 'docrep']
 SETUP_REQUIRES = ['pytest-runner']
-TESTS_REQUIRE = ['pytest >= 2.8', 'coverage']
+TESTS_REQUIRE = ['pytest >= 2.8', 'coverage', 'cftime']
 
 DESCRIPTION = "Discrete Fourier Transform with xarray"
 def readme():
