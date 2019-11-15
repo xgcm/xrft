@@ -82,8 +82,8 @@ def detrendn(da, axes=None):
     if len(N) == 2:
         G = np.ones((N[0] * N[1], 3))
         for i in range(N[0]):
-            G[N[1] * i : N[1] * i + N[1], 1] = i + 1
-            G[N[1] * i : N[1] * i + N[1], 2] = np.arange(1, N[1] + 1)
+            G[N[1] * i: N[1] * i + N[1], 1] = i + 1
+            G[N[1] * i: N[1] * i + N[1], 2] = np.arange(1, N[1] + 1)
         if type(da) == xr.DataArray:
             d_obs = np.reshape(da.copy().values, (N[0] * N[1], 1))
         else:
@@ -106,10 +106,10 @@ def detrendn(da, axes=None):
         G[:, 3] = np.tile(np.arange(1, N[2] + 1), N[0] * N[1])
         ys = np.zeros(N[1] * N[2])
         for i in range(N[1]):
-            ys[N[2] * i : N[2] * i + N[2]] = i + 1
+            ys[N[2] * i: N[2] * i + N[2]] = i + 1
         G[:, 2] = np.tile(ys, N[0])
         for i in range(N[0]):
-            G[len(ys) * i : len(ys) * i + len(ys), 1] = i + 1
+            G[len(ys) * i: len(ys) * i + len(ys), 1] = i + 1
     else:
         raise NotImplementedError(
             "Detrending over more than 4 axes is " "not implemented."
@@ -230,22 +230,6 @@ def _transpose(da, real, trans=False):
     return da, trans
 
 
-def _copy_coords_from_to(xro_from, xro_to):
-    """Copy coords from one xr object to another."""
-    if isinstance(xro_from, xr.DataArray) and isinstance(xro_to, xr.DataArray):
-        for c in xro_from.coords:
-            xro_to[c] = xro_from[c]
-        return xro_to
-    elif isinstance(xro_from, xr.Dataset) and isinstance(xro_to, xr.Dataset):
-        xro_to = xro_to.assign_coords(**xro_from.coords)
-    else:
-        raise ValueError(
-            f"xro_from and xro_to must be both either xr.DataArray or",
-            f"xr.Dataset, found {type(xro_from)} {type(xro_to)}.",
-        )
-    return xro_to
-
-
 def dft(
     da,
     spacing_tol=1e-3,
@@ -297,7 +281,12 @@ def dft(
     """
     # check for proper spacing tolerance input
     if not isinstance(spacing_tol, float):
-        raise TypeError("Please provide a float argument")
+        raise TypeError(
+            f"Please provide a float argument, found {type(spacing_tol)}")
+
+    # check for xr.da input
+    if not isinstance(da, xr.DataArray):
+        raise TypeError(f"Please provide xr.DataArray, found {type(da)}")
 
     rawdims = da.dims
     da, trans = _transpose(da, real)
@@ -394,6 +383,10 @@ def dft(
         newdims[anum] = prefix + d
 
     newcoords = {}
+    # keep former coords
+    if len(da.coords) > 1:
+        for c in da.drop(dim).coords:
+            newcoords[c] = da[c]
     for d in newdims:
         if d in k_coords:
             newcoords[d] = k_coords[d]
@@ -405,13 +398,6 @@ def dft(
         newcoords[prefix + d + "_spacing"] = this_dk
 
     daft = xr.DataArray(f, dims=newdims, coords=newcoords)
-
-    # ensure to keep coords, also multi-dim coords, if input da has coords
-    if len(da.coords) > 1:
-        if (da.drop(dim).coords != daft.coords) and (
-            len(da.drop(dim).coords) > 0
-        ):
-            daft = _copy_coords_from_to(da.drop(dim), daft)
 
     if trans:
         enddims = [prefix + d for d in rawdims if d in dim]
