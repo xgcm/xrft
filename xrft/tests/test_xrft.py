@@ -16,7 +16,15 @@ import xrft
 @pytest.fixture()
 def sample_data_3d():
     """Create three dimensional test data."""
-    pass
+    temp = 10 * np.random.rand(2, 2, 10)
+    lon = [[-99.83, -99.32], [-99.79, -99.23]]
+    lat = [[42.25, 42.21], [42.63, 42.59]]
+    ds = xr.Dataset({'temp': (['x', 'y', 'time'], temp)},
+                coords={'lon': (['x', 'y'], lon),
+                        'lat': (['x', 'y'], lat),
+                        'time': np.arange(10)})
+    return ds
+
 
 @pytest.fixture(params=['numpy', 'dask', 'nocoords'])
 def test_data_1d(request):
@@ -735,3 +743,18 @@ def test_spacing_tol_float_value(test_data_1d):
     da = test_data_1d
     with pytest.raises(TypeError):
         xrft.dft(da, spacing_tol='string')
+
+@pytest.mark.parametrize("func", ("dft", "power_spectrum"))
+@pytest.mark.parametrize("dim", ["time"])
+def test_keep_coords(sample_data_3d, func, dim):
+    """Test whether xrft keeps multi-dim coords from rasm sample data."""
+    ds = sample_data_3d.temp
+    ps = getattr(xrft, func)(ds, dim=dim)
+    # check that all coords except dim from ds are kept in ps
+    for c in ds.drop(dim).coords:
+        assert c in ps.coords
+
+
+def test_dataset_type_error(sample_data_3d):
+    with pytest.raises(TypeError):
+        xrft.dft(sample_data_3d)
