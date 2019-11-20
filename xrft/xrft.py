@@ -392,13 +392,28 @@ def dft(da, direction='forward', spacing_tol=1e-3, dim=None, real=None, shift=Tr
         return daft
 
     
-def idft(da, **kwargs):
+def idft(da, *, shift_coords=None, prefix ='freq_', **kwargs):
     """
     Perform inverse discrete Fourier transform of xarray data-array `da` along the
     specified dimensions. See dft for details
     """
+    
     kwargs.update({'direction':'backward'})
-    return dft(da,**kwargs)
+    if shift_coords:
+        phase = 1.
+        for d, s in shift_coords.items():
+            tfd_name = prefix + d if d[:len(prefix)]!=prefix else d[len(prefix):]
+            if tfd_name not in da.dims:
+                raise ValueError("%s will not be a valid output dimension" % d)
+            phase = phase*xr.DataArray(np.exp(1j*2.*np.pi*da[tfd_name]*s), dims = tfd_name) # taking advantage of xarray automatic broacasting and ordered coordinates
+        
+        res = dft(da*phase, prefix =prefix, **kwargs)
+        for d, s in shift_coords.items():
+            res = res.assign_coords(**{d:res[d].data+s})
+    else:
+        res = dft(da, prefix =prefix, **kwargs)
+    
+    return res
 
 
 def power_spectrum(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
