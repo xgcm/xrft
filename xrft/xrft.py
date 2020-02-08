@@ -687,7 +687,7 @@ def isotropize(ps, fftdim, nfactor=4):
     for d in newdims:
         if d in ps.coords:
             newcoords[d] = ps.coords[d].values
-        else:
+        elif d in k_coords:
             newcoords[d] = k_coords[d]
             
     return xr.DataArray(iso_ps, dims=newdims, coords=newcoords)
@@ -750,7 +750,7 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
     # adhoc reordering that seem to works    
     fftdim = [d for d in ps.dims if d in fftdim]
 
-    return ps, isotropize(ps, fftdim, nfactor=nfactor)
+    return isotropize(ps, fftdim, nfactor=nfactor)
 
 def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
                            dim=None, shift=True, detrend=None,
