@@ -16,6 +16,7 @@ import scipy.linalg as spl
 
 __all__ = ["detrendn", "detrend_wrap",
            "dft","power_spectrum", "cross_spectrum", "cross_phase",
+           "isotropize",
            "isotropic_powerspectrum", "isotropic_crossspectrum",
            "fit_loglog"]
 
@@ -612,9 +613,15 @@ def _azimuthal_avg(kidx, f, area, kr):
     """
     Takes the azimuthal average of a given field.
     """
-
-    iso_f = np.ma.masked_invalid(np.bincount(kidx, weights=f)
-                                / area) * kr
+    
+    if type(f)==dsar.core.Array:
+        _bincount = np.bincount(dsar.from_array(kidx), weights=f).compute()
+        # the shape of _bincount is (nan,) if we don't compute
+        # which breaks the divisions below with for example:
+        # ValueError: operands could not be broadcast together with shapes (nan,) (65,)
+    else:
+        _bincount = np.bincount(kidx, weights=f)
+    iso_f = np.ma.masked_invalid(_bincount / area) * kr
 
     return iso_f
 
@@ -634,6 +641,57 @@ def _azi_wrapper(M, kidx, f, area, kr):
 
     return iso
 
+def isotropize(ps, fftdim, nfactor=4):
+    """
+    Calculates the isotropic spectrum from the
+    two-dimensional power spectrum by taking the
+    azimuthal average.
+
+    .. math::
+        \text{iso}_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
+
+    where :math:`N` is the number of azimuthal bins.
+    
+    Parameters
+    ----------
+    ps : `xarray.DataArray`
+        The power spectrum to be isotropized.
+    fftdim : list
+        The fft dimensions overwhich the isotropization must be performed.
+    nfactor : int, optional
+        Ratio of number of bins to take the azimuthal averaging with the
+        data size. Default is 4.        
+    """    
+
+    k = ps[fftdim[1]]
+    l = ps[fftdim[0]]
+
+    # below does not seem robust
+    axis_num = [ps.get_axis_num(d) for d in fftdim]
+    N = [ps.shape[n] for n in axis_num]
+    M = [ps.shape[n] for n in [ps.get_axis_num(d) for d in ps.dims] if n not in axis_num]
+    shape = list(M)
+
+    kidx, area, kr = _azimuthal_wvnum(k, l, np.asarray(N).min(), nfactor)
+    M.append(len(kr))
+    shape.append(np.prod(N))
+    f = ps.data.reshape(shape)
+    iso_ps = _azi_wrapper(M, kidx, f, area, kr)
+
+    k_coords = {'freq_r': kr}
+
+    newdims = [d for d in ps.dims if d not in fftdim]
+    newdims.append('freq_r')
+
+    newcoords = {}
+    for d in newdims:
+        if d in ps.coords:
+            newcoords[d] = ps.coords[d].values
+        else:
+            newcoords[d] = k_coords[d]
+            
+    return xr.DataArray(iso_ps, dims=newdims, coords=newcoords)
+    
 def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
                            detrend=None, density=True, window=False, nfactor=4):
     """
@@ -688,33 +746,11 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
                        window=window)
 
     fftdim = ['freq_' + d for d in dim]
-    k = ps[fftdim[1]]
-    l = ps[fftdim[0]]
+    # line below results from weakness in isotropize, should disapear
+    # adhoc reordering that seem to works    
+    fftdim = [d for d in ps.dims if d in fftdim]
 
-    axis_num = [da.get_axis_num(d) for d in dim]
-    N = [da.shape[n] for n in axis_num]
-    M = [da.shape[n] for n in [da.get_axis_num(d) for d in da.dims] if n not in axis_num]
-    shape = list(M)
-
-    kidx, area, kr = _azimuthal_wvnum(k, l, np.asarray(N).min(), nfactor)
-    M.append(len(kr))
-    shape.append(np.prod(N))
-    f = ps.data.reshape(shape)
-    iso_ps = _azi_wrapper(M, kidx, f, area, kr)
-
-    k_coords = {'freq_r': kr}
-
-    newdims = [d for d in da.dims if d not in dim]
-    newdims.append('freq_r')
-
-    newcoords = {}
-    for d in newdims:
-        if d in da.coords:
-            newcoords[d] = da.coords[d].values
-        else:
-            newcoords[d] = k_coords[d]
-
-    return xr.DataArray(iso_ps, dims=newdims, coords=newcoords)
+    return ps, isotropize(ps, fftdim, nfactor=nfactor)
 
 def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
                            dim=None, shift=True, detrend=None,
@@ -776,33 +812,11 @@ def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
                        window=window)
 
     fftdim = ['freq_' + d for d in dim]
-    k = cs[fftdim[1]]
-    l = cs[fftdim[0]]
+    # line below results from weakness in isotropize, should disapear
+    # adhoc reordering that seem to works
+    fftdim = [d for d in ps.dims if d in fftdim]
 
-    axis_num = [da1.get_axis_num(d) for d in dim]
-    N = [da1.shape[n] for n in axis_num]
-    M = [da1.shape[n] for n in [da1.get_axis_num(d) for d in da1.dims] if n not in axis_num]
-    shape = list(M)
-
-    kidx, area, kr = _azimuthal_wvnum(k, l, np.asarray(N).min(), nfactor)
-    M.append(len(kr))
-    shape.append(np.prod(N))
-    f = cs.data.reshape(shape)
-    iso_cs = _azi_wrapper(M, kidx, f, area, kr)
-
-    k_coords = {'freq_r': kr}
-
-    newdims = [d for d in da1.dims if d not in dim]
-    newdims.append('freq_r')
-
-    newcoords = {}
-    for d in newdims:
-        if d in da1.coords:
-            newcoords[d] = da1.coords[d].values
-        else:
-            newcoords[d] = k_coords[d]
-
-    return xr.DataArray(iso_cs, dims=newdims, coords=newcoords)
+    return isotropize(cs, fftdim, nfactor=nfactor)
 
 def fit_loglog(x, y):
     """
