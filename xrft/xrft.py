@@ -1,5 +1,6 @@
 import warnings
 import operator
+import sys
 import functools as ft
 from functools import reduce
 
@@ -202,9 +203,34 @@ def _transpose(da, real, trans=False):
             trans = True
     return da, trans
 
+def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
+    # set up new dimensions and coordinates for dataarray
+    newdims = list(da.dims)
+    for anum, d in zip(axis_num, dim):
+        newdims[anum] = prefix + d
+
+    k_names = [prefix + d for d in dim]
+    k_coords = {key: val for (key,val) in zip(k_names, wavenm)}
+
+    newcoords = {}
+    # keep former coords
+    if len(da.coords) > 1:
+        for c in da.drop(dim).coords:
+            newcoords[c] = da[c]
+    for d in newdims:
+        if d in k_coords:
+            newcoords[d] = k_coords[d]
+        elif d in da.coords:
+            newcoords[d] = da[d].data
+
+    dk = [l[1] - l[0] for l in wavenm]
+    for this_dk, d in zip(dk, dim):
+        newcoords[prefix + d + '_spacing'] = this_dk
+
+    return newdims, newcoords
 
 def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
-        window=False, chunks_to_segments=False):
+        window=False, chunks_to_segments=False, prefix = 'freq_'):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
     specified dimensions.
@@ -244,6 +270,9 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     daft : `xarray.DataArray`
         The output of the Fourier transformation, with appropriate dimensions.
     """
+    if sys.version_info < (3, 6):
+        warnings.warn("Python 2 is no longer supported.",
+                     DeprecationWarning)
     # check for proper spacing tolerance input
     if not isinstance(spacing_tol, float):
         raise TypeError("Please provide a float argument")
@@ -333,29 +362,7 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         f = fft.fftshift(f, axes=axis_num)
         k = [np.fft.fftshift(l) for l in k]
 
-    # set up new coordinates for dataarray
-    prefix = 'freq_'
-    k_names = [prefix + d for d in dim]
-    k_coords = {key: val for (key,val) in zip(k_names, k)}
-
-    newdims = list(da.dims)
-    for anum, d in zip(axis_num, dim):
-        newdims[anum] = prefix + d
-
-    newcoords = {}
-    # keep former coords
-    if len(da.coords) > 1:
-        for c in da.drop(dim).coords:
-            newcoords[c] = da[c]
-    for d in newdims:
-        if d in k_coords:
-            newcoords[d] = k_coords[d]
-        elif d in da.coords:
-            newcoords[d] = da[d].data
-
-    dk = [l[1] - l[0] for l in k]
-    for this_dk, d in zip(dk, dim):
-        newcoords[prefix + d + '_spacing'] = this_dk
+    newdims, newcoords = _new_dims_and_coords(da, axis_num, dim, k, prefix)
 
     daft = xr.DataArray(f, dims=newdims, coords=newcoords)
     if trans:
