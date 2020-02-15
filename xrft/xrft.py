@@ -203,6 +203,24 @@ def _transpose(da, real, trans=False):
             trans = True
     return da, trans
 
+def _freq(N, delta_x, real, shift):
+    # calculate frequencies from coordinates
+    # coordinates are always loaded eagerly, so we use numpy
+    if real is None:
+        fftfreq = [np.fft.fftfreq]*len(N)
+    else:
+        # Discard negative frequencies from transform along last axis to be
+        # consistent with np.fft.rfftn
+        fftfreq = [np.fft.fftfreq]*(len(N)-1)
+        fftfreq.append(np.fft.rfftfreq)
+
+    k = [fftfreq(Nx, dx) for (fftfreq, Nx, dx) in zip(fftfreq, N, delta_x)]
+
+    if shift:
+        k = [np.fft.fftshift(l) for l in k]
+
+    return k
+
 def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
     # set up new dimensions and coordinates for dataarray
     newdims = list(da.dims)
@@ -264,6 +282,8 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         dim.
     chunks_to_segments : bool, optional
         Whether the data is chunked along the axis to take FFT.
+    prefix : str
+        The prefix for the new transformed dimensions.
 
     Returns
     -------
@@ -333,18 +353,6 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
                              "coodinate %s is not evenly spaced" % d)
         delta_x.append(delta)
 
-    # calculate frequencies from coordinates
-    # coordinates are always loaded eagerly, so we use numpy
-    if real is None:
-        fftfreq = [np.fft.fftfreq]*len(N)
-    else:
-        # Discard negative frequencies from transform along last axis to be
-        # consistent with np.fft.rfftn
-        fftfreq = [np.fft.fftfreq]*(len(N)-1)
-        fftfreq.append(np.fft.rfftfreq)
-
-    k = [fftfreq(Nx, dx) for (fftfreq, Nx, dx) in zip(fftfreq, N, delta_x)]
-
     if detrend == 'constant':
         da = da - da.mean(dim=dim)
     elif detrend == 'linear':
@@ -360,7 +368,8 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
 
     if shift:
         f = fft.fftshift(f, axes=axis_num)
-        k = [np.fft.fftshift(l) for l in k]
+
+    k = _freq(N, delta_x, real, shift)
 
     newdims, newcoords = _new_dims_and_coords(da, axis_num, dim, k, prefix)
 
