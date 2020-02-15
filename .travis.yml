@@ -18,6 +18,8 @@ notifications:
 python:
   - 2.7
   - 3.6
+  - 3.7
+  - 3.8
 
 env:
   - CONDA_DEPS="pip flake8 pytest coverage numpy scipy pandas xarray dask" PIP_DEPS="codecov pytest-cov"

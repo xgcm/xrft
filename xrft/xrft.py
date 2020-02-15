@@ -359,7 +359,8 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
 
     daft = xr.DataArray(f, dims=newdims, coords=newcoords)
     if trans:
-        enddims = [prefix + d for d in rawdims if d in dim]
+        enddims = [d for d in rawdims if d not in dim]
+        enddims += [prefix + d for d in rawdims if d in dim]
         return daft.transpose(*enddims)
     else:
         return daft
