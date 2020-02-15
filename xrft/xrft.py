@@ -290,9 +290,6 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     daft : `xarray.DataArray`
         The output of the Fourier transformation, with appropriate dimensions.
     """
-    if sys.version_info < (3, 6):
-        warnings.warn("Python 2 is no longer supported.",
-                     DeprecationWarning)
     # check for proper spacing tolerance input
     if not isinstance(spacing_tol, float):
         raise TypeError("Please provide a float argument")
