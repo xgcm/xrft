@@ -36,6 +36,7 @@ Documentation
    :maxdepth: 1
    :caption: Examples
 
+   TimeSeries_example
    MITgcm_example
    chunk_example
 
