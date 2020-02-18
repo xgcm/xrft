@@ -248,7 +248,7 @@ def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
     return newdims, newcoords
 
 def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
-        window=False, chunks_to_segments=False, prefix = 'freq_'):
+        window=False, chunks_to_segments=False, prefix='freq_'):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
     specified dimensions.
@@ -379,8 +379,9 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         return daft
 
 
-def power_spectrum(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
-                   window=False, chunks_to_segments=False, density=True):
+def power_spectrum(da, spacing_tol=1e-3, dim=None, real=None, shift=True,
+                   detrend=None, window=False, chunks_to_segments=False,
+                   density=True, prefix='freq_'):
     """
     Calculates the power spectrum of da.
 
@@ -424,7 +425,7 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detren
 
     daft = dft(da, spacing_tol,
               dim=dim, real=real, shift=shift, detrend=detrend, window=window,
-              chunks_to_segments=chunks_to_segments)
+              chunks_to_segments=chunks_to_segments, prefix=prefix)
 
     if dim is None:
         dim = list(da.dims)
@@ -454,9 +455,9 @@ def _power_spectrum(daft, dim, N, density):
     return ps
 
 
-def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
-                  shift=True, detrend=None, window=False,
-                  chunks_to_segments=False, density=True):
+def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None, shift=True,
+                  detrend=None, window=False, chunks_to_segments=False,
+                  density=True, prefix='freq_'):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -499,10 +500,12 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
 
     daft1 = dft(da1, spacing_tol,
                dim=dim, shift=shift, detrend=detrend, window=window,
-               chunks_to_segments=chunks_to_segments)
+               chunks_to_segments=chunks_to_segments,
+               prefix=prefix)
     daft2 = dft(da2, spacing_tol,
                dim=dim, shift=shift, detrend=detrend, window=window,
-               chunks_to_segments=chunks_to_segments)
+               chunks_to_segments=chunks_to_segments,
+               prefix=prefix)
 
     if dim is None:
         dim = da1.dims
