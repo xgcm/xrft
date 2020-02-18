@@ -225,7 +225,7 @@ def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
     # set up new dimensions and coordinates for dataarray
     newdims = list(da.dims)
     for anum, d in zip(axis_num, dim):
-        newdims[anum] = prefix + d
+        newdims[anum] = prefix + d if d[:len(prefix)]!=prefix else d[len(prefix):]
 
     k_names = [prefix + d for d in dim]
     k_coords = {key: val for (key,val) in zip(k_names, wavenm)}
