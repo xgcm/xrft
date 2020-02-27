@@ -1,5 +1,6 @@
 import warnings
 import operator
+import sys
 import functools as ft
 from functools import reduce
 
@@ -202,9 +203,52 @@ def _transpose(da, real, trans=False):
             trans = True
     return da, trans
 
+def _freq(N, delta_x, real, shift):
+    # calculate frequencies from coordinates
+    # coordinates are always loaded eagerly, so we use numpy
+    if real is None:
+        fftfreq = [np.fft.fftfreq]*len(N)
+    else:
+        # Discard negative frequencies from transform along last axis to be
+        # consistent with np.fft.rfftn
+        fftfreq = [np.fft.fftfreq]*(len(N)-1)
+        fftfreq.append(np.fft.rfftfreq)
+
+    k = [fftfreq(Nx, dx) for (fftfreq, Nx, dx) in zip(fftfreq, N, delta_x)]
+
+    if shift:
+        k = [np.fft.fftshift(l) for l in k]
+
+    return k
+
+def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
+    # set up new dimensions and coordinates for dataarray
+    newdims = list(da.dims)
+    for anum, d in zip(axis_num, dim):
+        newdims[anum] = prefix + d if d[:len(prefix)]!=prefix else d[len(prefix):]
+
+    k_names = [prefix + d for d in dim]
+    k_coords = {key: val for (key,val) in zip(k_names, wavenm)}
+
+    newcoords = {}
+    # keep former coords
+    if len(da.coords) > 1:
+        for c in da.drop(dim).coords:
+            newcoords[c] = da[c]
+    for d in newdims:
+        if d in k_coords:
+            newcoords[d] = k_coords[d]
+        elif d in da.coords:
+            newcoords[d] = da[d].data
+
+    dk = [l[1] - l[0] for l in wavenm]
+    for this_dk, d in zip(dk, dim):
+        newcoords[prefix + d + '_spacing'] = this_dk
+
+    return newdims, newcoords
 
 def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
-        window=False, chunks_to_segments=False):
+        window=False, chunks_to_segments=False, prefix='freq_'):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
     specified dimensions.
@@ -238,6 +282,8 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         dim.
     chunks_to_segments : bool, optional
         Whether the data is chunked along the axis to take FFT.
+    prefix : str
+        The prefix for the new transformed dimensions.
 
     Returns
     -------
@@ -304,18 +350,6 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
                              "coodinate %s is not evenly spaced" % d)
         delta_x.append(delta)
 
-    # calculate frequencies from coordinates
-    # coordinates are always loaded eagerly, so we use numpy
-    if real is None:
-        fftfreq = [np.fft.fftfreq]*len(N)
-    else:
-        # Discard negative frequencies from transform along last axis to be
-        # consistent with np.fft.rfftn
-        fftfreq = [np.fft.fftfreq]*(len(N)-1)
-        fftfreq.append(np.fft.rfftfreq)
-
-    k = [fftfreq(Nx, dx) for (fftfreq, Nx, dx) in zip(fftfreq, N, delta_x)]
-
     if detrend == 'constant':
         da = da - da.mean(dim=dim)
     elif detrend == 'linear':
@@ -331,31 +365,10 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
 
     if shift:
         f = fft.fftshift(f, axes=axis_num)
-        k = [np.fft.fftshift(l) for l in k]
 
-    # set up new coordinates for dataarray
-    prefix = 'freq_'
-    k_names = [prefix + d for d in dim]
-    k_coords = {key: val for (key,val) in zip(k_names, k)}
+    k = _freq(N, delta_x, real, shift)
 
-    newdims = list(da.dims)
-    for anum, d in zip(axis_num, dim):
-        newdims[anum] = prefix + d
-
-    newcoords = {}
-    # keep former coords
-    if len(da.coords) > 1:
-        for c in da.drop(dim).coords:
-            newcoords[c] = da[c]
-    for d in newdims:
-        if d in k_coords:
-            newcoords[d] = k_coords[d]
-        elif d in da.coords:
-            newcoords[d] = da[d].data
-
-    dk = [l[1] - l[0] for l in k]
-    for this_dk, d in zip(dk, dim):
-        newcoords[prefix + d + '_spacing'] = this_dk
+    newdims, newcoords = _new_dims_and_coords(da, axis_num, dim, k, prefix)
 
     daft = xr.DataArray(f, dims=newdims, coords=newcoords)
     if trans:
@@ -366,8 +379,9 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         return daft
 
 
-def power_spectrum(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
-                   window=False, chunks_to_segments=False, density=True):
+def power_spectrum(da, spacing_tol=1e-3, dim=None, real=None, shift=True,
+                   detrend=None, window=False, chunks_to_segments=False,
+                   density=True, prefix='freq_'):
     """
     Calculates the power spectrum of da.
 
@@ -411,7 +425,7 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detren
 
     daft = dft(da, spacing_tol,
               dim=dim, real=real, shift=shift, detrend=detrend, window=window,
-              chunks_to_segments=chunks_to_segments)
+              chunks_to_segments=chunks_to_segments, prefix=prefix)
 
     if dim is None:
         dim = list(da.dims)
@@ -441,9 +455,9 @@ def _power_spectrum(daft, dim, N, density):
     return ps
 
 
-def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
-                  shift=True, detrend=None, window=False,
-                  chunks_to_segments=False, density=True):
+def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None, shift=True,
+                  detrend=None, window=False, chunks_to_segments=False,
+                  density=True, prefix='freq_'):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -486,10 +500,12 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None,
 
     daft1 = dft(da1, spacing_tol,
                dim=dim, shift=shift, detrend=detrend, window=window,
-               chunks_to_segments=chunks_to_segments)
+               chunks_to_segments=chunks_to_segments,
+               prefix=prefix)
     daft2 = dft(da2, spacing_tol,
                dim=dim, shift=shift, detrend=detrend, window=window,
-               chunks_to_segments=chunks_to_segments)
+               chunks_to_segments=chunks_to_segments,
+               prefix=prefix)
 
     if dim is None:
         dim = da1.dims
