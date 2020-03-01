@@ -643,9 +643,8 @@ def _azi_wrapper(M, kidx, f, area, kr):
 
 def isotropize(ps, fftdim, nfactor=4):
     """
-    Calculates the isotropic spectrum from the
-    two-dimensional power spectrum by taking the
-    azimuthal average.
+    Isotropize a 2D power spectrum or cross spectrum 
+    by taking an azimuthal average.
 
     .. math::
         \text{iso}_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
@@ -655,7 +654,7 @@ def isotropize(ps, fftdim, nfactor=4):
     Parameters
     ----------
     ps : `xarray.DataArray`
-        The power spectrum to be isotropized.
+        The power spectrum or cross spectrum to be isotropized.
     fftdim : list
         The fft dimensions overwhich the isotropization must be performed.
     nfactor : int, optional
@@ -691,8 +690,17 @@ def isotropize(ps, fftdim, nfactor=4):
             newcoords[d] = k_coords[d]
             
     return xr.DataArray(iso_ps, dims=newdims, coords=newcoords)
+
+def isotropic_powerspectrum(*args, **kwargs):
+    """ 
+    Deprecated function. See isotropic_power_spectrum doc
+    """
+    import warnings
+    msg = "Deprecated. Use isotropic_power_spectrum instead"
+    raise warnings.DeprecationWarning(msg)
+    return isotropic_power_spectrum(*args, **kwargs)
     
-def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
+def isotropic_power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True,
                            detrend=None, density=True, window=False, nfactor=4):
     """
     Calculates the isotropic spectrum from the
@@ -703,6 +711,8 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
         \text{iso}_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
 
     where :math:`N` is the number of azimuthal bins.
+
+    Note: the method is not lazy does trigger computations.
 
     Parameters
     ----------
@@ -752,7 +762,16 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
 
     return isotropize(ps, fftdim, nfactor=nfactor)
 
-def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
+def isotropic_crossspectrum(*args, **kwargs):
+    """ 
+    Deprecated function. See isotropic_cross_spectrum doc
+    """
+    import warnings
+    msg = "Deprecated. Use isotropic_cross_spectrum instead"
+    raise warnings.DeprecationWarning(msg)
+    return isotropic_cross_spectrum(*args, **kwargs)
+
+def isotropic_cross_spectrum(da1, da2, spacing_tol=1e-3,
                            dim=None, shift=True, detrend=None,
                            density=True, window=False, nfactor=4):
     """
@@ -764,6 +783,8 @@ def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
         \text{iso}_{cs} = k_r N^{-1} \sum_{N} (\mathbb{F}(da1') {\mathbb{F}(da2')}^*)
 
     where :math:`N` is the number of azimuthal bins.
+    
+    Note: the method is not lazy does trigger computations.
 
     Parameters
     ----------
