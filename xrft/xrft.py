@@ -623,12 +623,16 @@ def _azimuthal_avg(kidx, f, area, kr):
     """
     
     if type(f)==dsar.core.Array:
-        _bincount = np.bincount(dsar.from_array(kidx), weights=f).compute()
+        _bincount = np.bincount(dsar.from_array(kidx), weights=f)        
         # the shape of _bincount is (nan,) if we don't compute
         # which breaks the divisions below with for example:
         # ValueError: operands could not be broadcast together with shapes (nan,) (65,)
     else:
         _bincount = np.bincount(kidx, weights=f)
+    if type(_bincount)==dsar.core.Array:
+        # required for python 2.7 
+        _bincount = _bincount.compute()
+        
     iso_f = np.ma.masked_invalid(_bincount / area) * kr
 
     return iso_f
