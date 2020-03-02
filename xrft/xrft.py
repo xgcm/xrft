@@ -17,6 +17,7 @@ import scipy.linalg as spl
 __all__ = ["detrendn", "detrend_wrap",
            "dft","power_spectrum", "cross_spectrum", "cross_phase",
            "isotropize",
+           "isotropic_power_spectrum", "isotropic_cross_spectrum",
            "isotropic_powerspectrum", "isotropic_crossspectrum",
            "fit_loglog"]
 
@@ -592,7 +593,12 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, detrend=None,
     return cp
 
 
-def _azimuthal_wvnum(k, l, N, nfactor):
+def _radial_wvnum(k, l, N, nfactor):
+    """ Creates a radial wavenumber based on two horizontal wavenumbers
+    along with the appropriate index map
+    """
+    
+    # compute target wavenumbers
     k = k.values
     l = l.values
     K = np.sqrt(k[np.newaxis,:]**2 + l[:,np.newaxis]**2)
@@ -602,9 +608,11 @@ def _azimuthal_wvnum(k, l, N, nfactor):
     else:
         ki = np.linspace(0., k.max(), nbins)
 
+    # compute bin index
     kidx = np.digitize(np.ravel(K), ki)
+    # compute number of points for each wavenumber
     area = np.bincount(kidx)
-
+    # compute the average radial wavenumber for each bin
     kr = np.bincount(kidx, weights=K.ravel()) / area
 
     return kidx, area, kr
@@ -665,16 +673,17 @@ def isotropize(ps, fftdim, nfactor=4):
     k = ps[fftdim[1]]
     l = ps[fftdim[0]]
 
-    # below does not seem robust
-    axis_num = [ps.get_axis_num(d) for d in fftdim]
-    N = [ps.shape[n] for n in axis_num]
-    M = [ps.shape[n] for n in [ps.get_axis_num(d) for d in ps.dims] if n not in axis_num]
+    N = [k.size, l.size]
+    M = [ps[d].size for d in ps.dims if d not in fftdim]
     shape = list(M)
 
-    kidx, area, kr = _azimuthal_wvnum(k, l, np.asarray(N).min(), nfactor)
+    kidx, area, kr = _radial_wvnum(k, l, np.asarray(N).min(), nfactor)
     M.append(len(kr))
     shape.append(np.prod(N))
-    f = ps.data.reshape(shape)
+
+    _ax = [ps.get_axis_num(d) for d in ps.dims if d not in fftdim]+ \
+            [ps.get_axis_num(d) for d in fftdim]
+    f = ps.data.transpose(*_ax).reshape(shape)
     iso_ps = _azi_wrapper(M, kidx, f, area, kr)
 
     k_coords = {'freq_r': kr}
@@ -697,7 +706,7 @@ def isotropic_powerspectrum(*args, **kwargs):
     """
     import warnings
     msg = "Deprecated. Use isotropic_power_spectrum instead"
-    raise warnings.DeprecationWarning(msg)
+    warnings.warn(msg, Warning)
     return isotropic_power_spectrum(*args, **kwargs)
     
 def isotropic_power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True,
@@ -758,7 +767,7 @@ def isotropic_power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True,
     fftdim = ['freq_' + d for d in dim]
     # line below results from weakness in isotropize, should disapear
     # adhoc reordering that seem to works    
-    fftdim = [d for d in ps.dims if d in fftdim]
+    #fftdim = [d for d in ps.dims if d in fftdim]
 
     return isotropize(ps, fftdim, nfactor=nfactor)
 
@@ -768,7 +777,7 @@ def isotropic_crossspectrum(*args, **kwargs):
     """
     import warnings
     msg = "Deprecated. Use isotropic_cross_spectrum instead"
-    raise warnings.DeprecationWarning(msg)
+    warnings.warn(msg, Warning)
     return isotropic_cross_spectrum(*args, **kwargs)
 
 def isotropic_cross_spectrum(da1, da2, spacing_tol=1e-3,
@@ -835,7 +844,7 @@ def isotropic_cross_spectrum(da1, da2, spacing_tol=1e-3,
     fftdim = ['freq_' + d for d in dim]
     # line below results from weakness in isotropize, should disapear
     # adhoc reordering that seem to works
-    fftdim = [d for d in cs.dims if d in fftdim]
+    #fftdim = [d for d in cs.dims if d in fftdim]
 
     return isotropize(cs, fftdim, nfactor=nfactor)
 

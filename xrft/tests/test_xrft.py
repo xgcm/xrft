@@ -652,11 +652,13 @@ def _synthetic_field(N, dL, amp, s):
     theta = np.fft.ifft2(np.fft.ifftshift(F_theta))
     return np.real(theta)
 
-def test_isotropize(N=512, dL=1., amp=1e1, s=-3.):
+def test_isotropize(Nx=512, Ny=256, chunkx=128, chunky=128):
     """Test the isotropization of a power spectrum."""
     # generate synthetic 2D spectrum, isotropize and check values
     # check options in isotropize
     #ps_iso = xrft.isotropize(ps, fftdim, nfactor=4)
+    # test with and without chunks
+    pass
     
 
 def test_isotropic_ps_slope(N=512, dL=1., amp=1e1, s=-3.):
