@@ -652,14 +652,60 @@ def _synthetic_field(N, dL, amp, s):
     theta = np.fft.ifft2(np.fft.ifftshift(F_theta))
     return np.real(theta)
 
-def test_isotropize(Nx=512, Ny=256, chunkx=128, chunky=128):
-    """Test the isotropization of a power spectrum."""
-    # generate synthetic 2D spectrum, isotropize and check values
-    # check options in isotropize
-    #ps_iso = xrft.isotropize(ps, fftdim, nfactor=4)
-    # test with and without chunks
-    pass
+def _synthetic_field_xr(N, dL, amp, s,
+                    other_dim_sizes=None, dim_order=True, 
+                    chunks=None):
     
+    theta = xr.DataArray(_synthetic_field(N, dL, amp, s),
+                        dims=['y', 'x'],
+                        coords={'y':range(N), 'x':range(N)}
+                        )
+
+    if other_dim_sizes:
+        _da = xr.DataArray(np.ones(other_dim_sizes),
+                           dims=['d%d'%i for i in range(len(other_dim_sizes))])
+        if dim_order:
+            theta = theta + _da
+        else:
+            theta = _da + theta
+            
+    if chunks:
+        theta = theta.chunk(chunks)
+
+    return theta
+
+def test_isotropize(N=512):
+    """Test the isotropization of a power spectrum."""
+
+    # generate synthetic 2D spectrum, isotropize and check values
+    dL, amp, s = 1., 1e1, -3.
+    dims = ['x','y']
+    fftdim = ['freq_' + d for d in dims]    
+    def _test(da):
+        spacing_tol = 1e-3
+        nfactor = 4
+        ps = xrft.power_spectrum(da, spacing_tol, dim=dims)
+        ps_iso = xrft.isotropize(ps, fftdim, nfactor=nfactor)    
+    # np data
+    theta = _synthetic_field_xr(N, dL, amp, s)
+    _test(theta)
+    # np with other dim
+    theta = _synthetic_field_xr(N, dL, amp, s, 
+                                other_dim_sizes=[10],
+                                dim_order=True) 
+    _test(theta)
+    # da chunked, order 1
+    theta = _synthetic_field_xr(N, dL, amp, s, 
+                                chunks={'y': None, 'x': None, 'd0': 2}, 
+                                other_dim_sizes=[10], 
+                                dim_order=True) 
+    _test(theta)
+    # da chunked, order 2
+    theta = _synthetic_field_xr(N, dL, amp, s, 
+                                chunks={'y': None, 'x': None, 'd0': 2}, 
+                                other_dim_sizes=[10], 
+                                dim_order=False) 
+    _test(theta)
 
 def test_isotropic_ps_slope(N=512, dL=1., amp=1e1, s=-3.):
     """Test the spectral slope of isotropic power spectrum."""
@@ -667,7 +713,7 @@ def test_isotropic_ps_slope(N=512, dL=1., amp=1e1, s=-3.):
     theta = xr.DataArray(_synthetic_field(N, dL, amp, s),
                         dims=['y', 'x'],
                         coords={'y':range(N), 'x':range(N)})
-    iso_ps = xrft.isotropic_powerspectrum(theta, detrend='constant',
+    iso_ps = xrft.isotropic_power_spectrum(theta, detrend='constant',
                                          density=True)
     npt.assert_almost_equal(np.ma.masked_invalid(iso_ps[1:]).mask.sum(), 0.)
     y_fit, a, b = xrft.fit_loglog(iso_ps.freq_r.values[4:],
@@ -684,11 +730,11 @@ def test_isotropic_ps():
                          'zz': np.arange(5), 'z': np.arange(5),
                          'y': np.arange(16), 'x': np.arange(32)})
     with pytest.raises(ValueError):
-        xrft.isotropic_powerspectrum(da, dim=['y','x'])
+        xrft.isotropic_power_spectrum(da, dim=['y','x'])
     da = da[:,0,:,:,:].drop(['zz'])
     with pytest.raises(ValueError):
-        xrft.isotropic_powerspectrum(da, dim=['z','y','x'])
-    iso_ps = xrft.isotropic_powerspectrum(da, dim=['y','x']).values
+        xrft.isotropic_power_spectrum(da, dim=['z','y','x'])
+    iso_ps = xrft.isotropic_power_spectrum(da, dim=['y','x']).values
     npt.assert_almost_equal(np.ma.masked_invalid(iso_ps[:,:,1:]).mask.sum(), 0.)
 
 def test_isotropic_cs():
@@ -699,14 +745,14 @@ def test_isotropic_cs():
     da2 = xr.DataArray(np.random.rand(N,N),
                     dims=['y','x'], coords={'y':range(N),'x':range(N)})
 
-    iso_cs = xrft.isotropic_crossspectrum(da, da2, window=True)
+    iso_cs = xrft.isotropic_cross_spectrum(da, da2, window=True)
     npt.assert_almost_equal(np.ma.masked_invalid(iso_cs[1:]).mask.sum(), 0.)
 
     da2 = xr.DataArray(np.random.rand(N,N),
                     dims=['lat','lon'],
                     coords={'lat':range(N),'lon':range(N)})
     with pytest.raises(ValueError):
-        xrft.isotropic_crossspectrum(da, da2)
+        xrft.isotropic_cross_spectrum(da, da2)
 
     da = xr.DataArray(np.random.rand(2,5,5,16,32),
                   dims=['time','zz','z','y', 'x'],
@@ -721,13 +767,13 @@ def test_isotropic_cs():
                          'zz': np.arange(5), 'z': np.arange(5),
                          'y': np.arange(16), 'x': np.arange(32)})
     with pytest.raises(ValueError):
-        xrft.isotropic_crossspectrum(da, da2, dim=['y','x'])
+        xrft.isotropic_cross_spectrum(da, da2, dim=['y','x'])
     da = da[:,0,:,:,:].drop(['zz'])
     da2 = da2[:,0,:,:,:].drop(['zz'])
     with pytest.raises(ValueError):
-        xrft.isotropic_crossspectrum(da, da2, dim=['z','y','x'])
+        xrft.isotropic_cross_spectrum(da, da2, dim=['z','y','x'])
 
-    iso_cs = xrft.isotropic_crossspectrum(da, da2, dim=['y','x'],
+    iso_cs = xrft.isotropic_cross_spectrum(da, da2, dim=['y','x'],
                                          window=True).values
     npt.assert_almost_equal(np.ma.masked_invalid(iso_cs[:,:,1:]).mask.sum(), 0.)
 

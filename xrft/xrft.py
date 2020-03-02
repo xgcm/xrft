@@ -765,9 +765,6 @@ def isotropic_power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True,
                        window=window)
 
     fftdim = ['freq_' + d for d in dim]
-    # line below results from weakness in isotropize, should disapear
-    # adhoc reordering that seem to works    
-    #fftdim = [d for d in ps.dims if d in fftdim]
 
     return isotropize(ps, fftdim, nfactor=nfactor)
 
@@ -842,9 +839,6 @@ def isotropic_cross_spectrum(da1, da2, spacing_tol=1e-3,
                        window=window)
 
     fftdim = ['freq_' + d for d in dim]
-    # line below results from weakness in isotropize, should disapear
-    # adhoc reordering that seem to works
-    #fftdim = [d for d in cs.dims if d in fftdim]
 
     return isotropize(cs, fftdim, nfactor=nfactor)
 
