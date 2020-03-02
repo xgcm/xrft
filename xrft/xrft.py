@@ -614,7 +614,7 @@ def _radial_wvnum(k, l, N, nfactor):
     area = np.bincount(kidx)
     # compute the average radial wavenumber for each bin
     kr = np.bincount(kidx, weights=K.ravel()) \
-            / np.ma.masked_where(area>0, area)
+            / np.ma.masked_where(area==0, area)
 
     return kidx, area, kr
 
@@ -635,7 +635,7 @@ def _azimuthal_avg(kidx, f, area, kr):
         _bincount = _bincount.compute()
 
     #iso_f = np.ma.masked_invalid(_bincount / area) * kr
-    iso_f = _bincount / np.ma.masked_where(area>0, area) * kr
+    iso_f = _bincount / np.ma.masked_where(area==0, area) * kr
 
     return iso_f
 
