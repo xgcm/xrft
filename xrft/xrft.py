@@ -648,8 +648,10 @@ def isotropize(ps, fftdim, nfactor=4):
 
     # average azimuthally
     ps = ps.assign_coords(freq_r=np.sqrt(k**2+l**2))
-    iso_ps = ps.groupby_bins('freq_r', bins=ki, labels=kr).mean()        
-    return iso_ps.rename({'freq_r_bins': 'freq_r'})
+    iso_ps = (ps.groupby_bins('freq_r', bins=ki, labels=kr).mean()
+              .rename({'freq_r_bins': 'freq_r'})
+             )
+    return iso_ps * iso_ps.freq_r
 
 def isotropic_powerspectrum(*args, **kwargs):
     """ 

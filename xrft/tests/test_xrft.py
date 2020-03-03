@@ -729,8 +729,6 @@ def test_isotropic_ps():
                                           dtype='datetime64'),
                          'zz': np.arange(5), 'z': np.arange(5),
                          'y': np.arange(16), 'x': np.arange(32)})
-    with pytest.raises(ValueError):
-        xrft.isotropic_power_spectrum(da, dim=['y','x'])
     da = da[:,0,:,:,:].drop(['zz'])
     with pytest.raises(ValueError):
         xrft.isotropic_power_spectrum(da, dim=['z','y','x'])
@@ -766,8 +764,6 @@ def test_isotropic_cs():
                                           dtype='datetime64'),
                          'zz': np.arange(5), 'z': np.arange(5),
                          'y': np.arange(16), 'x': np.arange(32)})
-    with pytest.raises(ValueError):
-        xrft.isotropic_cross_spectrum(da, da2, dim=['y','x'])
     da = da[:,0,:,:,:].drop(['zz'])
     da2 = da2[:,0,:,:,:].drop(['zz'])
     with pytest.raises(ValueError):
