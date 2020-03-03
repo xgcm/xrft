@@ -616,44 +616,8 @@ def _radial_wvnum(k, l, N, nfactor):
     kr = np.bincount(kidx, weights=K.ravel()) \
             / np.ma.masked_where(area==0, area)
 
-    return kidx, area, kr
+    return ki, kr[1:-1]
 
-def _azimuthal_avg(kidx, f, area, kr):
-    """
-    Takes the azimuthal average of a given field.
-    """
-    
-    if type(f)==dsar.core.Array:
-        _bincount = np.bincount(dsar.from_array(kidx), weights=f)        
-        # the shape of _bincount is (nan,) if we don't compute
-        # which breaks the divisions below with for example:
-        # ValueError: operands could not be broadcast together with shapes (nan,) (65,)
-    else:
-        _bincount = np.bincount(kidx, weights=f)
-    if type(_bincount)==dsar.core.Array:
-        # required for python 2.7 
-        _bincount = _bincount.compute()
-
-    #iso_f = np.ma.masked_invalid(_bincount / area) * kr
-    iso_f = _bincount / np.ma.masked_where(area==0, area) * kr
-
-    return iso_f
-
-def _azi_wrapper(M, kidx, f, area, kr):
-    iso = np.zeros(M)
-    if len(M) == 1:
-        iso = _azimuthal_avg(kidx, f, area, kr)
-    elif len(M) == 2:
-        for j in range(M[0]):
-            iso[j] = _azimuthal_avg(kidx, f[j], area, kr)
-    elif len(M) == 3:
-        for j in range(M[0]):
-            for i in range(M[1]):
-                iso[j,i] = _azimuthal_avg(kidx, f[j,i], area, kr)
-    else:
-        raise ValueError("Arrays with more than 4 dimensions are not supported.")
-
-    return iso
 
 def isotropize(ps, fftdim, nfactor=4):
     """
@@ -676,35 +640,16 @@ def isotropize(ps, fftdim, nfactor=4):
         data size. Default is 4.        
     """    
 
+    # compute radial wavenumber bins
     k = ps[fftdim[1]]
     l = ps[fftdim[0]]
-
     N = [k.size, l.size]
-    M = [ps[d].size for d in ps.dims if d not in fftdim]
-    shape = list(M)
+    ki, kr = _radial_wvnum(k, l, min(N), nfactor)
 
-    kidx, area, kr = _radial_wvnum(k, l, np.asarray(N).min(), nfactor)
-    M.append(len(kr))
-    shape.append(np.prod(N))
-
-    _ax = [ps.get_axis_num(d) for d in ps.dims if d not in fftdim]+ \
-            [ps.get_axis_num(d) for d in fftdim]
-    f = ps.data.transpose(*_ax).reshape(shape)
-    iso_ps = _azi_wrapper(M, kidx, f, area, kr)
-
-    k_coords = {'freq_r': kr}
-
-    newdims = [d for d in ps.dims if d not in fftdim]
-    newdims.append('freq_r')
-
-    newcoords = {}
-    for d in newdims:
-        if d in ps.coords:
-            newcoords[d] = ps.coords[d].values
-        elif d in k_coords:
-            newcoords[d] = k_coords[d]
-            
-    return xr.DataArray(iso_ps, dims=newdims, coords=newcoords)
+    # average azimuthally
+    ps = ps.assign_coords(freq_r=np.sqrt(k**2+l**2))
+    iso_ps = ps.groupby_bins('freq_r', bins=ki, labels=kr).mean()        
+    return iso_ps.rename({'freq_r_bins': 'freq_r'})
 
 def isotropic_powerspectrum(*args, **kwargs):
     """ 
