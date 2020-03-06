@@ -658,7 +658,8 @@ def isotropic_powerspectrum(*args, **kwargs):
     Deprecated function. See isotropic_power_spectrum doc
     """
     import warnings
-    msg = "Deprecated. Use isotropic_power_spectrum instead"
+    msg = "This function has been renamed and will disappear in the future."\
+          +" Please use isotropic_power_spectrum instead"
     warnings.warn(msg, Warning)
     return isotropic_power_spectrum(*args, **kwargs)
     
@@ -726,7 +727,8 @@ def isotropic_crossspectrum(*args, **kwargs):
     Deprecated function. See isotropic_cross_spectrum doc
     """
     import warnings
-    msg = "Deprecated. Use isotropic_cross_spectrum instead"
+    msg = "This function has been renamed and will disappear in the future."\
+          +" Please use isotropic_cross_spectrum instead"
     warnings.warn(msg, Warning)
     return isotropic_cross_spectrum(*args, **kwargs)
 

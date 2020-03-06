@@ -574,7 +574,7 @@ def test_parseval():
                             ), decimal=5
                            )
 
-def _synthetic_field(N, dL, amp, s):
+def synthetic_field(N, dL, amp, s):
     """
     Generate a synthetic series of size N by N
     with a spectral slope of s.
@@ -652,11 +652,11 @@ def _synthetic_field(N, dL, amp, s):
     theta = np.fft.ifft2(np.fft.ifftshift(F_theta))
     return np.real(theta)
 
-def _synthetic_field_xr(N, dL, amp, s,
+def synthetic_field_xr(N, dL, amp, s,
                     other_dim_sizes=None, dim_order=True, 
                     chunks=None):
     
-    theta = xr.DataArray(_synthetic_field(N, dL, amp, s),
+    theta = xr.DataArray(synthetic_field(N, dL, amp, s),
                         dims=['y', 'x'],
                         coords={'y':range(N), 'x':range(N)}
                         )
@@ -680,37 +680,41 @@ def test_isotropize(N=512):
     # generate synthetic 2D spectrum, isotropize and check values
     dL, amp, s = 1., 1e1, -3.
     dims = ['x','y']
-    fftdim = ['freq_' + d for d in dims]    
-    def _test(da):
-        spacing_tol = 1e-3
-        nfactor = 4
-        ps = xrft.power_spectrum(da, spacing_tol, dim=dims)
-        ps_iso = xrft.isotropize(ps, fftdim, nfactor=nfactor)    
+    fftdim = ['freq_x', 'freq_y']    
+    spacing_tol = 1e-3
+    nfactor = 4    
+    def _test_iso(theta):
+        ps = xrft.power_spectrum(theta, spacing_tol, dim=dims)        
+        ps = np.sqrt(ps.freq_x**2+ps.freq_y**2)
+        ps_iso = xrft.isotropize(ps, fftdim, nfactor=nfactor)
+        assert len(ps_iso.dims)==1
+        assert ps_iso.dims[0]=='freq_r'
+        npt.assert_allclose(ps_iso, ps_iso.freq_r**2, atol=0.02)
     # np data
-    theta = _synthetic_field_xr(N, dL, amp, s)
-    _test(theta)
+    theta = synthetic_field_xr(N, dL, amp, s)
+    _test_iso(theta)
     # np with other dim
-    theta = _synthetic_field_xr(N, dL, amp, s, 
+    theta = synthetic_field_xr(N, dL, amp, s, 
                                 other_dim_sizes=[10],
-                                dim_order=True) 
-    _test(theta)
+                                dim_order=True)
+    _test_iso(theta)
     # da chunked, order 1
-    theta = _synthetic_field_xr(N, dL, amp, s, 
+    theta = synthetic_field_xr(N, dL, amp, s, 
                                 chunks={'y': None, 'x': None, 'd0': 2}, 
                                 other_dim_sizes=[10], 
                                 dim_order=True) 
-    _test(theta)
+    _test_iso(theta)
     # da chunked, order 2
-    theta = _synthetic_field_xr(N, dL, amp, s, 
+    theta = synthetic_field_xr(N, dL, amp, s, 
                                 chunks={'y': None, 'x': None, 'd0': 2}, 
                                 other_dim_sizes=[10], 
                                 dim_order=False) 
-    _test(theta)
+    _test_iso(theta)
 
 def test_isotropic_ps_slope(N=512, dL=1., amp=1e1, s=-3.):
     """Test the spectral slope of isotropic power spectrum."""
 
-    theta = xr.DataArray(_synthetic_field(N, dL, amp, s),
+    theta = xr.DataArray(synthetic_field(N, dL, amp, s),
                         dims=['y', 'x'],
                         coords={'y':range(N), 'x':range(N)})
     iso_ps = xrft.isotropic_power_spectrum(theta, detrend='constant',
