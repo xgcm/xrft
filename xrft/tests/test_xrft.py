@@ -740,9 +740,6 @@ def test_isotropic_ps():
     npt.assert_almost_equal(
             np.ma.masked_invalid(iso_ps.values[:,:,1:]).mask.sum(),
             0.)
-    # test soon deprecated function
-    iso_ps_dep = xrft.isotropic_powerspectrum(da, dim=['y','x'])
-    assert iso_ps_dep.identical(iso_ps)
 
 def test_isotropic_cs():
     """Test isotropic cross spectrum"""
@@ -783,10 +780,6 @@ def test_isotropic_cs():
     npt.assert_almost_equal(
             np.ma.masked_invalid(iso_cs.values[:,:,1:]).mask.sum(), 
             0.)
-    # test soon deprecated function
-    iso_cs_dep = xrft.isotropic_crossspectrum(da, da2, dim=['y','x'],
-                                            window=True)
-    assert iso_cs_dep.identical(iso_cs)
 
 def test_spacing_tol(test_data_1d):
     da = test_data_1d

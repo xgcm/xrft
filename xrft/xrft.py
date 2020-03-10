@@ -653,7 +653,7 @@ def isotropize(ps, fftdim, nfactor=4):
              )
     return iso_ps * iso_ps.freq_r
 
-def isotropic_powerspectrum(*args, **kwargs):
+def isotropic_powerspectrum(*args, **kwargs): # pragma: no cover
     """ 
     Deprecated function. See isotropic_power_spectrum doc
     """
@@ -722,7 +722,7 @@ def isotropic_power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True,
 
     return isotropize(ps, fftdim, nfactor=nfactor)
 
-def isotropic_crossspectrum(*args, **kwargs):
+def isotropic_crossspectrum(*args, **kwargs): # pragma: no cover
     """ 
     Deprecated function. See isotropic_cross_spectrum doc
     """
