@@ -17,6 +17,8 @@ import scipy.linalg as spl
 
 __all__ = ["detrendn", "detrend_wrap",
            "dft","power_spectrum", "cross_spectrum", "cross_phase",
+           "isotropize",
+           "isotropic_power_spectrum", "isotropic_cross_spectrum",
            "isotropic_powerspectrum", "isotropic_crossspectrum",
            "fit_loglog"]
 
@@ -608,7 +610,12 @@ def cross_phase(da1, da2, spacing_tol=1e-3, dim=None, detrend=None,
     return cp
 
 
-def _azimuthal_wvnum(k, l, N, nfactor):
+def _radial_wvnum(k, l, N, nfactor):
+    """ Creates a radial wavenumber based on two horizontal wavenumbers
+    along with the appropriate index map
+    """
+    
+    # compute target wavenumbers
     k = k.values
     l = l.values
     K = np.sqrt(k[np.newaxis,:]**2 + l[:,np.newaxis]**2)
@@ -618,40 +625,62 @@ def _azimuthal_wvnum(k, l, N, nfactor):
     else:
         ki = np.linspace(0., k.max(), nbins)
 
+    # compute bin index
     kidx = np.digitize(np.ravel(K), ki)
+    # compute number of points for each wavenumber
     area = np.bincount(kidx)
+    # compute the average radial wavenumber for each bin
+    kr = np.bincount(kidx, weights=K.ravel()) \
+            / np.ma.masked_where(area==0, area)
 
-    kr = np.bincount(kidx, weights=K.ravel()) / area
+    return ki, kr[1:-1]
 
-    return kidx, area, kr
 
-def _azimuthal_avg(kidx, f, area, kr):
+def isotropize(ps, fftdim, nfactor=4):
     """
-    Takes the azimuthal average of a given field.
+    Isotropize a 2D power spectrum or cross spectrum 
+    by taking an azimuthal average.
+
+    .. math::
+        \text{iso}_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
+
+    where :math:`N` is the number of azimuthal bins.
+    
+    Parameters
+    ----------
+    ps : `xarray.DataArray`
+        The power spectrum or cross spectrum to be isotropized.
+    fftdim : list
+        The fft dimensions overwhich the isotropization must be performed.
+    nfactor : int, optional
+        Ratio of number of bins to take the azimuthal averaging with the
+        data size. Default is 4.        
+    """    
+
+    # compute radial wavenumber bins
+    k = ps[fftdim[1]]
+    l = ps[fftdim[0]]
+    N = [k.size, l.size]
+    ki, kr = _radial_wvnum(k, l, min(N), nfactor)
+
+    # average azimuthally
+    ps = ps.assign_coords(freq_r=np.sqrt(k**2+l**2))
+    iso_ps = (ps.groupby_bins('freq_r', bins=ki, labels=kr).mean()
+              .rename({'freq_r_bins': 'freq_r'})
+             )
+    return iso_ps * iso_ps.freq_r
+
+def isotropic_powerspectrum(*args, **kwargs): # pragma: no cover
+    """ 
+    Deprecated function. See isotropic_power_spectrum doc
     """
-
-    iso_f = np.ma.masked_invalid(np.bincount(kidx, weights=f)
-                                / area) * kr
-
-    return iso_f
-
-def _azi_wrapper(M, kidx, f, area, kr):
-    iso = np.zeros(M)
-    if len(M) == 1:
-        iso = _azimuthal_avg(kidx, f, area, kr)
-    elif len(M) == 2:
-        for j in range(M[0]):
-            iso[j] = _azimuthal_avg(kidx, f[j], area, kr)
-    elif len(M) == 3:
-        for j in range(M[0]):
-            for i in range(M[1]):
-                iso[j,i] = _azimuthal_avg(kidx, f[j,i], area, kr)
-    else:
-        raise ValueError("Arrays with more than 4 dimensions are not supported.")
-
-    return iso
-
-def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
+    import warnings
+    msg = "This function has been renamed and will disappear in the future."\
+          +" Please use isotropic_power_spectrum instead"
+    warnings.warn(msg, Warning)
+    return isotropic_power_spectrum(*args, **kwargs)
+    
+def isotropic_power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True,
                            detrend=None, density=True, window=False, nfactor=4):
     """
     Calculates the isotropic spectrum from the
@@ -662,6 +691,8 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
         \text{iso}_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
 
     where :math:`N` is the number of azimuthal bins.
+
+    Note: the method is not lazy does trigger computations.
 
     Parameters
     ----------
@@ -705,35 +736,20 @@ def isotropic_powerspectrum(da, spacing_tol=1e-3, dim=None, shift=True,
                        window=window)
 
     fftdim = ['freq_' + d for d in dim]
-    k = ps[fftdim[1]]
-    l = ps[fftdim[0]]
 
-    axis_num = [da.get_axis_num(d) for d in dim]
-    N = [da.shape[n] for n in axis_num]
-    M = [da.shape[n] for n in [da.get_axis_num(d) for d in da.dims] if n not in axis_num]
-    shape = list(M)
+    return isotropize(ps, fftdim, nfactor=nfactor)
 
-    kidx, area, kr = _azimuthal_wvnum(k, l, np.asarray(N).min(), nfactor)
-    M.append(len(kr))
-    shape.append(np.prod(N))
-    f = ps.data.reshape(shape)
-    iso_ps = _azi_wrapper(M, kidx, f, area, kr)
+def isotropic_crossspectrum(*args, **kwargs): # pragma: no cover
+    """ 
+    Deprecated function. See isotropic_cross_spectrum doc
+    """
+    import warnings
+    msg = "This function has been renamed and will disappear in the future."\
+          +" Please use isotropic_cross_spectrum instead"
+    warnings.warn(msg, Warning)
+    return isotropic_cross_spectrum(*args, **kwargs)
 
-    k_coords = {'freq_r': kr}
-
-    newdims = [d for d in da.dims if d not in dim]
-    newdims.append('freq_r')
-
-    newcoords = {}
-    for d in newdims:
-        if d in da.coords:
-            newcoords[d] = da.coords[d].values
-        else:
-            newcoords[d] = k_coords[d]
-
-    return xr.DataArray(iso_ps, dims=newdims, coords=newcoords)
-
-def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
+def isotropic_cross_spectrum(da1, da2, spacing_tol=1e-3,
                            dim=None, shift=True, detrend=None,
                            density=True, window=False, nfactor=4):
     """
@@ -745,6 +761,8 @@ def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
         \text{iso}_{cs} = k_r N^{-1} \sum_{N} (\mathbb{F}(da1') {\mathbb{F}(da2')}^*)
 
     where :math:`N` is the number of azimuthal bins.
+    
+    Note: the method is not lazy does trigger computations.
 
     Parameters
     ----------
@@ -793,33 +811,8 @@ def isotropic_crossspectrum(da1, da2, spacing_tol=1e-3,
                        window=window)
 
     fftdim = ['freq_' + d for d in dim]
-    k = cs[fftdim[1]]
-    l = cs[fftdim[0]]
 
-    axis_num = [da1.get_axis_num(d) for d in dim]
-    N = [da1.shape[n] for n in axis_num]
-    M = [da1.shape[n] for n in [da1.get_axis_num(d) for d in da1.dims] if n not in axis_num]
-    shape = list(M)
-
-    kidx, area, kr = _azimuthal_wvnum(k, l, np.asarray(N).min(), nfactor)
-    M.append(len(kr))
-    shape.append(np.prod(N))
-    f = cs.data.reshape(shape)
-    iso_cs = _azi_wrapper(M, kidx, f, area, kr)
-
-    k_coords = {'freq_r': kr}
-
-    newdims = [d for d in da1.dims if d not in dim]
-    newdims.append('freq_r')
-
-    newcoords = {}
-    for d in newdims:
-        if d in da1.coords:
-            newcoords[d] = da1.coords[d].values
-        else:
-            newcoords[d] = k_coords[d]
-
-    return xr.DataArray(iso_cs, dims=newdims, coords=newcoords)
+    return isotropize(cs, fftdim, nfactor=nfactor)
 
 def fit_loglog(x, y):
     """
