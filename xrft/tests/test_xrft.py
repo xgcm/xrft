@@ -737,7 +737,7 @@ def test_isotropic_ps():
                   dims=['time','z','y','x'],
                   coords={'time': np.array(['2019-04-18', '2019-04-19'],
                                           dtype='datetime64'),
-                         'zz': ('z'np.arange(5)), 'z': np.arange(5),
+                         'zz': ('z',np.arange(5)), 'z': np.arange(5),
                          'y': np.arange(16), 'x': np.arange(32)})
     with pytest.raises(ValueError):
         xrft.isotropic_power_spectrum(da, dim=['z','y','x'])
