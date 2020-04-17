@@ -183,6 +183,12 @@ class TestDFTImag(object):
         da_prime = (da - da.mean(dim=dim)).values
         npt.assert_almost_equal(ft.values, np.fft.fftn(da_prime*window))
 
+        da = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
+                         coords={'x':range(N,0,-1),'y':range(N,0,-1)}
+                         )
+        assert xrft.power_spectrum(da, shift=False,
+                                  density=True).data.all() >= 0.
+
     def test_dim_dft(self):
         N = 16
         da = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
@@ -653,9 +659,9 @@ def synthetic_field(N, dL, amp, s):
     return np.real(theta)
 
 def synthetic_field_xr(N, dL, amp, s,
-                    other_dim_sizes=None, dim_order=True, 
+                    other_dim_sizes=None, dim_order=True,
                     chunks=None):
-    
+
     theta = xr.DataArray(synthetic_field(N, dL, amp, s),
                         dims=['y', 'x'],
                         coords={'y':range(N), 'x':range(N)}
@@ -668,7 +674,7 @@ def synthetic_field_xr(N, dL, amp, s,
             theta = theta + _da
         else:
             theta = _da + theta
-            
+
     if chunks:
         theta = theta.chunk(chunks)
 
@@ -680,11 +686,11 @@ def test_isotropize(N=512):
     # generate synthetic 2D spectrum, isotropize and check values
     dL, amp, s = 1., 1e1, -3.
     dims = ['x','y']
-    fftdim = ['freq_x', 'freq_y']    
+    fftdim = ['freq_x', 'freq_y']
     spacing_tol = 1e-3
-    nfactor = 4    
+    nfactor = 4
     def _test_iso(theta):
-        ps = xrft.power_spectrum(theta, spacing_tol, dim=dims)        
+        ps = xrft.power_spectrum(theta, spacing_tol, dim=dims)
         ps = np.sqrt(ps.freq_x**2+ps.freq_y**2)
         ps_iso = xrft.isotropize(ps, fftdim, nfactor=nfactor)
         assert len(ps_iso.dims)==1
@@ -694,21 +700,21 @@ def test_isotropize(N=512):
     theta = synthetic_field_xr(N, dL, amp, s)
     _test_iso(theta)
     # np with other dim
-    theta = synthetic_field_xr(N, dL, amp, s, 
+    theta = synthetic_field_xr(N, dL, amp, s,
                                 other_dim_sizes=[10],
                                 dim_order=True)
     _test_iso(theta)
     # da chunked, order 1
-    theta = synthetic_field_xr(N, dL, amp, s, 
-                                chunks={'y': None, 'x': None, 'd0': 2}, 
-                                other_dim_sizes=[10], 
-                                dim_order=True) 
+    theta = synthetic_field_xr(N, dL, amp, s,
+                                chunks={'y': None, 'x': None, 'd0': 2},
+                                other_dim_sizes=[10],
+                                dim_order=True)
     _test_iso(theta)
     # da chunked, order 2
-    theta = synthetic_field_xr(N, dL, amp, s, 
-                                chunks={'y': None, 'x': None, 'd0': 2}, 
-                                other_dim_sizes=[10], 
-                                dim_order=False) 
+    theta = synthetic_field_xr(N, dL, amp, s,
+                                chunks={'y': None, 'x': None, 'd0': 2},
+                                other_dim_sizes=[10],
+                                dim_order=False)
     _test_iso(theta)
 
 def test_isotropic_ps_slope(N=512, dL=1., amp=1e1, s=-3.):
@@ -727,18 +733,17 @@ def test_isotropic_ps_slope(N=512, dL=1., amp=1e1, s=-3.):
 
 def test_isotropic_ps():
     """Test data with extra coordinates"""
-    da = xr.DataArray(np.random.rand(2,5,5,16,32),
-                  dims=['time','zz','z','y', 'x'],
+    da = xr.DataArray(np.random.rand(2,5,16,32),
+                  dims=['time','z','y','x'],
                   coords={'time': np.array(['2019-04-18', '2019-04-19'],
                                           dtype='datetime64'),
-                         'zz': np.arange(5), 'z': np.arange(5),
+                         'zz': ('z'np.arange(5)), 'z': np.arange(5),
                          'y': np.arange(16), 'x': np.arange(32)})
-    da = da[:,0,:,:,:].drop(['zz'])
     with pytest.raises(ValueError):
         xrft.isotropic_power_spectrum(da, dim=['z','y','x'])
     iso_ps = xrft.isotropic_power_spectrum(da, dim=['y','x'])
-    npt.assert_almost_equal(
-            np.ma.masked_invalid(iso_ps.values[:,:,1:]).mask.sum(),
+    npt.assert_equal(
+            np.ma.masked_invalid(iso_ps.isel(freq_r=slice(1,None))).mask.sum(),
             0.)
 
 def test_isotropic_cs():
@@ -750,7 +755,8 @@ def test_isotropic_cs():
                     dims=['y','x'], coords={'y':range(N),'x':range(N)})
 
     iso_cs = xrft.isotropic_cross_spectrum(da, da2, window=True)
-    npt.assert_almost_equal(np.ma.masked_invalid(iso_cs[1:]).mask.sum(), 0.)
+    npt.assert_equal(np.ma.masked_invalid(iso_cs.isel(freq_r=slice(1,None))
+                                         ).mask.sum(), 0.)
 
     da2 = xr.DataArray(np.random.rand(N,N),
                     dims=['lat','lon'],
@@ -758,27 +764,25 @@ def test_isotropic_cs():
     with pytest.raises(ValueError):
         xrft.isotropic_cross_spectrum(da, da2)
 
-    da = xr.DataArray(np.random.rand(2,5,5,16,32),
-                  dims=['time','zz','z','y', 'x'],
+    da = xr.DataArray(np.random.rand(2,5,16,32),
+                  dims=['time','z','y','x'],
                   coords={'time': np.array(['2019-04-18', '2019-04-19'],
                                           dtype='datetime64'),
-                         'zz': np.arange(5), 'z': np.arange(5),
+                         'zz': ('z',np.arange(5)), 'z': np.arange(5),
                          'y': np.arange(16), 'x': np.arange(32)})
-    da2 = xr.DataArray(np.random.rand(2,5,5,16,32),
-                  dims=['time','zz','z','y', 'x'],
+    da2 = xr.DataArray(np.random.rand(2,5,16,32),
+                  dims=['time','z','y','x'],
                   coords={'time': np.array(['2019-04-18', '2019-04-19'],
                                           dtype='datetime64'),
-                         'zz': np.arange(5), 'z': np.arange(5),
+                         'zz': ('z',np.arange(5)), 'z': np.arange(5),
                          'y': np.arange(16), 'x': np.arange(32)})
-    da = da[:,0,:,:,:].drop(['zz'])
-    da2 = da2[:,0,:,:,:].drop(['zz'])
+
     with pytest.raises(ValueError):
         xrft.isotropic_cross_spectrum(da, da2, dim=['z','y','x'])
-
     iso_cs = xrft.isotropic_cross_spectrum(da, da2, dim=['y','x'],
-                                         window=True)
-    npt.assert_almost_equal(
-            np.ma.masked_invalid(iso_cs.values[:,:,1:]).mask.sum(), 
+                                          window=True)
+    npt.assert_equal(
+            np.ma.masked_invalid(iso_cs.isel(freq_r=slice(1,None))).mask.sum(),
             0.)
 
 def test_spacing_tol(test_data_1d):

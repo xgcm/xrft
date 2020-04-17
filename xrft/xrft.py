@@ -245,7 +245,7 @@ def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
 
     dk = [l[1] - l[0] for l in wavenm]
     for this_dk, d in zip(dk, dim):
-        newcoords[prefix + d + '_spacing'] = this_dk
+        newcoords[prefix + d + '_spacing'] = np.abs(this_dk)
 
     return newdims, newcoords
 
@@ -452,7 +452,7 @@ def _power_spectrum(daft, dim, N, density):
     if density:
         ps /= (np.asarray(N).prod()) ** 2
         for i in dim:
-            ps /= np.abs(daft['freq_' + i + '_spacing'])
+            ps /= daft['freq_' + i + '_spacing']
 
     return ps
 
@@ -533,7 +533,7 @@ def _cross_spectrum(daft1, daft2, dim, N, density):
     if density:
         cs /= (np.asarray(N).prod())**2
         for i in dim:
-            cs /= np.abs(daft1['freq_' + i + '_spacing'])
+            cs /= daft1['freq_' + i + '_spacing']
 
     return cs
 
