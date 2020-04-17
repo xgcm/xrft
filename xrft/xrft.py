@@ -452,7 +452,7 @@ def _power_spectrum(daft, dim, N, density):
     if density:
         ps /= (np.asarray(N).prod()) ** 2
         for i in dim:
-            ps /= daft['freq_' + i + '_spacing']
+            ps /= np.abs(daft['freq_' + i + '_spacing'])
 
     return ps
 
@@ -533,7 +533,7 @@ def _cross_spectrum(daft1, daft2, dim, N, density):
     if density:
         cs /= (np.asarray(N).prod())**2
         for i in dim:
-            cs /= daft1['freq_' + i + '_spacing']
+            cs /= np.abs(daft1['freq_' + i + '_spacing'])
 
     return cs
 
@@ -614,7 +614,7 @@ def _radial_wvnum(k, l, N, nfactor):
     """ Creates a radial wavenumber based on two horizontal wavenumbers
     along with the appropriate index map
     """
-    
+
     # compute target wavenumbers
     k = k.values
     l = l.values
@@ -630,22 +630,22 @@ def _radial_wvnum(k, l, N, nfactor):
     # compute number of points for each wavenumber
     area = np.bincount(kidx)
     # compute the average radial wavenumber for each bin
-    kr = np.bincount(kidx, weights=K.ravel()) \
-            / np.ma.masked_where(area==0, area)
+    kr = (np.bincount(kidx, weights=K.ravel())
+          / np.ma.masked_where(area==0, area))
 
     return ki, kr[1:-1]
 
 
 def isotropize(ps, fftdim, nfactor=4):
     """
-    Isotropize a 2D power spectrum or cross spectrum 
+    Isotropize a 2D power spectrum or cross spectrum
     by taking an azimuthal average.
 
     .. math::
         \text{iso}_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
 
     where :math:`N` is the number of azimuthal bins.
-    
+
     Parameters
     ----------
     ps : `xarray.DataArray`
@@ -654,8 +654,8 @@ def isotropize(ps, fftdim, nfactor=4):
         The fft dimensions overwhich the isotropization must be performed.
     nfactor : int, optional
         Ratio of number of bins to take the azimuthal averaging with the
-        data size. Default is 4.        
-    """    
+        data size. Default is 4.
+    """
 
     # compute radial wavenumber bins
     k = ps[fftdim[1]]
@@ -671,7 +671,7 @@ def isotropize(ps, fftdim, nfactor=4):
     return iso_ps * iso_ps.freq_r
 
 def isotropic_powerspectrum(*args, **kwargs): # pragma: no cover
-    """ 
+    """
     Deprecated function. See isotropic_power_spectrum doc
     """
     import warnings
@@ -679,7 +679,7 @@ def isotropic_powerspectrum(*args, **kwargs): # pragma: no cover
           +" Please use isotropic_power_spectrum instead"
     warnings.warn(msg, Warning)
     return isotropic_power_spectrum(*args, **kwargs)
-    
+
 def isotropic_power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True,
                            detrend=None, density=True, window=False, nfactor=4):
     """
@@ -740,7 +740,7 @@ def isotropic_power_spectrum(da, spacing_tol=1e-3, dim=None, shift=True,
     return isotropize(ps, fftdim, nfactor=nfactor)
 
 def isotropic_crossspectrum(*args, **kwargs): # pragma: no cover
-    """ 
+    """
     Deprecated function. See isotropic_cross_spectrum doc
     """
     import warnings
@@ -761,7 +761,7 @@ def isotropic_cross_spectrum(da1, da2, spacing_tol=1e-3,
         \text{iso}_{cs} = k_r N^{-1} \sum_{N} (\mathbb{F}(da1') {\mathbb{F}(da2')}^*)
 
     where :math:`N` is the number of azimuthal bins.
-    
+
     Note: the method is not lazy does trigger computations.
 
     Parameters
