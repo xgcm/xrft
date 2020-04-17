@@ -245,7 +245,7 @@ def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
 
     dk = [l[1] - l[0] for l in wavenm]
     for this_dk, d in zip(dk, dim):
-        newcoords[prefix + d + '_spacing'] = np.abs(this_dk)
+        newcoords[prefix + d + '_spacing'] = this_dk
 
     return newdims, newcoords
 
@@ -346,7 +346,7 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         if pd.api.types.is_timedelta64_dtype(diff):
             # convert to seconds so we get hertz
             diff = diff.astype('timedelta64[s]').astype('f8')
-        delta = diff[0]
+        delta = np.abs(diff[0])
         if not np.allclose(diff, diff[0], rtol=spacing_tol):
             raise ValueError("Can't take Fourier transform because "
                              "coodinate %s is not evenly spaced" % d)
