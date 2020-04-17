@@ -363,8 +363,9 @@ def test_CFconvention():
     data.lat.attrs['standard_name'] = 'latitude'
     data.lon.attrs['standard_name'] = 'longitude'
     with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
         xrft.dft(data, dim=['lat','lon'])
-        assert issubclass(w[-1].category, UserWarning)
+        assert issubclass(w[0].category, UserWarning)
 
 def test_window_single_dim():
     # Julius' example
