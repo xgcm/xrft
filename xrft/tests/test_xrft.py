@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import dask.array as dsar
+import warnings
 
 import scipy.signal as sps
 import scipy.linalg as spl
@@ -355,6 +356,15 @@ def test_dft_nocoords():
     dft = xrft.dft(data,dim=['time'])
     ps = xrft.power_spectrum(data,dim=['time'])
 
+def test_CFconvention():
+    data = xr.DataArray(np.random.random([20,30,100]),
+                    dims=['time','lat','lon'],
+                    coords={'time':range(20),'lat':range(30),'lon':range(100)})
+    data.lat.attrs['standard_name'] = 'latitude'
+    data.lon.attrs['standard_name'] = 'longitude'
+    with warnings.catch_warnings(record=True) as w:
+        xrft.dft(data, dim=['lat','lon'])
+        assert issubclass(w[-1].category, UserWarning)
 
 def test_window_single_dim():
     # Julius' example
@@ -653,9 +663,9 @@ def synthetic_field(N, dL, amp, s):
     return np.real(theta)
 
 def synthetic_field_xr(N, dL, amp, s,
-                    other_dim_sizes=None, dim_order=True, 
+                    other_dim_sizes=None, dim_order=True,
                     chunks=None):
-    
+
     theta = xr.DataArray(synthetic_field(N, dL, amp, s),
                         dims=['y', 'x'],
                         coords={'y':range(N), 'x':range(N)}
@@ -668,7 +678,7 @@ def synthetic_field_xr(N, dL, amp, s,
             theta = theta + _da
         else:
             theta = _da + theta
-            
+
     if chunks:
         theta = theta.chunk(chunks)
 
@@ -680,11 +690,11 @@ def test_isotropize(N=512):
     # generate synthetic 2D spectrum, isotropize and check values
     dL, amp, s = 1., 1e1, -3.
     dims = ['x','y']
-    fftdim = ['freq_x', 'freq_y']    
+    fftdim = ['freq_x', 'freq_y']
     spacing_tol = 1e-3
-    nfactor = 4    
+    nfactor = 4
     def _test_iso(theta):
-        ps = xrft.power_spectrum(theta, spacing_tol, dim=dims)        
+        ps = xrft.power_spectrum(theta, spacing_tol, dim=dims)
         ps = np.sqrt(ps.freq_x**2+ps.freq_y**2)
         ps_iso = xrft.isotropize(ps, fftdim, nfactor=nfactor)
         assert len(ps_iso.dims)==1
@@ -694,21 +704,21 @@ def test_isotropize(N=512):
     theta = synthetic_field_xr(N, dL, amp, s)
     _test_iso(theta)
     # np with other dim
-    theta = synthetic_field_xr(N, dL, amp, s, 
+    theta = synthetic_field_xr(N, dL, amp, s,
                                 other_dim_sizes=[10],
                                 dim_order=True)
     _test_iso(theta)
     # da chunked, order 1
-    theta = synthetic_field_xr(N, dL, amp, s, 
-                                chunks={'y': None, 'x': None, 'd0': 2}, 
-                                other_dim_sizes=[10], 
-                                dim_order=True) 
+    theta = synthetic_field_xr(N, dL, amp, s,
+                                chunks={'y': None, 'x': None, 'd0': 2},
+                                other_dim_sizes=[10],
+                                dim_order=True)
     _test_iso(theta)
     # da chunked, order 2
-    theta = synthetic_field_xr(N, dL, amp, s, 
-                                chunks={'y': None, 'x': None, 'd0': 2}, 
-                                other_dim_sizes=[10], 
-                                dim_order=False) 
+    theta = synthetic_field_xr(N, dL, amp, s,
+                                chunks={'y': None, 'x': None, 'd0': 2},
+                                other_dim_sizes=[10],
+                                dim_order=False)
     _test_iso(theta)
 
 def test_isotropic_ps_slope(N=512, dL=1., amp=1e1, s=-3.):
@@ -778,7 +788,7 @@ def test_isotropic_cs():
     iso_cs = xrft.isotropic_cross_spectrum(da, da2, dim=['y','x'],
                                          window=True)
     npt.assert_almost_equal(
-            np.ma.masked_invalid(iso_cs.values[:,:,1:]).mask.sum(), 
+            np.ma.masked_invalid(iso_cs.values[:,:,1:]).mask.sum(),
             0.)
 
 def test_spacing_tol(test_data_1d):
