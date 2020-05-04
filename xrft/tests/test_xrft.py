@@ -186,8 +186,8 @@ class TestDFTImag(object):
         da = xr.DataArray(np.random.rand(N,N), dims=['x','y'],
                          coords={'x':range(N,0,-1),'y':range(N,0,-1)}
                          )
-        assert xrft.power_spectrum(da, shift=False,
-                                  density=True).data.all() >= 0.
+        assert (xrft.power_spectrum(da, shift=False,
+                                   density=True) >= 0.).all()
 
     def test_dim_dft(self):
         N = 16
