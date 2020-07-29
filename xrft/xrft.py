@@ -8,7 +8,6 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 import cftime
-import datetime
 
 import dask.array as dsar
 from dask import delayed
