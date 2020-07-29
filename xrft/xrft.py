@@ -352,6 +352,9 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         elif type(coord.values[0]) == cftime._cftime.DatetimeJulian:
             coord = cftime.date2num(coord,'seconds since 1800-01-01 00:00:00',
                                     'julian')
+        elif type(coord.values[0]) == cftime._cftime.Datetime360Day:
+            coord = cftime.date2num(coord,'seconds since 1800-01-01 00:00:00',
+                                    '360_day')
         diff = np.diff(coord)
         if pd.api.types.is_timedelta64_dtype(diff):
             # convert to seconds so we get hertz
