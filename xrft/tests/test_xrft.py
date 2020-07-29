@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import xarray as xr
+import cftime
 import dask.array as dsar
 
 import scipy.signal as sps
@@ -166,6 +167,19 @@ class TestDFTImag(object):
         # check that frequencies are correct
         dt = (time[1] - time[0]).total_seconds()
         freq_time_expected = np.fft.fftshift(np.fft.fftfreq(Nt, dt))
+        npt.assert_allclose(ft['freq_time'], freq_time_expected)
+
+        # test cftime
+        units = 'days since 2000-01-01 00:00:00'
+        time = cftime.num2date(np.arange(0,10*365), units, '365_day', 'noleap')
+        Nt = len(time)
+        da = xr.DataArray(np.arange(len(time)), dims='time',
+                                    coords=[time])
+
+        ft = xrft.dft(da, shift=False)
+        # num = cftime.date2num(time,'hours since 1800-01-01 00:00:00','noleap')
+        dt = np.diff(time)[0].total_seconds()
+        freq_time_expected = np.fft.fftfreq(Nt, dt)
         npt.assert_allclose(ft['freq_time'], freq_time_expected)
 
     def test_dft_2d(self):
