@@ -177,7 +177,18 @@ class TestDFTImag(object):
                                     coords=[time])
 
         ft = xrft.dft(da, shift=False)
-        
+
+        dt = np.diff(time)[0].total_seconds()
+        freq_time_expected = np.fft.fftfreq(Nt, dt)
+        npt.assert_allclose(ft['freq_time'], freq_time_expected)
+
+        time = cftime.num2date(np.arange(0,10*365), units)
+        Nt = len(time)
+        da = xr.DataArray(np.arange(len(time)), dims='time',
+                                    coords=[time])
+
+        ft = xrft.dft(da, shift=False)
+
         dt = np.diff(time)[0].total_seconds()
         freq_time_expected = np.fft.fftfreq(Nt, dt)
         npt.assert_allclose(ft['freq_time'], freq_time_expected)
