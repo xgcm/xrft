@@ -344,10 +344,14 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     for d in dim:
         coord = da[d]
         if type(coord.values[0]) == cftime._cftime.DatetimeNoLeap:
-            coord = cftime.date2num(coord,'seconds since 1800-01-01 00:00:00','noleap')
+            coord = cftime.date2num(coord,'seconds since 1800-01-01 00:00:00',
+                                    'noleap')
         elif type(coord.values[0]) == cftime._cftime.DatetimeGregorian:
             coord = cftime.date2num(coord,'seconds since 1800-01-01 00:00:00',
-                                    calendar='standard')
+                                    'standard')
+        elif type(coord.values[0]) == cftime._cftime.DatetimeJulian:
+            coord = cftime.date2num(coord,'seconds since 1800-01-01 00:00:00',
+                                    'julian')
         diff = np.diff(coord)
         if pd.api.types.is_timedelta64_dtype(diff):
             # convert to seconds so we get hertz
