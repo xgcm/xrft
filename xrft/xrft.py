@@ -7,7 +7,6 @@ from functools import reduce
 import numpy as np
 import xarray as xr
 import pandas as pd
-import cftime
 
 import dask.array as dsar
 from dask import delayed
@@ -250,19 +249,15 @@ def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
 
     return newdims, newcoords
 
-def _cftime(coord):
-    if type(coord.values[0]) == cftime._cftime.DatetimeNoLeap:
-        coord = cftime.date2num(coord,'seconds since 1800-01-01 00:00:00',
-                                'noleap')
-    elif type(coord.values[0]) == cftime._cftime.DatetimeGregorian:
-        coord = cftime.date2num(coord,'seconds since 1800-01-01 00:00:00',
-                                'standard')
-    elif type(coord.values[0]) == cftime._cftime.DatetimeJulian:
-        coord = cftime.date2num(coord,'seconds since 1800-01-01 00:00:00',
-                                'julian')
-    elif type(coord.values[0]) == cftime._cftime.Datetime360Day:
-        coord = cftime.date2num(coord,'seconds since 1800-01-01 00:00:00',
-                                '360_day')
+def _maybe_decode_time(coord):
+    """Returns decoded time as a xarray.DataArray."""
+    import cftime
+
+    calendar = coord.values[0].calendar
+    ref_units = 'seconds since 1800-01-01 00:00:00'
+    decoded_time = cftime.date2num(coord, ref_units, calendar)
+    coord = xr.DataArray(decoded_time, dims=coord.dims, coords=coord.coords)
+
     return coord
 
 def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
@@ -357,7 +352,11 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     # verify even spacing of input coordinates
     delta_x = []
     for d in dim:
-        coord = _cftime(da[d])
+        coord = da[d]
+        try: # check for cftime coordinates
+            coord = _maybe_decode_time(coord)
+        except:
+            pass
         diff = np.diff(coord)
         if pd.api.types.is_timedelta64_dtype(diff):
             # convert to seconds so we get hertz

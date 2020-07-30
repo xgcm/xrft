@@ -40,6 +40,14 @@ def test_data_1d(request):
         da = da.chunk()
     return da
 
+@pytest.fixture(params=['pandas','standard','julian','365_day','360_day'])
+def test_time(request):
+    if request.param == 'pandas':
+        return pd.date_range('2000-01-01', '2001-01-01', closed='left')
+    else:
+        units = 'days since 2000-01-01 00:00:00'
+        return cftime.num2date(np.arange(0,10*365), units, request.param)
+
 def numpy_detrend(da):
     """
     Detrend a 2D field by subtracting out the least-square plane fit.
@@ -156,56 +164,23 @@ class TestDFTImag(object):
             with pytest.raises(ValueError):
                 ft = xrft.dft(da)
 
-    def test_dft_1d_time(self):
+
+    def test_dft_1d_time(self,test_time):
         """Test the discrete Fourier transform function on timeseries data."""
-        time = pd.date_range('2000-01-01', '2001-01-01', closed='left')
+        time = test_time
         Nt = len(time)
         da = xr.DataArray(np.random.rand(Nt), coords=[time], dims=['time'])
 
-        ft = xrft.dft(da)
+        ft = xrft.dft(da, shift=False)
 
         # check that frequencies are correct
-        dt = (time[1] - time[0]).total_seconds()
-        freq_time_expected = np.fft.fftshift(np.fft.fftfreq(Nt, dt))
-        npt.assert_allclose(ft['freq_time'], freq_time_expected)
-
-        # test cftime
-        units = 'days since 2000-01-01 00:00:00'
-        time = cftime.num2date(np.arange(0,10*365), units, '365_day', 'noleap')
-        Nt = len(time)
-        da = xr.DataArray(np.arange(len(time)), dims='time',
-                                    coords=[time])
-        ft = xrft.dft(da, shift=False)
-        dt = np.diff(time)[0].total_seconds()
+        if pd.api.types.is_datetime64_dtype(time):
+            dt = (time[1] - time[0]).total_seconds()
+        else:
+            dt = np.diff(time)[0].total_seconds()
         freq_time_expected = np.fft.fftfreq(Nt, dt)
         npt.assert_allclose(ft['freq_time'], freq_time_expected)
 
-        time = cftime.num2date(np.arange(0,10*365), units)
-        Nt = len(time)
-        da = xr.DataArray(np.arange(len(time)), dims='time',
-                                    coords=[time])
-        ft = xrft.dft(da, shift=False)
-        dt = np.diff(time)[0].total_seconds()
-        freq_time_expected = np.fft.fftfreq(Nt, dt)
-        npt.assert_allclose(ft['freq_time'], freq_time_expected)
-
-        time = cftime.num2date(np.arange(0,10*365), units, 'julian')
-        Nt = len(time)
-        da = xr.DataArray(np.arange(len(time)), dims='time',
-                                    coords=[time])
-        ft = xrft.dft(da, shift=False)
-        dt = np.diff(time)[0].total_seconds()
-        freq_time_expected = np.fft.fftfreq(Nt, dt)
-        npt.assert_allclose(ft['freq_time'], freq_time_expected)
-
-        time = cftime.num2date(np.arange(0,10*365), units, '360_day')
-        Nt = len(time)
-        da = xr.DataArray(np.arange(len(time)), dims='time',
-                                    coords=[time])
-        ft = xrft.dft(da, shift=False)
-        dt = np.diff(time)[0].total_seconds()
-        freq_time_expected = np.fft.fftfreq(Nt, dt)
-        npt.assert_allclose(ft['freq_time'], freq_time_expected)
 
     def test_dft_2d(self):
         """Test the discrete Fourier transform on 2D data"""
