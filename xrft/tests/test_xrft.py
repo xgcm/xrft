@@ -41,7 +41,7 @@ def test_data_1d(request):
     return da
 
 @pytest.fixture(params=['pandas','standard','julian','365_day','360_day'])
-def test_time(request):
+def time_data(request):
     if request.param == 'pandas':
         return pd.date_range('2000-01-01', '2001-01-01', closed='left')
     else:
@@ -165,9 +165,9 @@ class TestDFTImag(object):
                 ft = xrft.dft(da)
 
 
-    def test_dft_1d_time(self,test_time):
+    def test_dft_1d_time(self,time_data):
         """Test the discrete Fourier transform function on timeseries data."""
-        time = test_time
+        time = time_data
         Nt = len(time)
         da = xr.DataArray(np.random.rand(Nt), coords=[time], dims=['time'])
 
