@@ -1,6 +1,5 @@
 import os
 import versioneer
-import setuptools; setuptools.setup()
 from setuptools import setup, find_packages
 PACKAGES = find_packages()
 
