@@ -249,7 +249,7 @@ def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
 
     return newdims, newcoords
 
-def _maybe_decode_time(coord):
+def _diff_coord(coord):
     """Returns the difference as a xarray.DataArray."""
 
     v0 = coord.values[0]
@@ -358,7 +358,7 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     # verify even spacing of input coordinates
     delta_x = []
     for d in dim:
-        diff = _maybe_decode_time(da[d])
+        diff = _diff_coord(da[d])
         delta = np.abs(diff[0])
         if not np.allclose(diff, diff[0], rtol=spacing_tol):
             raise ValueError("Can't take Fourier transform because "
