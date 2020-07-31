@@ -249,6 +249,23 @@ def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
 
     return newdims, newcoords
 
+def _diff_coord(coord):
+    """Returns the difference as a xarray.DataArray."""
+
+    v0 = coord.values[0]
+    calendar = getattr(v0, 'calendar', None)
+    if calendar:
+        import cftime
+        ref_units = 'seconds since 1800-01-01 00:00:00'
+        decoded_time = cftime.date2num(coord, ref_units, calendar)
+        coord = xr.DataArray(decoded_time, dims=coord.dims, coords=coord.coords)
+        return np.diff(coord)
+    elif pd.api.types.is_datetime64_dtype(v0):
+        return np.diff(coord).astype('timedelta64[s]').astype('f8')
+    else:
+        return np.diff(coord)
+
+
 def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         window=False, chunks_to_segments=False, prefix='freq_'):
     """
@@ -341,11 +358,7 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     # verify even spacing of input coordinates
     delta_x = []
     for d in dim:
-        coord = da[d]
-        diff = np.diff(coord)
-        if pd.api.types.is_timedelta64_dtype(diff):
-            # convert to seconds so we get hertz
-            diff = diff.astype('timedelta64[s]').astype('f8')
+        diff = _diff_coord(da[d])
         delta = np.abs(diff[0])
         if not np.allclose(diff, diff[0], rtol=spacing_tol):
             raise ValueError("Can't take Fourier transform because "

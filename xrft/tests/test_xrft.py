@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import xarray as xr
+import cftime
 import dask.array as dsar
 
 import scipy.signal as sps
@@ -38,6 +39,14 @@ def test_data_1d(request):
     if request.param == 'dask':
         da = da.chunk()
     return da
+
+@pytest.fixture(params=['pandas','standard','julian','365_day','360_day'])
+def time_data(request):
+    if request.param == 'pandas':
+        return pd.date_range('2000-01-01', '2001-01-01', closed='left')
+    else:
+        units = 'days since 2000-01-01 00:00:00'
+        return cftime.num2date(np.arange(0,10*365), units, request.param)
 
 def numpy_detrend(da):
     """
@@ -155,18 +164,23 @@ class TestDFTImag(object):
             with pytest.raises(ValueError):
                 ft = xrft.dft(da)
 
-    def test_dft_1d_time(self):
+
+    def test_dft_1d_time(self,time_data):
         """Test the discrete Fourier transform function on timeseries data."""
-        time = pd.date_range('2000-01-01', '2001-01-01', closed='left')
+        time = time_data
         Nt = len(time)
         da = xr.DataArray(np.random.rand(Nt), coords=[time], dims=['time'])
 
-        ft = xrft.dft(da)
+        ft = xrft.dft(da, shift=False)
 
         # check that frequencies are correct
-        dt = (time[1] - time[0]).total_seconds()
-        freq_time_expected = np.fft.fftshift(np.fft.fftfreq(Nt, dt))
+        if pd.api.types.is_datetime64_dtype(time):
+            dt = (time[1] - time[0]).total_seconds()
+        else:
+            dt = np.diff(time)[0].total_seconds()
+        freq_time_expected = np.fft.fftfreq(Nt, dt)
         npt.assert_allclose(ft['freq_time'], freq_time_expected)
+
 
     def test_dft_2d(self):
         """Test the discrete Fourier transform on 2D data"""
