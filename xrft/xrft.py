@@ -250,7 +250,7 @@ def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
     return newdims, newcoords
 
 def _maybe_decode_time(coord):
-    """Returns decoded time as a xarray.DataArray."""
+    """Returns the difference as a xarray.DataArray."""
 
     v0 = coord.values[0]
     calendar = getattr(v0, 'calendar', None)
