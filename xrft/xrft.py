@@ -265,7 +265,15 @@ def _diff_coord(coord):
     else:
         return np.diff(coord)
 
-
+def _calc_normalization_factor(da, axis_num, chunks_to_segments):
+    """Return the signal length, N, to be used in the normalisation of spectra"""
+    
+    if chunks_to_segments:
+        # Use chunk sizes for normalisation
+        return [da.chunks[n][0] for n in axis_num]
+    else:
+        return [da.shape[n] for n in axis_num]
+    
 def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         window=False, chunks_to_segments=False, prefix='freq_'):
     """
@@ -453,7 +461,7 @@ def power_spectrum(da, spacing_tol=1e-3, dim=None, real=None, shift=True,
     # the axes along which to take ffts
     axis_num = [da.get_axis_num(d) for d in dim]
 
-    N = [da.shape[n] for n in axis_num]
+    N = _calc_normalization_factor(da, axis_num, chunks_to_segments)
 
     return _power_spectrum(daft, dim, N, density)
 
@@ -535,7 +543,7 @@ def cross_spectrum(da1, da2, spacing_tol=1e-3, dim=None, shift=True,
     # the axes along which to take ffts
     axis_num = [da1.get_axis_num(d) for d in dim]
 
-    N = [da1.shape[n] for n in axis_num]
+    N = _calc_normalization_factor(da1, axis_num, chunks_to_segments)
 
     return _cross_spectrum(daft1, daft2, dim, N, density)
 
