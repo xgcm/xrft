@@ -5,6 +5,8 @@ xrft: Fourier transforms for xarray data
    :target: https://travis-ci.org/xgcm/xrft
 .. image:: https://codecov.io/gh/xgcm/xrft/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/xgcm/xrft
+.. image:: https://badge.fury.io/py/xrft.svg
+   :target: https://badge.fury.io/py/xrft
 .. image:: https://readthedocs.org/projects/xrft/badge/?version=latest
    :target: https://xrft.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
