@@ -7,6 +7,8 @@ xrft: Fourier transforms for xarray data
    :target: https://codecov.io/gh/xgcm/xrft
 .. image:: https://badge.fury.io/py/xrft.svg
    :target: https://badge.fury.io/py/xrft
+.. image:: https://anaconda.org/conda-forge/xrft/badges/version.svg
+   :target: https://anaconda.org/conda-forge/xrft
 .. image:: https://readthedocs.org/projects/xrft/badge/?version=latest
    :target: https://xrft.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
