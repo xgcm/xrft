@@ -12,8 +12,8 @@ xrft: Fourier transforms for xarray data
 .. image:: https://readthedocs.org/projects/xrft/badge/?version=latest
    :target: https://xrft.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
-.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.1402636.svg
-   :target: https://doi.org/10.5281/zenodo.1402636
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.1402635.svg
+   :target: https://doi.org/10.5281/zenodo.1402635
 
 **xrft** is an open-source Python package for
 taking the discrete Fourier transform (DFT) on xarray_ and dask_ arrays.
