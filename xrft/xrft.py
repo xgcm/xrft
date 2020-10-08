@@ -131,9 +131,10 @@ def detrend_wrap(detrend_func):
                                 'cannot be chunked.')
 
         if len(axes) == 1:
-            return dsar.map_blocks(sps.detrend, a, axis=axes[0],
-                                   chunks=a.chunks, dtype=a.dtype
-                                  )
+            poly_coefs = a.polyfit(dim=axes[0],deg=1)
+            return a-(poly_coefs.data_vars['polyfit_coefficients'][0]*a.dims[axes[0]] + poly_coefs.data_vars['polyfit_coefficients'][1])
+
+                                  
         else:
             for each_axis in range(a.ndim):
                 if each_axis not in axes:
@@ -267,13 +268,13 @@ def _diff_coord(coord):
 
 def _calc_normalization_factor(da, axis_num, chunks_to_segments):
     """Return the signal length, N, to be used in the normalisation of spectra"""
-    
+
     if chunks_to_segments:
         # Use chunk sizes for normalisation
         return [da.chunks[n][0] for n in axis_num]
     else:
         return [da.shape[n] for n in axis_num]
-    
+
 def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         window=False, chunks_to_segments=False, prefix='freq_'):
     """
