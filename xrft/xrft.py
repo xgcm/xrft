@@ -131,10 +131,9 @@ def detrend_wrap(detrend_func):
                                 'cannot be chunked.')
 
         if len(axes) == 1:
-            poly_coefs = a.polyfit(dim=axes[0],deg=1)
-            return a-(poly_coefs.data_vars['polyfit_coefficients'][0]*a.dims[axes[0]] + poly_coefs.data_vars['polyfit_coefficients'][1])
+            poly_coefs = a.polyfit(dim=a.dims[axes[0]],deg=1)
+            return a - (poly_coefs.data_vars['polyfit_coefficients'][0]*a[a.dims[axes[0]]] + poly_coefs.data_vars['polyfit_coefficients'][1])
 
-                                  
         else:
             for each_axis in range(a.ndim):
                 if each_axis not in axes:
@@ -149,16 +148,15 @@ def detrend_wrap(detrend_func):
 
 def _apply_detrend(da, axis_num):
     """Wrapper function for applying detrending"""
-    if da.chunks:
+    if len(axis_num) == 1:
+        func = detrend_wrap(detrendn)
+        da = func(da,axes=axis_num)
+    elif da.chunks:
         func = detrend_wrap(detrendn)
         da = xr.DataArray(func(da.data, axes=axis_num),
                          dims=da.dims, coords=da.coords)
     else:
-        if da.ndim == 1:
-            da = xr.DataArray(sps.detrend(da),
-                             dims=da.dims, coords=da.coords)
-        else:
-            da = detrendn(da, axes=axis_num)
+        da = detrendn(da, axes=axis_num)
 
     return da
 
