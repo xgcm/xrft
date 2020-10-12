@@ -80,7 +80,7 @@ def numpy_detrend(da):
 def test_detrend():
     N = 16
     x = np.arange(N+1)
-    y = np.arange(N-1)
+    y = np.arange(N-1) + 0.1*np.random.rand(N-1)
     t = np.linspace(-int(N/2), int(N/2), N-6)
     z = np.arange(int(N/2))
     d4d = (t[:,np.newaxis,np.newaxis,np.newaxis]
@@ -100,11 +100,13 @@ def test_detrend():
     #########
     da = da4d.chunk({'time': 1})
     with pytest.raises(ValueError):
-        func(da.data, axes=[0]).compute
-    with pytest.raises(ValueError):
         func(da.data, axes=[0,1,2,3]).compute()
-    da_prime = func(da.data, axes=[2]).compute()
+    
+    # test detrending along 1 dimension
+    da_prime = func(da, axes=[2]).compute()
     npt.assert_allclose(da_prime[0,0], sps.detrend(d4d[0,0], axis=0))
+    
+    # test detrending along >1 dimensions
     da_prime = func(da.data, axes=[1,2,3]).compute()
     npt.assert_allclose(da_prime[0],
                         xrft.detrendn(d4d[0], axes=[0,1,2]))
