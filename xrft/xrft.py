@@ -120,21 +120,22 @@ def detrend_wrap(detrend_func):
             poly_coefs = a.polyfit(dim=a.dims[axes[0]],deg=1)
             return a - (poly_coefs.data_vars['polyfit_coefficients'][0]*a[a.dims[axes[0]]] + poly_coefs.data_vars['polyfit_coefficients'][1])
 
-        if len(axes) > 3:
+        elif len(axes) > 3:
             raise ValueError("Detrending is only supported up to "
                             "3 dimensions.")
-        if axes is None:
-            axes = tuple(range(a.ndim))
-        else:
-            if len(set(axes)) < len(axes):
-                raise ValueError("Duplicate axes are not allowed.")
 
-        for each_axis in axes:
-            if len(a.chunks[each_axis]) != 1:
-                raise ValueError('The axis that is being detrended '
+        else:
+            if axes is None:
+                axes = tuple(range(a.ndim))
+            else:
+                if len(set(axes)) < len(axes):
+                    raise ValueError("Duplicate axes are not allowed.")
+
+            for each_axis in axes:
+                if len(a.chunks[each_axis]) != 1:
+                    raise ValueError('The axis that is being detrended '
                                 'cannot be chunked.')
 
-        if len(axes) > 1:
             for each_axis in range(a.ndim):
                 if each_axis not in axes:
                     if len(a.chunks[each_axis]) != a.shape[each_axis]:
