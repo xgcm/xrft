@@ -83,11 +83,18 @@ def test_detrend():
     y = np.arange(N-1) + 0.1*np.random.rand(N-1)
     t = np.linspace(-int(N/2), int(N/2), N-6)
     z = np.arange(int(N/2))
+    d3d = (t[:,np.newaxis,np.newaxis]
+            + y[np.newaxis,:,np.newaxis]
+            + x[np.newaxis,np.newaxis,:]
+          )
     d4d = (t[:,np.newaxis,np.newaxis,np.newaxis]
             + z[np.newaxis,:,np.newaxis,np.newaxis]
             + y[np.newaxis,np.newaxis,:,np.newaxis]
             + x[np.newaxis,np.newaxis,np.newaxis,:]
           )
+    da3d = xr.DataArray(d3d, dims=['time','y','x'],
+                     coords={'time':range(len(t)),'y':range(len(y)),'x':range(len(x))}
+                     )
     da4d = xr.DataArray(d4d, dims=['time','z','y','x'],
                      coords={'time':range(len(t)),'z':range(len(z)),'y':range(len(y)),
                              'x':range(len(x))}
@@ -110,6 +117,12 @@ def test_detrend():
     da_prime = func(da.data, axes=[1,2,3]).compute()
     npt.assert_allclose(da_prime[0],
                         xrft.detrendn(d4d[0], axes=[0,1,2]))
+
+    da = da3d.chunk({'time': None})
+    # test detrending along all dimensions (total dimensions <4)
+    da_prime = func(da.data).compute()
+    npt.assert_allclose(da_prime,
+                        xrft.detrendn(d3d, axes=[0,1,2]))
 
     #########
     # Chunk along the `time` and `z` axes
