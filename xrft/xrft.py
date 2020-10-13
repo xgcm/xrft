@@ -116,6 +116,9 @@ def detrend_wrap(detrend_func):
     Wrapper function for `xrft.detrendn`.
     """
     def func(a, axes=None):
+        if axes is None:
+            axes = tuple(range(a.ndim))
+
         if len(axes) == 1:
             poly_coefs = a.polyfit(dim=a.dims[axes[0]],deg=1)
             return a - (poly_coefs.data_vars['polyfit_coefficients'][0]*a[a.dims[axes[0]]] + poly_coefs.data_vars['polyfit_coefficients'][1])
@@ -125,11 +128,8 @@ def detrend_wrap(detrend_func):
                             "3 dimensions.")
 
         else:
-            if axes is None:
-                axes = tuple(range(a.ndim))
-            else:
-                if len(set(axes)) < len(axes):
-                    raise ValueError("Duplicate axes are not allowed.")
+            if len(set(axes)) < len(axes):
+                raise ValueError("Duplicate axes are not allowed.")
 
             for each_axis in axes:
                 if len(a.chunks[each_axis]) != 1:
