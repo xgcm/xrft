@@ -79,8 +79,12 @@ def numpy_detrend(da):
 
 def test_detrend():
     N = 16
+    
+    # create some noise; make sure it has no trend
+    noise = sps.detrend(0.1*np.random.rand(N-1))
+    
     x = np.arange(N+1)
-    y = np.arange(N-1) + 0.1*np.random.rand(N-1)
+    y = np.arange(N-1) + noise
     t = np.linspace(-int(N/2), int(N/2), N-6)
     z = np.arange(int(N/2))
     d3d = (t[:,np.newaxis,np.newaxis]
@@ -112,6 +116,7 @@ def test_detrend():
     # test detrending along 1 dimension
     da_prime = func(da, axes=[2]).compute()
     npt.assert_allclose(da_prime[0,0], sps.detrend(d4d[0,0], axis=0))
+    npt.assert_allclose(da_prime[0,0,:,0].data, noise)
     
     # test detrending along >1 dimensions
     da_prime = func(da.data, axes=[1,2,3]).compute()
