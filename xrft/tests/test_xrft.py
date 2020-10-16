@@ -106,6 +106,11 @@ def test_detrend():
             + data_y[np.newaxis,:,np.newaxis]
             + data_x[np.newaxis,np.newaxis,:]
           )
+
+    array3D_detrended = (noise_t[:,np.newaxis,np.newaxis] 
+            + noise_y[np.newaxis,:,np.newaxis]
+            + noise_x[np.newaxis,np.newaxis,:]
+          )
           
     array4D = (data_t[:,np.newaxis,np.newaxis,np.newaxis]
             + data_z[np.newaxis,:,np.newaxis,np.newaxis]
@@ -113,38 +118,12 @@ def test_detrend():
             + data_x[np.newaxis,np.newaxis,np.newaxis,:]
           )
           
-    da4D = (data_t[:,np.newaxis,np.newaxis,np.newaxis]
-            + data_z[np.newaxis,:,np.newaxis,np.newaxis]
-            + data_y[np.newaxis,np.newaxis,:,np.newaxis]
-            + data_x[np.newaxis,np.newaxis,np.newaxis,:]
-          )
-          
-    da3D = xr.DataArray(array3D, dims=['time','y','x'],
-                     coords={'time':t,'y':y,'x':x}
-                     )
-    da4D = xr.DataArray(array4D, dims=['time','z','y','x'],
-                     coords={'time':t,'z':z,'y':y,'x':x}
-                     )
-
-    array3D_detrended = (noise_t[:,np.newaxis,np.newaxis] 
-            + noise_y[np.newaxis,:,np.newaxis]
-            + noise_x[np.newaxis,np.newaxis,:]
-          )
-          
-    da3D_detrended = xr.DataArray(array3D_detrended,dims=['time','y','x'],
-                     coords={'time':t,'y':y,'x':x}
-                     )
-                     
     array4D_detrendedy = (data_t[:,np.newaxis,np.newaxis,np.newaxis]
             + data_z[np.newaxis,:,np.newaxis,np.newaxis]
             + noise_y[np.newaxis,np.newaxis,:,np.newaxis]
             + data_x[np.newaxis,np.newaxis,np.newaxis,:]
           )
     array4D_detrendedy = array4D_detrendedy - array4D_detrendedy.mean(axis=2)[:, :, np.newaxis, :]
-
-    da4D_detrendedy = xr.DataArray(array4D_detrendedy, dims=['time','z','y','x'],
-                     coords={'time':t,'z':z,'y':y,'x':x}
-                     )
 
     array4D_detrendedxy = (data_t[:,np.newaxis,np.newaxis,np.newaxis]
             + data_z[np.newaxis,:,np.newaxis,np.newaxis]
@@ -153,10 +132,6 @@ def test_detrend():
           )
     array4D_detrendedxy = array4D_detrendedxy - array4D_detrendedxy.mean(axis=(2,3))[:,:,np.newaxis,np.newaxis]
 
-    da4D_detrendedxy = xr.DataArray(array4D_detrendedxy, dims=['time','z','y','x'],
-                     coords={'time':t,'z':z,'y':y,'x':x}
-                     )
-
     array4D_detrendedxyz = (data_t[:,np.newaxis,np.newaxis,np.newaxis]
             + noise_z[np.newaxis,:,np.newaxis,np.newaxis]
             + noise_y[np.newaxis,np.newaxis,:,np.newaxis]
@@ -164,6 +139,27 @@ def test_detrend():
           )
     array4D_detrendedxyz = array4D_detrendedxyz - array4D_detrendedxyz.mean(axis=(1,2,3))[:,np.newaxis,np.newaxis,np.newaxis]
 
+    def create_3D_dataarray(array3D):
+        return xr.DataArray(array3D, dims=['time','y','x'], coords={'time':t,'y':y,'x':x})
+
+    def create_4D_dataarray(array4D):
+        return xr.DataArray(array4D, dims=['time','z','y','x'], coords={'time':t,'z':z,'y':y,'x':x})
+            
+    da3D = xr.DataArray(array3D, dims=['time','y','x'],
+                     coords={'time':t,'y':y,'x':x}
+                     )
+    da4D = xr.DataArray(array4D, dims=['time','z','y','x'],
+                     coords={'time':t,'z':z,'y':y,'x':x}
+                     )
+    da3D_detrended = xr.DataArray(array3D_detrended,dims=['time','y','x'],
+                     coords={'time':t,'y':y,'x':x}
+                     )
+    da4D_detrendedy = xr.DataArray(array4D_detrendedy, dims=['time','z','y','x'],
+                     coords={'time':t,'z':z,'y':y,'x':x}
+                     )
+    da4D_detrendedxy = xr.DataArray(array4D_detrendedxy, dims=['time','z','y','x'],
+                     coords={'time':t,'z':z,'y':y,'x':x}
+                     )
     da4D_detrendedxyz = xr.DataArray(array4D_detrendedxyz, dims=['time','z','y','x'],
                      coords={'time':t,'z':z,'y':y,'x':x}
                      )
