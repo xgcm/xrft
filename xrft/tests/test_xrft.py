@@ -102,6 +102,7 @@ def test_detrend():
     data_y = -0.3*y + noise_y
     data_x =  0.5*x + noise_x
     
+    # construct some 3D/4D numpy arrays to be used as tests for the detrendn function
     array3D = (data_t[:,np.newaxis,np.newaxis] 
             + data_y[np.newaxis,:,np.newaxis]
             + data_x[np.newaxis,np.newaxis,:]
@@ -139,33 +140,34 @@ def test_detrend():
           )
     array4D_detrendedxyz = array4D_detrendedxyz - array4D_detrendedxyz.mean(axis=(1,2,3))[:,np.newaxis,np.newaxis,np.newaxis]
 
-    def create_3D_dataarray(array3D):
-        return xr.DataArray(array3D, dims=['time','y','x'], coords={'time':t,'y':y,'x':x})
-
-    def create_4D_dataarray(array4D):
-        return xr.DataArray(array4D, dims=['time','z','y','x'], coords={'time':t,'z':z,'y':y,'x':x})
-            
+    # now construct the equivalent 3D/4D data arrays
     da3D = xr.DataArray(array3D, dims=['time','y','x'],
                      coords={'time':t,'y':y,'x':x}
                      )
     da4D = xr.DataArray(array4D, dims=['time','z','y','x'],
                      coords={'time':t,'z':z,'y':y,'x':x}
                      )
+    
     da3D_detrended = xr.DataArray(array3D_detrended,dims=['time','y','x'],
                      coords={'time':t,'y':y,'x':x}
                      )
+    
     da4D_detrendedy = xr.DataArray(array4D_detrendedy, dims=['time','z','y','x'],
                      coords={'time':t,'z':z,'y':y,'x':x}
                      )
+    
     da4D_detrendedxy = xr.DataArray(array4D_detrendedxy, dims=['time','z','y','x'],
                      coords={'time':t,'z':z,'y':y,'x':x}
                      )
+    
     da4D_detrendedxyz = xr.DataArray(array4D_detrendedxyz, dims=['time','z','y','x'],
                      coords={'time':t,'z':z,'y':y,'x':x}
                      )
 
     func = xrft.detrend_wrap(xrft.detrendn)
-
+    
+    # let's begin testing
+    
     #########
     # Chunk along the `time` axis
     #########
