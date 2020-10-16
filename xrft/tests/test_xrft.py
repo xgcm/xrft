@@ -80,28 +80,92 @@ def numpy_detrend(da):
 def test_detrend():
     N = 16
     
-    # create some noise; make sure it has no trend
-    noise = sps.detrend(0.1*np.random.rand(N-1))
+    nt, nz, ny, nx = N-6, int(N/2), N-1, N+1
     
-    x = np.arange(N+1)
-    y = np.arange(N-1) + noise
-    t = np.linspace(-int(N/2), int(N/2), N-6)
-    z = np.arange(int(N/2))
-    d3d = (t[:,np.newaxis,np.newaxis]
-            + y[np.newaxis,:,np.newaxis]
-            + x[np.newaxis,np.newaxis,:]
+    t = np.linspace(-int(N/2), int(N/2), nt)
+    z = np.arange(nz)
+    y = np.arange(ny)
+    x = np.arange(nx)
+    
+    # create some noise; make sure it has no trend
+    def detrended_noise(N, amplitude=1.0):
+        return sps.detrend(amplitude*np.random.rand(N))
+    
+    noise_t = detrended_noise(nt, amplitude=0.12)
+    noise_z = detrended_noise(nz, amplitude=0.3)
+    noise_y = detrended_noise(ny, amplitude=0.2)
+    noise_x = detrended_noise(nx, amplitude=0.1)
+
+    # trended data
+    data_t =  1.0*t + noise_t
+    data_z =  0.2*z + noise_z
+    data_y = -0.3*y + noise_y
+    data_x =  0.5*x + noise_x
+    
+    array3D = (data_t[:,np.newaxis,np.newaxis] 
+            + data_y[np.newaxis,:,np.newaxis]
+            + data_x[np.newaxis,np.newaxis,:]
           )
-    d4d = (t[:,np.newaxis,np.newaxis,np.newaxis]
-            + z[np.newaxis,:,np.newaxis,np.newaxis]
-            + y[np.newaxis,np.newaxis,:,np.newaxis]
-            + x[np.newaxis,np.newaxis,np.newaxis,:]
+          
+    array4D = (data_t[:,np.newaxis,np.newaxis,np.newaxis]
+            + data_z[np.newaxis,:,np.newaxis,np.newaxis]
+            + data_y[np.newaxis,np.newaxis,:,np.newaxis]
+            + data_x[np.newaxis,np.newaxis,np.newaxis,:]
           )
-    da3d = xr.DataArray(d3d, dims=['time','y','x'],
-                     coords={'time':range(len(t)),'y':range(len(y)),'x':range(len(x))}
+          
+    da4D = (data_t[:,np.newaxis,np.newaxis,np.newaxis]
+            + data_z[np.newaxis,:,np.newaxis,np.newaxis]
+            + data_y[np.newaxis,np.newaxis,:,np.newaxis]
+            + data_x[np.newaxis,np.newaxis,np.newaxis,:]
+          )
+          
+    da3D = xr.DataArray(array3D, dims=['time','y','x'],
+                     coords={'time':t,'y':y,'x':x}
                      )
-    da4d = xr.DataArray(d4d, dims=['time','z','y','x'],
-                     coords={'time':range(len(t)),'z':range(len(z)),'y':range(len(y)),
-                             'x':range(len(x))}
+    da4D = xr.DataArray(array4D, dims=['time','z','y','x'],
+                     coords={'time':t,'z':z,'y':y,'x':x}
+                     )
+
+    array3D_detrended = (noise_t[:,np.newaxis,np.newaxis] 
+            + noise_y[np.newaxis,:,np.newaxis]
+            + noise_x[np.newaxis,np.newaxis,:]
+          )
+          
+    da3D_detrended = xr.DataArray(array3D_detrended,dims=['time','y','x'],
+                     coords={'time':t,'y':y,'x':x}
+                     )
+                     
+    array4D_detrendedy = (data_t[:,np.newaxis,np.newaxis,np.newaxis]
+            + data_z[np.newaxis,:,np.newaxis,np.newaxis]
+            + noise_y[np.newaxis,np.newaxis,:,np.newaxis]
+            + data_x[np.newaxis,np.newaxis,np.newaxis,:]
+          )
+    array4D_detrendedy = array4D_detrendedy - array4D_detrendedy.mean(axis=2)[:, :, np.newaxis, :]
+
+    da4D_detrendedy = xr.DataArray(array4D_detrendedy, dims=['time','z','y','x'],
+                     coords={'time':t,'z':z,'y':y,'x':x}
+                     )
+
+    array4D_detrendedxy = (data_t[:,np.newaxis,np.newaxis,np.newaxis]
+            + data_z[np.newaxis,:,np.newaxis,np.newaxis]
+            + noise_y[np.newaxis,np.newaxis,:,np.newaxis]
+            + noise_x[np.newaxis,np.newaxis,np.newaxis,:]
+          )
+    array4D_detrendedxy = array4D_detrendedxy - array4D_detrendedxy.mean(axis=(2,3))[:,:,np.newaxis,np.newaxis]
+
+    da4D_detrendedxy = xr.DataArray(array4D_detrendedxy, dims=['time','z','y','x'],
+                     coords={'time':t,'z':z,'y':y,'x':x}
+                     )
+
+    array4D_detrendedxyz = (data_t[:,np.newaxis,np.newaxis,np.newaxis]
+            + noise_z[np.newaxis,:,np.newaxis,np.newaxis]
+            + noise_y[np.newaxis,np.newaxis,:,np.newaxis]
+            + noise_x[np.newaxis,np.newaxis,np.newaxis,:]
+          )
+    array4D_detrendedxyz = array4D_detrendedxyz - array4D_detrendedxyz.mean(axis=(1,2,3))[:,np.newaxis,np.newaxis,np.newaxis]
+
+    da4D_detrendedxyz = xr.DataArray(array4D_detrendedxyz, dims=['time','z','y','x'],
+                     coords={'time':t,'z':z,'y':y,'x':x}
                      )
 
     func = xrft.detrend_wrap(xrft.detrendn)
@@ -109,37 +173,35 @@ def test_detrend():
     #########
     # Chunk along the `time` axis
     #########
-    da = da4d.chunk({'time': 1})
+    da = da4D.chunk({'time': 1})
     with pytest.raises(ValueError):
         func(da.data, axes=[0,1,2,3]).compute()
     
     # test detrending along 1 dimension
     da_prime = func(da, axes=[2]).compute()
-    npt.assert_allclose(da_prime[0,0], sps.detrend(d4d[0,0], axis=0))
-    npt.assert_allclose(da_prime[0,0,:,0].data, noise)
+    npt.assert_allclose(da_prime, da4D_detrendedy)
+    npt.assert_allclose(da_prime[0,0,:,0].data, noise_y)
     
     # test detrending along >1 dimensions
     da_prime = func(da.data, axes=[1,2,3]).compute()
-    npt.assert_allclose(da_prime[0],
-                        xrft.detrendn(d4d[0], axes=[0,1,2]))
+    npt.assert_allclose(da_prime.data, array4D_detrendedxyz)
+    npt.assert_allclose(da_prime, da4D_detrendedxyz)
 
-    da = da3d.chunk({'time': None})
+    da = da3D.chunk({'time': None})
     # test detrending along all dimensions (total dimensions <4)
     da_prime = func(da.data).compute()
-    npt.assert_allclose(da_prime,
-                        xrft.detrendn(d3d, axes=[0,1,2]))
+    npt.assert_allclose(da_prime, da3D_detrended)
 
     #########
     # Chunk along the `time` and `z` axes
     #########
-    da = da4d.chunk({'time':1, 'z':1})
+    da = da4D.chunk({'time':1, 'z':1})
     with pytest.raises(ValueError):
         func(da.data, axes=[1,2]).compute()
     with pytest.raises(ValueError):
         func(da.data, axes=[2,2]).compute()
     da_prime = func(da.data, axes=[2,3]).compute()
-    npt.assert_allclose(da_prime[0,0],
-                        xrft.detrendn(d4d[0,0], axes=[0,1]))
+    npt.assert_allclose(da_prime, da4D_detrendedxy)
 
 class TestDFTImag(object):
     def test_dft_1d(self, test_data_1d):
