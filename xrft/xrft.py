@@ -150,9 +150,8 @@ def detrend_wrap(detrend_func):
 def _apply_detrend(da, axis_num):
     """Wrapper function for applying detrending"""
     if len(axis_num) == 1:
-        poly_coefs = da.polyfit(dim=da.dims[axis_num], deg=1)
-        
-        return a - (poly_coefs.data_vars['polyfit_coefficients'][0]*a[a.dims[axes[0]]] + poly_coefs.data_vars['polyfit_coefficients'][1])        
+        func = detrend_wrap(detrendn)
+        da = func(da,axes=axis_num)
     elif da.chunks:
         func = detrend_wrap(detrendn)
         da = xr.DataArray(func(da.data, axes=axis_num),
