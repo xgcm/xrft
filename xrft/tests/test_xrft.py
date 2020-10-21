@@ -335,8 +335,6 @@ class TestDFTImag(object):
                          coords={'time':range(N),'z':range(N),
                                 'y':range(N),'x':range(N)}
                          )
-        with pytest.raises(ValueError):
-            xrft.dft(da.chunk({'time':8}), dim=['y','x'], detrend='linear')
         ft = xrft.dft(da, shift=False)
         npt.assert_almost_equal(ft.values, np.fft.fftn(da.values))
 

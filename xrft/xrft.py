@@ -350,14 +350,6 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     if not da.chunks:
         if np.isnan(da.values).any():
             raise ValueError("Data cannot take Nans")
-    else:
-        if detrend=='linear' and len(dim)>1:
-            for d in da.dims:
-                a_n = da.get_axis_num(d)
-                if d not in dim and da.chunks[a_n][0]>1:
-                    raise ValueError("Linear detrending utilizes the `dask.map_blocks` "
-                                    "API so the dimensions not being detrended "
-                                    "must have the chunk length of 1.")
 
     fft = _fft_module(da)
 
