@@ -172,11 +172,10 @@ def test_detrend():
     # Chunk along the `time` axis
     #########
     da = da4D.chunk({'time': 1})
-    with pytest.raises(ValueError):
+    with pytest.raises(NotImplementedError):
         func(da.data, axes=[0,1,2,3]).compute()
 
     # test detrending along 1 dimension
-    #da_prime = func(da, axes=[2]).compute()
     da_prime = xrft.apply_detrend(da, 'y', 2, 'linear')
     npt.assert_allclose(da_prime, da4D_detrendedy)
     npt.assert_allclose(da_prime[0,0,:,0].data, noise_y)
