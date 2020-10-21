@@ -116,48 +116,77 @@ def detrend_wrap(detrend_func):
     Wrapper function for `xrft.detrendn`.
     """
     def func(a, axes=None):
-        if len(axes) == 1:
-            poly_coefs = a.polyfit(dim=a.dims[axes[0]],deg=1)
-            return a - (poly_coefs.data_vars['polyfit_coefficients'][0]*a[a.dims[axes[0]]] + poly_coefs.data_vars['polyfit_coefficients'][1])
+        #if len(axes) == 1:
+        #    poly_coefs = a.polyfit(dim=a.dims[axes[0]],deg=1)
+        #    return a - (poly_coefs.data_vars['polyfit_coefficients'][0]*a[a.dims[axes[0]]] + poly_coefs.data_vars['polyfit_coefficients'][1])
 
-        elif len(axes) > 3:
-            raise ValueError("Detrending is only supported up to "
-                            "3 dimensions.")
+        #elif len(axes) > 3:
+        #if len(axes) > 3:
+        #    raise ValueError("Detrending is only supported up to "
+        #                    "3 dimensions.")
 
-        else:
-            if axes is None:
-                axes = tuple(range(a.ndim))
-            else:
-                if len(set(axes)) < len(axes):
-                    raise ValueError("Duplicate axes are not allowed.")
+        #else:
+        #if axes is None:
+        #    axes = tuple(range(a.ndim))
+        #else:
 
-            for each_axis in axes:
-                if len(a.chunks[each_axis]) != 1:
-                    raise ValueError('The axis that is being detrended '
+        if len(set(axes)) < len(axes):
+            raise ValueError("Duplicate axes are not allowed.")
+
+        for each_axis in axes:
+            if len(a.chunks[each_axis]) != 1:
+                raise ValueError('The axis that is being detrended '
                                 'cannot be chunked.')
 
-            for each_axis in range(a.ndim):
-                if each_axis not in axes:
-                    if len(a.chunks[each_axis]) != a.shape[each_axis]:
-                        raise ValueError("The axes other than ones to detrend "
+        for each_axis in range(a.ndim):
+            if each_axis not in axes:
+                if len(a.chunks[each_axis]) != a.shape[each_axis]:
+                    raise ValueError("The axes other than ones to detrend "
                                         "over should have a chunk length of 1.")
-            return dsar.map_blocks(detrend_func, a, axes,
+        return dsar.map_blocks(detrend_func, a, axes,
                                    chunks=a.chunks, dtype=a.dtype
                                   )
 
     return func
 
-def _apply_detrend(da, axis_num):
+def _apply_detrend(da, dim, axis_num, detrend_type):
     """Wrapper function for applying detrending"""
-    if len(axis_num) == 1:
-        func = detrend_wrap(detrendn)
-        da = func(da,axes=axis_num)
-    elif da.chunks:
-        func = detrend_wrap(detrendn)
-        da = xr.DataArray(func(da.data, axes=axis_num),
+
+    if detrend_type not in ['constant','linear',None]:
+        raise NotImplementedError("%s is not a valid detrending option. Valid "
+                                  "options are: 'constant','linear', or None."
+                                  % detrend_type)
+
+    if detrend_type == 'constant':
+        da = da - da.mean(dim=dim)
+
+    elif detrend_type == 'linear':
+        print('dim = ',dim,axis_num)
+        if len(dim) == 1:
+            p = da.polyfit(dim=dim[0], deg=1)
+            fit = xr.polyval(da[dim[0]], p.polyfit_coefficients)
+            return da - fit
+
+        elif len(dim) > 3:
+            raise ValueError("Detrending is only supported up to "
+                            "3 dimensions.")
+
+        if da.chunks:
+            # For > 1d detrend, need all non-FFT axes to have chunks of length 1 --> is this needed for non-chunked data as well?
+            for d in da.dims:
+                if d not in dim:
+                    da = da.chunk({d:1})
+
+            func = detrend_wrap(detrendn)
+            da = xr.DataArray(func(da.data, axes=axis_num),
                          dims=da.dims, coords=da.coords)
-    else:
-        da = detrendn(da, axes=axis_num)
+        else: # I'm not convinved that this ever ran in previous version of code, because length 1 chunking occurred before this
+            print('no chunks')
+            # For > 1d detrend, need all non-FFT axes to have chunks of length 1 --> is this needed for non-chunked data as well?
+            for d in da.dims:
+                if d not in dim:
+                    da = da.chunk({d:1})
+            da = detrendn(da, axes=axis_num)
 
     return da
 
@@ -338,7 +367,7 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     if not da.chunks:
         if np.isnan(da.values).any():
             raise ValueError("Data cannot take Nans")
-    else:
+    else: # I don't think this is necessary - we explicitly make length 1 chunklengths in _apply_detrend()
         if detrend=='linear' and len(dim)>1:
             for d in da.dims:
                 a_n = da.get_axis_num(d)
@@ -373,13 +402,18 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
                              "coodinate %s is not evenly spaced" % d)
         delta_x.append(delta)
 
-    if detrend == 'constant':
-        da = da - da.mean(dim=dim)
-    elif detrend == 'linear':
-        for d in da.dims:
-            if d not in dim:
-                da = da.chunk({d:1})
-        da = _apply_detrend(da, axis_num)
+    #if detrend == 'constant':
+    #    da = da - da.mean(dim=dim)
+    #elif detrend == 'linear':
+        #for d in da.dims:
+        #    if d not in dim:
+        #        da = da.chunk({d:1})
+    #    da = _apply_detrend(da, axis_num)
+    #elif detrend:
+    #    raise NotImplementedError("The only valid inputs for detrend are 'constant','linear', or None.")
+
+    if detrend:
+        da = _apply_detrend(da, dim, axis_num, detrend)
 
     if window:
         da = _apply_window(da, dim)
