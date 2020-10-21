@@ -15,7 +15,7 @@ import scipy.signal as sps
 import scipy.linalg as spl
 
 
-__all__ = ["detrendn", "detrend_wrap",
+__all__ = ["detrendn", "detrend_wrap","apply_detrend",
            "dft","power_spectrum", "cross_spectrum", "cross_phase",
            "isotropize",
            "isotropic_power_spectrum", "isotropic_cross_spectrum",
@@ -116,19 +116,6 @@ def detrend_wrap(detrend_func):
     Wrapper function for `xrft.detrendn`.
     """
     def func(a, axes=None):
-        #if len(axes) == 1:
-        #    poly_coefs = a.polyfit(dim=a.dims[axes[0]],deg=1)
-        #    return a - (poly_coefs.data_vars['polyfit_coefficients'][0]*a[a.dims[axes[0]]] + poly_coefs.data_vars['polyfit_coefficients'][1])
-
-        #elif len(axes) > 3:
-        #if len(axes) > 3:
-        #    raise ValueError("Detrending is only supported up to "
-        #                    "3 dimensions.")
-
-        #else:
-        #if axes is None:
-        #    axes = tuple(range(a.ndim))
-        #else:
 
         if len(set(axes)) < len(axes):
             raise ValueError("Duplicate axes are not allowed.")
@@ -149,7 +136,7 @@ def detrend_wrap(detrend_func):
 
     return func
 
-def _apply_detrend(da, dim, axis_num, detrend_type):
+def apply_detrend(da, dim, axis_num, detrend_type):
     """Wrapper function for applying detrending"""
 
     if detrend_type not in ['constant','linear',None]:
@@ -158,10 +145,9 @@ def _apply_detrend(da, dim, axis_num, detrend_type):
                                   % detrend_type)
 
     if detrend_type == 'constant':
-        da = da - da.mean(dim=dim)
+        return da - da.mean(dim=dim)
 
     elif detrend_type == 'linear':
-        print('dim = ',dim,axis_num)
         if len(dim) == 1:
             p = da.polyfit(dim=dim[0], deg=1)
             fit = xr.polyval(da[dim[0]], p.polyfit_coefficients)
@@ -171,24 +157,21 @@ def _apply_detrend(da, dim, axis_num, detrend_type):
             raise ValueError("Detrending is only supported up to "
                             "3 dimensions.")
 
-        if da.chunks:
-            # For > 1d detrend, need all non-FFT axes to have chunks of length 1 --> is this needed for non-chunked data as well?
-            for d in da.dims:
-                if d not in dim:
-                    da = da.chunk({d:1})
+        # For > 1d detrend, need all non-FFT axes to have chunks of length 1
+        for d in da.dims:
+            if d not in dim:
+                da = da.chunk({d:1})
 
+        if da.chunks:
             func = detrend_wrap(detrendn)
             da = xr.DataArray(func(da.data, axes=axis_num),
                          dims=da.dims, coords=da.coords)
-        else: # I'm not convinved that this ever ran in previous version of code, because length 1 chunking occurred before this
-            print('no chunks')
-            # For > 1d detrend, need all non-FFT axes to have chunks of length 1 --> is this needed for non-chunked data as well?
-            for d in da.dims:
-                if d not in dim:
-                    da = da.chunk({d:1})
-            da = detrendn(da, axes=axis_num)
 
-    return da
+        # Data not chunked only if taking FFT over all array dimensions
+        else:
+            da = detrendn(da, axes=axis_num)
+        return da
+
 
 def _stack_chunks(da, dim, suffix='_segment'):
     """Reshape a DataArray so there is only one chunk along dimension `dim`"""
@@ -367,7 +350,7 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     if not da.chunks:
         if np.isnan(da.values).any():
             raise ValueError("Data cannot take Nans")
-    else: # I don't think this is necessary - we explicitly make length 1 chunklengths in _apply_detrend()
+    else:
         if detrend=='linear' and len(dim)>1:
             for d in da.dims:
                 a_n = da.get_axis_num(d)
@@ -402,18 +385,8 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
                              "coodinate %s is not evenly spaced" % d)
         delta_x.append(delta)
 
-    #if detrend == 'constant':
-    #    da = da - da.mean(dim=dim)
-    #elif detrend == 'linear':
-        #for d in da.dims:
-        #    if d not in dim:
-        #        da = da.chunk({d:1})
-    #    da = _apply_detrend(da, axis_num)
-    #elif detrend:
-    #    raise NotImplementedError("The only valid inputs for detrend are 'constant','linear', or None.")
-
     if detrend:
-        da = _apply_detrend(da, dim, axis_num, detrend)
+        da = apply_detrend(da, dim, axis_num, detrend)
 
     if window:
         da = _apply_window(da, dim)
