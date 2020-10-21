@@ -120,16 +120,6 @@ def detrend_wrap(detrend_func):
         if len(set(axes)) < len(axes):
             raise ValueError("Duplicate axes are not allowed.")
 
-        for each_axis in axes:
-            if len(a.chunks[each_axis]) != 1:
-                raise ValueError('The axis that is being detrended '
-                                'cannot be chunked.')
-
-        for each_axis in range(a.ndim):
-            if each_axis not in axes:
-                if len(a.chunks[each_axis]) != a.shape[each_axis]:
-                    raise ValueError("The axes other than ones to detrend "
-                                        "over should have a chunk length of 1.")
         return dsar.map_blocks(detrend_func, a, axes,
                                    chunks=a.chunks, dtype=a.dtype
                                   )
