@@ -15,7 +15,7 @@ import scipy.signal as sps
 import scipy.linalg as spl
 
 
-__all__ = ["detrendn", "detrend_wrap","apply_detrend",
+__all__ = ["detrendn", "detrend_wrap",
            "dft","power_spectrum", "cross_spectrum", "cross_phase",
            "isotropize",
            "isotropic_power_spectrum", "isotropic_cross_spectrum",
@@ -126,7 +126,7 @@ def detrend_wrap(detrend_func):
 
     return func
 
-def apply_detrend(da, dim, axis_num, detrend_type):
+def _apply_detrend(da, dim, axis_num, detrend_type):
     """Wrapper function for applying detrending"""
 
     if detrend_type not in ['constant','linear',None]:
@@ -368,7 +368,7 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         delta_x.append(delta)
 
     if detrend:
-        da = apply_detrend(da, dim, axis_num, detrend)
+        da = _apply_detrend(da, dim, axis_num, detrend)
 
     if window:
         da = _apply_window(da, dim)
