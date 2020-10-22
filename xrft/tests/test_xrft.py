@@ -201,6 +201,11 @@ def test_detrend():
     da_prime = func(da.data, axes=[2,3]).compute()
     npt.assert_allclose(da_prime, da4D_detrendedxy)
 
+    # if the dimensions not being detrended don't have chunk=1 then error should be raised
+    da = da4D.chunk({'time':2, 'z':2})
+    with pytest.raises(ValueError):
+        func(da.data, axes=[1,2]).compute()
+
 class TestDFTImag(object):
     def test_dft_1d(self, test_data_1d):
         """Test the discrete Fourier transform function on one-dimensional data."""
