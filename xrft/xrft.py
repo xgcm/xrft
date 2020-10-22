@@ -147,19 +147,32 @@ def _apply_detrend(da, dim, axis_num, detrend_type):
             raise ValueError("Detrending is only supported up to "
                             "3 dimensions.")
 
-        # For > 1d detrend, need all non-FFT axes to have chunks of length 1
-        for d in da.dims:
-            if d not in dim:
-                da = da.chunk({d:1})
+        # If taking FFT over all dimensions don't need to check for chunking
+        if len(dim) == len(da.dims):
+            da = detrendn(da, axes=axis_num)
 
-        if da.chunks:
+        else:
+            if da.chunks == None:
+                raise ValueError("Linear detrending utilizes the "
+                                 "`dask.map_blocks` API so the dimensions "
+                                 "not being detrended must have a chunk "
+                                 "length of 1. Please chunk your data "
+                                 "first by calling, e.g., `da.chunk('dim': 1)`.")
+
+            for d in da.dims:
+                if d not in dim:
+                    a_n = da.get_axis_num(d)
+                    if len(da.chunks[a_n]) != len(da[str(d)]):
+                        raise ValueError("Linear detrending utilizes the "
+                                         "`dask.map_blocks` API so the dimensions "
+                                         "not being detrended must have a chunk "
+                                         "length of 1. Please rechunk your data "
+                                         "first by calling, e.g., `da.chunk('%s': 1)`. " %d)
+
             func = detrend_wrap(detrendn)
             da = xr.DataArray(func(da.data, axes=axis_num),
                          dims=da.dims, coords=da.coords)
 
-        # Data not chunked only if taking FFT over all array dimensions
-        else:
-            da = detrendn(da, axes=axis_num)
         return da
 
 

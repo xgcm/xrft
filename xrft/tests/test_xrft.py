@@ -499,12 +499,18 @@ class TestSpectrum(object):
         npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
         ### Remove least-square fit
-        ps = xrft.power_spectrum(da, dim=['y','x'],
+        if not dask:
+            with pytest.raises(ValueError):
+                ps = xrft.power_spectrum(da, dim=['y','x'],
+                                        window=True, density=False, detrend='linear'
+                                        )
+        else:
+            ps = xrft.power_spectrum(da, dim=['y','x'],
                                 window=True, density=False, detrend='linear'
                                 )
-        daft = xrft.dft(da, dim=['y','x'], window=True, detrend='linear')
-        npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
-        npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
+            daft = xrft.dft(da, dim=['y','x'], window=True, detrend='linear')
+            npt.assert_almost_equal(ps.values, np.real(daft*np.conj(daft)))
+            npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.)
 
     @pytest.mark.parametrize("dask", [False, True])
     def test_cross_spectrum(self, dask):
