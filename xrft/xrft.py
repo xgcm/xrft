@@ -107,9 +107,9 @@ def detrendn(da, axes=None):
     m_est = np.dot(np.dot(spl.inv(np.dot(G.T, G)), G.T), d_obs)
     d_est = np.dot(G, m_est)
 
-    lin_trend = np.reshape(d_est, da.shape)
+    linear_fit = np.reshape(d_est, da.shape)
 
-    return da - lin_trend
+    return da - linear_fit
 
 def detrend_wrap(detrend_func):
     """
@@ -140,8 +140,8 @@ def _apply_detrend(da, dim, axis_num, detrend_type):
     elif detrend_type == 'linear':
         if len(dim) == 1:
             p = da.polyfit(dim=dim[0], deg=1)
-            fit = xr.polyval(da[dim[0]], p.polyfit_coefficients)
-            return da - fit
+            linear_fit = xr.polyval(da[dim[0]], p.polyfit_coefficients)
+            return da - linear_fit
 
         elif len(dim) > 3:
             raise ValueError("Detrending is only supported up to "
