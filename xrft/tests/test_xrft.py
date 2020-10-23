@@ -73,9 +73,9 @@ def numpy_detrend(da):
     m_est = np.dot(np.dot(spl.inv(np.dot(G.T, G)), G.T), d_obs)
     d_est = np.dot(G, m_est)
 
-    lin_trend = np.reshape(d_est, N)
+    linear_fit = np.reshape(d_est, N)
 
-    return da - lin_trend
+    return da - linear_fit
 
 def test_detrend():
     N = 16
@@ -140,6 +140,8 @@ def test_detrend():
           )
     array4D_detrendedxyz = array4D_detrendedxyz - array4D_detrendedxyz.mean(axis=(1,2,3))[:,np.newaxis,np.newaxis,np.newaxis]
 
+    array4D_nomean = array4D - array4D.mean(axis=(0, 1, 2, 3))[np.newaxis, np.newaxis, np.newaxis, np.newaxis]
+    
     # now construct the equivalent 3D/4D data arrays
     da3D = xr.DataArray(array3D, dims=['time','y','x'],
                      coords={'time':t,'y':y,'x':x}
@@ -172,9 +174,7 @@ def test_detrend():
     # Chunk along the `time` axis
     #########
     da = da4D.chunk({'time': 1})
-    with pytest.raises(NotImplementedError):
-        func(da.data, axes=[0,1,2,3]).compute()
-
+    
     # test detrending along 1 dimension
     da_prime = _apply_detrend(da, 'y', 2, 'linear')
     npt.assert_allclose(da_prime, da4D_detrendedy)
@@ -184,6 +184,15 @@ def test_detrend():
     da_prime = func(da.data, axes=[1,2,3]).compute()
     npt.assert_allclose(da_prime.data, array4D_detrendedxyz)
     npt.assert_allclose(da_prime, da4D_detrendedxyz)
+
+    # detrend along all 4 dimensions should only work for 'constant'
+    with pytest.raises(NotImplementedError):
+        func(da.data, axes=[0,1,2,3]).compute()
+    
+    with pytest.raises(NotImplementedError):
+        _apply_detrend(da, {'time', 'z', 'y', 'x'}, [0, 1, 2, 3],  'linear').compute()
+    
+    npt.assert_allclose(_apply_detrend(da, {'time', 'z', 'y', 'x'}, [0, 1, 2, 3],  'constant').compute(), array4D_nomean)
 
     da = da3D.chunk({'time': None})
     # test detrending along all dimensions (total dimensions <4)

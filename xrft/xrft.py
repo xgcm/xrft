@@ -101,6 +101,7 @@ def detrendn(da, axes=None):
         for i in range(N[0]):
             G[len(ys)*i:len(ys)*i+len(ys),1] = i+1
     else:
+        print("I went here instead")
         raise NotImplementedError("Detrending over more than 4 axes is "
                                  "not implemented.")
 
@@ -144,8 +145,8 @@ def _apply_detrend(da, dim, axis_num, detrend_type):
             return da - linear_fit
 
         elif len(dim) > 3:
-            raise ValueError("Detrending is only supported up to "
-                            "3 dimensions.")
+            raise NotImplementedError("Detrending over more than 4 axes is "
+                                 "not implemented.")
 
         # If taking FFT over all dimensions don't need to check for chunking
         if len(dim) == len(da.dims):
