@@ -101,7 +101,6 @@ def detrendn(da, axes=None):
         for i in range(N[0]):
             G[len(ys)*i:len(ys)*i+len(ys),1] = i+1
     else:
-        print("I went here instead")
         raise NotImplementedError("Detrending over more than 4 axes is "
                                  "not implemented.")
 
