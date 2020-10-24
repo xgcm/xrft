@@ -102,7 +102,12 @@ def test_detrend():
     data_y = -0.3*y + noise_y
     data_x =  0.5*x + noise_x
 
-    # construct some 3D/4D numpy arrays to be used as tests for the detrendn function
+    # construct some 2D, 3D, 4D numpy arrays to be used as tests for the detrendn function
+    array2D = (data_y[:,np.newaxis] + data_x[np.newaxis,:])
+
+    array2D_detrended = (noise_y[:,np.newaxis] + noise_x[np.newaxis,:])
+    array2D_detrended = array2D_detrended - array2D_detrended.mean()[np.newaxis,np.newaxis]
+
     array3D = (data_t[:,np.newaxis,np.newaxis]
             + data_y[np.newaxis,:,np.newaxis]
             + data_x[np.newaxis,np.newaxis,:]
@@ -112,7 +117,8 @@ def test_detrend():
             + noise_y[np.newaxis,:,np.newaxis]
             + noise_x[np.newaxis,np.newaxis,:]
           )
-
+    array3D_detrended = array3D_detrended - array3D_detrended.mean()[np.newaxis,np.newaxis,np.newaxis]
+    
     array4D = (data_t[:,np.newaxis,np.newaxis,np.newaxis]
             + data_z[np.newaxis,:,np.newaxis,np.newaxis]
             + data_y[np.newaxis,np.newaxis,:,np.newaxis]
@@ -140,9 +146,13 @@ def test_detrend():
           )
     array4D_detrendedxyz = array4D_detrendedxyz - array4D_detrendedxyz.mean(axis=(1,2,3))[:,np.newaxis,np.newaxis,np.newaxis]
 
-    array4D_nomean = array4D - array4D.mean(axis=(0, 1, 2, 3))[np.newaxis, np.newaxis, np.newaxis, np.newaxis]
+    array4D_nomean = array4D - array4D.mean()[np.newaxis, np.newaxis, np.newaxis, np.newaxis]
     
-    # now construct the equivalent 3D/4D data arrays
+    # now construct the equivalent 2D, 3D, 4D data arrays
+    da2D = xr.DataArray(array2D, dims=['y','x'], coords={'y':y,'x':x})
+    
+    da2D_detrended = xr.DataArray(array2D_detrended, dims=['y','x'], coords={'y':y,'x':x})
+    
     da3D = xr.DataArray(array3D, dims=['time','y','x'],
                      coords={'time':t,'y':y,'x':x}
                      )
@@ -170,6 +180,16 @@ def test_detrend():
 
     # let's begin testing
 
+    # detrend all dims of 2D dataarray
+    da = da2D
+    da_prime = _apply_detrend(da, {'x', 'y'}, [0, 1], 'linear')
+    npt.assert_allclose(da_prime, da2D_detrended)
+    
+    # detrend all dims of 3D dataarray
+    da = da3D
+    da_prime = _apply_detrend(da, {'time', 'x', 'y'}, [0, 1, 2], 'linear')
+    npt.assert_allclose(da_prime, da3D_detrended)
+    
     #########
     # Chunk along the `time` axis
     #########
