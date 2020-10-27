@@ -107,59 +107,74 @@ def detrendn(da, axes=None):
     m_est = np.dot(np.dot(spl.inv(np.dot(G.T, G)), G.T), d_obs)
     d_est = np.dot(G, m_est)
 
-    lin_trend = np.reshape(d_est, da.shape)
+    linear_fit = np.reshape(d_est, da.shape)
 
-    return da - lin_trend
+    return da - linear_fit
 
 def detrend_wrap(detrend_func):
     """
     Wrapper function for `xrft.detrendn`.
     """
     def func(a, axes=None):
-        if len(axes) > 3:
-            raise ValueError("Detrending is only supported up to "
-                            "3 dimensions.")
-        if axes is None:
-            axes = tuple(range(a.ndim))
-        else:
-            if len(set(axes)) < len(axes):
-                raise ValueError("Duplicate axes are not allowed.")
 
-        for each_axis in axes:
-            if len(a.chunks[each_axis]) != 1:
-                raise ValueError('The axis along the detrending is upon '
-                                'cannot be chunked.')
+        if len(set(axes)) < len(axes):
+            raise ValueError("Duplicate axes are not allowed.")
 
-        if len(axes) == 1:
-            return dsar.map_blocks(sps.detrend, a, axis=axes[0],
-                                   chunks=a.chunks, dtype=a.dtype
-                                  )
-        else:
-            for each_axis in range(a.ndim):
-                if each_axis not in axes:
-                    if len(a.chunks[each_axis]) != a.shape[each_axis]:
-                        raise ValueError("The axes other than ones to detrend "
-                                        "over should have a chunk length of 1.")
-            return dsar.map_blocks(detrend_func, a, axes,
+        return dsar.map_blocks(detrend_func, a, axes,
                                    chunks=a.chunks, dtype=a.dtype
                                   )
 
     return func
 
-def _apply_detrend(da, axis_num):
+def _apply_detrend(da, dim, axis_num, detrend_type):
     """Wrapper function for applying detrending"""
-    if da.chunks:
-        func = detrend_wrap(detrendn)
-        da = xr.DataArray(func(da.data, axes=axis_num),
-                         dims=da.dims, coords=da.coords)
-    else:
-        if da.ndim == 1:
-            da = xr.DataArray(sps.detrend(da),
-                             dims=da.dims, coords=da.coords)
-        else:
+
+    if detrend_type not in ['constant','linear',None]:
+        raise NotImplementedError("%s is not a valid detrending option. Valid "
+                                  "options are: 'constant','linear', or None."
+                                  % detrend_type)
+
+    if detrend_type == 'constant':
+        return da - da.mean(dim=dim)
+
+    elif detrend_type == 'linear':
+        if len(dim) == 1:
+            p = da.polyfit(dim=dim[0], deg=1)
+            linear_fit = xr.polyval(da[dim[0]], p.polyfit_coefficients)
+            return da - linear_fit
+
+        elif len(dim) > 3:
+            raise NotImplementedError("Detrending over more than 4 axes is "
+                                 "not implemented.")
+
+        # If taking FFT over all dimensions don't need to check for chunking
+        if len(dim) == len(da.dims):
             da = detrendn(da, axes=axis_num)
 
-    return da
+        else:
+            if da.chunks == None:
+                raise ValueError("Linear detrending utilizes the "
+                                 "`dask.map_blocks` API so the dimensions "
+                                 "not being detrended must have a chunk "
+                                 "length of 1. Please chunk your data "
+                                 "first by calling, e.g., `da.chunk('dim': 1)`.")
+
+            for d in da.dims:
+                if d not in dim:
+                    a_n = da.get_axis_num(d)
+                    if len(da.chunks[a_n]) != len(da[str(d)]):
+                        raise ValueError("Linear detrending utilizes the "
+                                         "`dask.map_blocks` API so the dimensions "
+                                         "not being detrended must have a chunk "
+                                         "length of 1. Please rechunk your data "
+                                         "first by calling, e.g., `da.chunk('%s': 1)`. " %d)
+
+            func = detrend_wrap(detrendn)
+            da = xr.DataArray(func(da.data, axes=axis_num),
+                         dims=da.dims, coords=da.coords)
+
+        return da
+
 
 def _stack_chunks(da, dim, suffix='_segment'):
     """Reshape a DataArray so there is only one chunk along dimension `dim`"""
@@ -267,13 +282,13 @@ def _diff_coord(coord):
 
 def _calc_normalization_factor(da, axis_num, chunks_to_segments):
     """Return the signal length, N, to be used in the normalisation of spectra"""
-    
+
     if chunks_to_segments:
         # Use chunk sizes for normalisation
         return [da.chunks[n][0] for n in axis_num]
     else:
         return [da.shape[n] for n in axis_num]
-    
+
 def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
         window=False, chunks_to_segments=False, prefix='freq_'):
     """
@@ -338,14 +353,6 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
     if not da.chunks:
         if np.isnan(da.values).any():
             raise ValueError("Data cannot take Nans")
-    else:
-        if detrend=='linear' and len(dim)>1:
-            for d in da.dims:
-                a_n = da.get_axis_num(d)
-                if d not in dim and da.chunks[a_n][0]>1:
-                    raise ValueError("Linear detrending utilizes the `dask.map_blocks` "
-                                    "API so the dimensions not being detrended "
-                                    "must have the chunk length of 1.")
 
     fft = _fft_module(da)
 
@@ -373,13 +380,8 @@ def dft(da, spacing_tol=1e-3, dim=None, real=None, shift=True, detrend=None,
                              "coodinate %s is not evenly spaced" % d)
         delta_x.append(delta)
 
-    if detrend == 'constant':
-        da = da - da.mean(dim=dim)
-    elif detrend == 'linear':
-        for d in da.dims:
-            if d not in dim:
-                da = da.chunk({d:1})
-        da = _apply_detrend(da, axis_num)
+    if detrend:
+        da = _apply_detrend(da, dim, axis_num, detrend)
 
     if window:
         da = _apply_window(da, dim)
