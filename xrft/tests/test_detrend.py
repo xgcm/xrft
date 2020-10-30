@@ -29,6 +29,9 @@ def noise(dims, shape):
         (['y', 'x'], [32, 16], 'x', {'y': 4}),
         (['y', 'x'], [32, 16], 'y', None),
         (['y', 'x'], [32, 16], 'y', {'x': 4}),
+        (['time', 'y', 'x'], [4, 32, 16], 'x', None),
+        (['time', 'y', 'x'], [4, 32, 16], 'x', {'y': 4}),
+        (['time', 'y', 'x'], [4, 32, 16], 'x', {'time': 1, 'y': 4}),
     )
 )
 @pytest.mark.parametrize('detrend_type', [None, 'constant', 'linear'])
