@@ -37,8 +37,9 @@ def test_detrend_one_dim(array_dims, array_shape, detrend_dim, chunks, detrend_t
     da_original = noise(array_dims, array_shape)
     da_trend = da_original + trend_amplitude * da_original[detrend_dim]
     if chunks:
-        da_original = da_original.chunk(chunks)
+        da_trend = da_trend.chunk(chunks)
     detrended = detrend(da_trend, detrend_dim, detrend_type=detrend_type)
+    assert detrended.chunks == da_trend.chunks
     if detrend_type is None:
         xrt.assert_equal(detrended, da_trend)
     elif detrend_type == 'constant':
