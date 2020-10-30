@@ -141,7 +141,8 @@ def _apply_detrend(da, dim, axis_num, detrend_type):
         if len(dim) == 1:
             p = da.polyfit(dim=dim[0], deg=1)
             linear_fit = xr.polyval(da[dim[0]], p.polyfit_coefficients)
-            return da - linear_fit
+            da_detrended = (da - linear_fit).chunk(da.chunks) # see discussion in https://github.com/xgcm/xrft/issues/116
+            return da_detrended
 
         elif len(dim) > 3:
             raise NotImplementedError("Detrending over more than 4 axes is "
