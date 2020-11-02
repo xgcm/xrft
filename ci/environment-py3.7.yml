@@ -7,6 +7,7 @@ dependencies:
   - pytest
   - pip
   - black
+  - cftime
   - pip:
     - codecov
     - pytest-cov
