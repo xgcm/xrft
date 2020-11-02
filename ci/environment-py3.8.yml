@@ -1,0 +1,13 @@
+name: test_env_xrft
+dependencies:
+  - python=3.8
+  - xarray
+  - dask
+  - numpy
+  - pytest
+  - pip
+  - black
+  - pip:
+    - codecov
+    - pytest-cov
+    - pytest-xdist
