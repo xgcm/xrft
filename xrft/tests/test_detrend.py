@@ -66,6 +66,8 @@ def test_detrend_1D(array_dims, array_shape, detrend_dim, chunks, detrend_type, 
     'array_dims, array_shape, chunks',
     (
         (['y', 'x'], [32, 16], None),
+        (['z', 'y', 'x'], [2, 32, 16], None),
+        (['z', 'y', 'x'], [2, 32, 16], {'z': 1}),
     )
 )
 @pytest.mark.parametrize('detrend_type', [None, 'constant', 'linear'])

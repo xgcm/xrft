@@ -36,6 +36,7 @@ def detrend(da, dim, detrend_type='constant'):
                     da,
                     input_core_dims=[dim],
                     output_core_dims=[dim],
+                    output_dtypes=[da.dtype],
                     vectorize=True,
                     dask='parallelized')
         else: # pragma: no cover
