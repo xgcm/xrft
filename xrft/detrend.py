@@ -2,9 +2,10 @@
 Functions for detrending xarray data.
 """
 
+import numpy as np
 import xarray as xr
 import scipy.signal as sps
-
+import scipy.linalg as spl
 
 def detrend(da, dim, detrend_type='constant'):
     """Detrend a DataArray along dimensions described by dim"""
@@ -24,9 +25,36 @@ def detrend(da, dim, detrend_type='constant'):
         chunks = getattr(data, 'chunks', None)
         if chunks:
             axis_chunks = [data.chunks[a] for a in axis_num]
-            assert all([len(ac)==1 for ac in axis_chunks]), 'Contiguous chunks required for detrending'
+            if not all([len(ac)==1 for ac in axis_chunks]):
+                raise ValueError('Contiguous chunks required for detrending.')
         if len(dim) == 1:
-            da_detrend = xr.apply_ufunc(sps.detrend, da, axis_num[0],
-                                        output_dtypes=[da.dtype],
-                                        dask='parallelized')
-            return da_detrend
+            dt = xr.apply_ufunc(sps.detrend, da, axis_num[0],
+                                output_dtypes=[da.dtype],
+                                dask='parallelized')
+        elif len(dim) == 2:
+            dt = xr.apply_ufunc(_detrend_2d_ufunc,
+                    da,
+                    input_core_dims=[dim],
+                    output_core_dims=[dim],
+                    vectorize=True,
+                    dask='parallelized')
+        else: # pragma: no cover
+            raise NotImplementedError("Only 1D and 2D detrending are implemented so far.")
+
+    return dt
+
+
+def _detrend_2d_ufunc(arr):
+    assert arr.ndim == 2
+    N = arr.shape
+
+    col0 = np.ones(N[0] * N[1])
+    col1 = np.repeat(np.arange(N[0]), N[1]) + 1
+    col2 = np.tile(np.arange(N[1]), N[0]) + 1
+    G = np.stack([col0, col1, col2]).transpose()
+
+    d_obs = np.reshape(arr, (N[0] * N[1], 1))
+    m_est = np.dot(np.dot(spl.inv(np.dot(G.T, G)), G.T), d_obs)
+    d_est = np.dot(G, m_est)
+    linear_fit = np.reshape(d_est, N)
+    return arr - linear_fit
