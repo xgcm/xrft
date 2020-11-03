@@ -31,6 +31,7 @@ Documentation
    why-xrft
    limitations
    installation
+   contributor_guide
 
 .. toctree::
    :maxdepth: 1
