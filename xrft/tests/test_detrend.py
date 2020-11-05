@@ -90,8 +90,7 @@ def test_detrend_2D(array_dims, array_shape, chunks, detrend_type, trend_amplitu
     da_trend = (
         da_original
         + trend_amplitude["x"] * da_original["x"]
-        + trend_amplitude["y"]
-        + da_original["x"]
+        + trend_amplitude["y"] * da_original["y"]
     )
     if chunks:
         da_trend = da_trend.chunk(chunks)
