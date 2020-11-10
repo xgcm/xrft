@@ -274,7 +274,8 @@ def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
     for anum, d in zip(axis_num, dim):
         newdims[anum] = prefix + d if d[: len(prefix)] != prefix else d[len(prefix) :]
 
-    k_names = [prefix + d for d in dim]
+    # k_names = [prefix + d for d in dim]
+    k_names = [prefix + d if d[: len(prefix)] != prefix else d[len(prefix) :] for d in dim]
     k_coords = {key: val for (key, val) in zip(k_names, wavenm)}
 
     newcoords = {}
@@ -290,7 +291,9 @@ def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
 
     dk = [l[1] - l[0] for l in wavenm]
     for this_dk, d in zip(dk, dim):
-        newcoords[prefix + d + "_spacing"] = this_dk
+        spacing_name = prefix + d+"_spacing" if d[: len(prefix)] != prefix else d[len(prefix) :]+ "_spacing"
+        newcoords[spacing_name] = this_dk
+        # newcoords[prefix + d + "_spacing"] = this_dk
 
     return newdims, newcoords
 
@@ -417,6 +420,8 @@ def dft(
 
     # verify even spacing of input coordinates
     delta_x = []
+    shift_axes = [] # axes that will have to be ffftshifted prior to fft_fn
+    lag = []
     for d in dim:
         diff = _diff_coord(da[d])
         delta = np.abs(diff[0])
@@ -426,6 +431,9 @@ def dft(
                 "coodinate %s is not evenly spaced" % d
             )
         delta_x.append(delta)
+        coord = da[d]
+        lag.append(coord.data[len(coord.data)//2]) # lag of coordinates
+        shift_axes.append(d)
 
     if detrend:
         da = _apply_detrend(da, dim, axis_num, detrend)
@@ -433,16 +441,27 @@ def dft(
     if window:
         da = _apply_window(da, dim)
 
-    f = fft_fn(da.data, axes=axis_num)
-
+    # f = fft_fn(da.data, axes=axis_num)
+    f = fft_fn(np.fft.fftshift(da.data, axes=da.get_axis_num(shift_axes)), axes=axis_num)
+    
     if shift:
         f = fft.fftshift(f, axes=axis_num)
 
     k = _freq(N, delta_x, real, shift)
 
     newdims, newcoords = _new_dims_and_coords(da, axis_num, dim, k, prefix)
+    
+    print(newdims)
+    print(newcoords)
+    updated_dims = [newdims[i] for i in da.get_axis_num(dim)]
+    print(updated_dims)
+    phase = 1.
+    for up_dim, l in zip (updated_dims, lag):
+        phase = phase*xr.DataArray(np.exp(-1j*2.*np.pi*newcoords[up_dim]*l), dims=up_dim, coords={up_dim:newcoords[up_dim]}) # taking advantage of xarray automatic broacasting and ordered coordinates    
 
     daft = xr.DataArray(f, dims=newdims, coords=newcoords)
+    daft = daft*phase
+    
     if trans:
         enddims = [d for d in rawdims if d not in dim]
         enddims += [prefix + d for d in rawdims if d in dim]
