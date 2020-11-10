@@ -451,10 +451,8 @@ def dft(
 
     newdims, newcoords = _new_dims_and_coords(da, axis_num, dim, k, prefix)
     
-    print(newdims)
-    print(newcoords)
     updated_dims = [newdims[i] for i in da.get_axis_num(dim)]
-    print(updated_dims)
+    
     phase = 1.
     for up_dim, l in zip (updated_dims, lag):
         phase = phase*xr.DataArray(np.exp(-1j*2.*np.pi*newcoords[up_dim]*l), dims=up_dim, coords={up_dim:newcoords[up_dim]}) # taking advantage of xarray automatic broacasting and ordered coordinates    
