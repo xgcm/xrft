@@ -299,6 +299,7 @@ def dft(da, direction='forward', spacing_tol=1e-3, dim=None, real=None, shift=Tr
     delta_x = []
     shift_axes = [] # axes that will have to be ffftshifted prior to fft_fn
     lag = []# lag of coordinates assuring forth and back coordinate compatibility
+    
     for d in dim:
         coord = da[d]
         diff = np.diff(coord)
@@ -307,8 +308,10 @@ def dft(da, direction='forward', spacing_tol=1e-3, dim=None, real=None, shift=Tr
             diff = diff.astype('timedelta64[s]').astype('f8')
         delta = diff[0]
         if np.allclose(diff, diff[0], rtol=spacing_tol): # coordinates are ordered
+            #  lag.append(coord.data[(len(coord.data)+1)//2]) # lag of coordinates
             lag.append(coord.data[len(coord.data)//2]) # lag of coordinates
             if direction=='backward':
+                #  if np.abs(coord.data[(len(coord.data)+1)//2])<spacing_tol: # coordinates are correctly centered
                 if np.abs(coord.data[len(coord.data)//2])<spacing_tol: # coordinates are correctly centered
                     shift_axes.append(d)
                 else:
@@ -392,7 +395,7 @@ def dft(da, direction='forward', spacing_tol=1e-3, dim=None, real=None, shift=Tr
         return daft
 
     
-def idft(da, *, shift_coords=None, prefix ='freq_', **kwargs):
+def idft(da, *, shift_coords=None, prefix ='freq_', shift=True, **kwargs):
     """
     Perform inverse discrete Fourier transform of xarray data-array `da` along the
     specified dimensions. See dft for details
@@ -411,7 +414,7 @@ def idft(da, *, shift_coords=None, prefix ='freq_', **kwargs):
         for d, s in shift_coords.items():
             res = res.assign_coords(**{d:res[d].data+s})
     else:
-        res = dft(da, prefix =prefix, **kwargs)
+        res = dft(da, prefix =prefix, shift=shift, **kwargs)
     
     return res
 
