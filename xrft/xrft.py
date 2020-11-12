@@ -314,6 +314,22 @@ def _diff_coord(coord):
         return np.diff(coord).astype("timedelta64[s]").astype("f8")
     else:
         return np.diff(coord)
+        
+def _lag_coord(coord):
+    """Returns the coordinate lag"""
+
+    v0 = coord.values[0]
+    calendar = getattr(v0, "calendar", None)
+    lag = coord[len(coord.data)//2]
+    if calendar:
+        import cftime
+        ref_units = "seconds since 1800-01-01 00:00:00"
+        decoded_time = cftime.date2num(lag, ref_units, calendar)
+        return decoded_time
+    elif pd.api.types.is_datetime64_dtype(v0):
+        return lag.astype("timedelta64[s]").astype("f8")
+    else:
+        return lag.data
 
 
 def _calc_normalization_factor(da, axis_num, chunks_to_segments):
@@ -421,18 +437,18 @@ def dft(
     # verify even spacing of input coordinates
     delta_x = []
     shift_axes = [] # axes that will have to be ffftshifted prior to fft_fn
-    lag = []
+    lag_x = []
     for d in dim:
         diff = _diff_coord(da[d])
         delta = np.abs(diff[0])
+        lag = _lag_coord(da[d])
         if not np.allclose(diff, diff[0], rtol=spacing_tol):
             raise ValueError(
                 "Can't take Fourier transform because "
                 "coodinate %s is not evenly spaced" % d
             )
         delta_x.append(delta)
-        coord = da[d]
-        lag.append(coord.data[len(coord.data)//2]) # lag of coordinates
+        lag_x.append(lag)
         shift_axes.append(d)
 
     if detrend:
@@ -451,14 +467,13 @@ def dft(
 
     newdims, newcoords = _new_dims_and_coords(da, axis_num, dim, k, prefix)
     
-    updated_dims = [newdims[i] for i in da.get_axis_num(dim)]
-    
-    phase = 1.
-    for up_dim, l in zip (updated_dims, lag):
-        phase = phase*xr.DataArray(np.exp(-1j*2.*np.pi*newcoords[up_dim]*l), dims=up_dim, coords={up_dim:newcoords[up_dim]}) # taking advantage of xarray automatic broacasting and ordered coordinates    
-
     daft = xr.DataArray(f, dims=newdims, coords=newcoords)
-    daft = daft*phase
+    
+    print(lag_x)
+    
+    updated_dims = [newdims[i] for i in da.get_axis_num(dim)] # List of transformed dimensions
+    for up_dim, lag in zip (updated_dims, lag_x):
+        daft = daft*xr.DataArray(np.exp(-1j*2.*np.pi*newcoords[up_dim]*lag), dims=up_dim, coords={up_dim:newcoords[up_dim]}) # taking advantage of xarray broadcasting and ordered coordinates    
     
     if trans:
         enddims = [d for d in rawdims if d not in dim]
