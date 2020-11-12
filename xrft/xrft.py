@@ -327,7 +327,7 @@ def _lag_coord(coord):
         decoded_time = cftime.date2num(lag, ref_units, calendar)
         return decoded_time
     elif pd.api.types.is_datetime64_dtype(v0):
-        return lag.astype("timedelta64[s]").astype("f8")
+        return lag.astype("timedelta64[s]").astype("f8").data
     else:
         return lag.data
 
@@ -468,8 +468,6 @@ def dft(
     newdims, newcoords = _new_dims_and_coords(da, axis_num, dim, k, prefix)
     
     daft = xr.DataArray(f, dims=newdims, coords=newcoords)
-    
-    print(lag_x)
     
     updated_dims = [newdims[i] for i in da.get_axis_num(dim)] # List of transformed dimensions
     for up_dim, lag in zip (updated_dims, lag_x):
