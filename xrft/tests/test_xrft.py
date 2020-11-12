@@ -1152,3 +1152,36 @@ def test_keep_coords(sample_data_3d, func, dim):
 def test_dataset_type_error(sample_data_3d):
     with pytest.raises(TypeError):
         xrft.dft(sample_data_3d)
+
+
+def test_phase_preservation():
+    """Test if dft is (phase-) preserved when signal is at same place but coords range is changed"""
+    x = np.arange(-15, 15)
+    y = np.random.rand(len(x))
+
+    N1 = np.random.randint(30) + 5
+    N2 = np.random.randint(30) + 5
+    l = np.arange(-N1, 0) + np.min(x)
+    r = np.arange(1, N2 + 1) + np.max(x)
+    s1 = xr.DataArray(
+        np.concatenate([np.zeros(N1), y, np.zeros(N2)]),
+        dims=("x",),
+        coords={"x": np.concatenate([l, x, r])},
+    )
+    S1 = xrft.dft(s1, dim="x")
+
+    N3 = N1
+    while N3 == N1:
+        N3 = np.minimum(np.random.randint(30), N1 + N2)
+    N4 = N1 + N2 - N3
+
+    l = np.arange(-N3, 0) + np.min(x)
+    r = np.arange(1, N4 + 1) + np.max(x)
+    s2 = xr.DataArray(
+        np.concatenate([np.zeros(N3), y, np.zeros(N4)]),
+        dims=("x",),
+        coords={"x": np.concatenate([l, x, r])},
+    )
+    S2 = xrft.dft(s2, dim="x")
+
+    npt.assert_almost_equal(S1.data, S2.data)
