@@ -1168,7 +1168,7 @@ def test_total_phase_preservation():
         dims=("x",),
         coords={"x": np.concatenate([l, x, r])},
     )
-    S1 = xrft.dft(s1, dim="x", preserve_total_phase=True)
+    S1 = xrft.dft(s1, dim="x", true_phase=True)
 
     N3 = N1
     while N3 == N1:
@@ -1182,6 +1182,6 @@ def test_total_phase_preservation():
         dims=("x",),
         coords={"x": np.concatenate([l, x, r])},
     )
-    S2 = xrft.dft(s2, dim="x", preserve_total_phase=True)
+    S2 = xrft.dft(s2, dim="x", true_phase=True)
 
     npt.assert_almost_equal(S1.data, S2.data)

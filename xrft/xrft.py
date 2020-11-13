@@ -327,7 +327,7 @@ def _lag_coord(coord):
 
     v0 = coord.values[0]
     calendar = getattr(v0, "calendar", None)
-    lag = coord[len(coord.data) // 2]
+    lag = coord[(len(coord.data) + 1) // 2]
     if calendar:
         import cftime
 
@@ -358,7 +358,7 @@ def dft(
     shift=True,
     detrend=None,
     window=False,
-    preserve_total_phase=False,
+    true_phase=False,
     chunks_to_segments=False,
     prefix="freq_",
 ):
@@ -393,7 +393,7 @@ def dft(
         Whether to apply a Hann window to the data before the Fourier
         transform is taken. A window will be applied to all the dimensions in
         dim.
-    preserve_total_phase : bool, optional
+    true_phase : bool, optional
         If set to False, standard fft algorithm is applied on signal without consideration of coordinates.
         If set to True, coordinates location are correctly taken into account to evaluate Fourier Tranforrm phase and
         fftshift is applied on input signal prior to fft  (fft algorithm intrinsically considers that input signal is on fftshifted grid).
@@ -449,7 +449,6 @@ def dft(
 
     # verify even spacing of input coordinates
     delta_x = []
-    shift_axes = []  # axes that will have to be ffftshifted prior to fft_fn
     lag_x = []
     for d in dim:
         diff = _diff_coord(da[d])
@@ -462,7 +461,7 @@ def dft(
             )
         delta_x.append(delta)
         lag_x.append(lag)
-        shift_axes.append(d)
+    print(lag_x)
 
     if detrend:
         da = _apply_detrend(da, dim, axis_num, detrend)
@@ -470,10 +469,8 @@ def dft(
     if window:
         da = _apply_window(da, dim)
 
-    if preserve_total_phase:
-        f = fft_fn(
-            np.fft.fftshift(da.data, axes=da.get_axis_num(shift_axes)), axes=axis_num
-        )
+    if true_phase:
+        f = fft_fn(np.fft.fftshift(da.data, axes=axis_num), axes=axis_num)
     else:
         f = fft_fn(da.data, axes=axis_num)
 
@@ -486,7 +483,7 @@ def dft(
 
     daft = xr.DataArray(f, dims=newdims, coords=newcoords)
 
-    if preserve_total_phase:
+    if true_phase:
         updated_dims = [
             newdims[i] for i in da.get_axis_num(dim)
         ]  # List of transformed dimensions
