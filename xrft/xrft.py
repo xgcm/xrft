@@ -327,7 +327,7 @@ def _lag_coord(coord):
 
     v0 = coord.values[0]
     calendar = getattr(v0, "calendar", None)
-    lag = coord[(len(coord.data) + 1) // 2]
+    lag = coord[(len(coord.data)) // 2]
     if calendar:
         import cftime
 
@@ -469,7 +469,7 @@ def dft(
         da = _apply_window(da, dim)
 
     if true_phase:
-        f = fft_fn(np.fft.fftshift(da.data, axes=axis_num), axes=axis_num)
+        f = fft_fn(np.fft.ifftshift(da.data, axes=axis_num), axes=axis_num)
     else:
         f = fft_fn(da.data, axes=axis_num)
 
