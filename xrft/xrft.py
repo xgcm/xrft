@@ -461,7 +461,6 @@ def dft(
             )
         delta_x.append(delta)
         lag_x.append(lag)
-    print(lag_x)
 
     if detrend:
         da = _apply_detrend(da, dim, axis_num, detrend)
