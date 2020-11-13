@@ -358,6 +358,7 @@ def dft(
     shift=True,
     detrend=None,
     window=False,
+    preserve_total_phase=False,
     chunks_to_segments=False,
     prefix="freq_",
 ):
@@ -392,6 +393,10 @@ def dft(
         Whether to apply a Hann window to the data before the Fourier
         transform is taken. A window will be applied to all the dimensions in
         dim.
+    preserve_total_phase : bool, optional
+        If set to False, standard fft algorithm is applied on signal without consideration of coordinates.
+        If set to True, coordinates location are correctly taken into account to evaluate Fourier Tranforrm phase and
+        fftshift is applied on input signal prior to fft  (fft algorithm intrinsically considers that input signal is on fftshifted grid).
     chunks_to_segments : bool, optional
         Whether the data is chunked along the axis to take FFT.
     prefix : str
@@ -465,10 +470,12 @@ def dft(
     if window:
         da = _apply_window(da, dim)
 
-    # f = fft_fn(da.data, axes=axis_num)
-    f = fft_fn(
-        np.fft.fftshift(da.data, axes=da.get_axis_num(shift_axes)), axes=axis_num
-    )
+    if preserve_total_phase:
+        f = fft_fn(
+            np.fft.fftshift(da.data, axes=da.get_axis_num(shift_axes)), axes=axis_num
+        )
+    else:
+        f = fft_fn(da.data, axes=axis_num)
 
     if shift:
         f = fft.fftshift(f, axes=axis_num)
@@ -479,15 +486,16 @@ def dft(
 
     daft = xr.DataArray(f, dims=newdims, coords=newcoords)
 
-    updated_dims = [
-        newdims[i] for i in da.get_axis_num(dim)
-    ]  # List of transformed dimensions
-    for up_dim, lag in zip(updated_dims, lag_x):
-        daft = daft * xr.DataArray(
-            np.exp(-1j * 2.0 * np.pi * newcoords[up_dim] * lag),
-            dims=up_dim,
-            coords={up_dim: newcoords[up_dim]},
-        )  # taking advantage of xarray broadcasting and ordered coordinates
+    if preserve_total_phase:
+        updated_dims = [
+            newdims[i] for i in da.get_axis_num(dim)
+        ]  # List of transformed dimensions
+        for up_dim, lag in zip(updated_dims, lag_x):
+            daft = daft * xr.DataArray(
+                np.exp(-1j * 2.0 * np.pi * newcoords[up_dim] * lag),
+                dims=up_dim,
+                coords={up_dim: newcoords[up_dim]},
+            )  # taking advantage of xarray broadcasting and ordered coordinates
 
     if trans:
         enddims = [d for d in rawdims if d not in dim]

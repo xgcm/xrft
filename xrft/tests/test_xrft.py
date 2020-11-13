@@ -1154,7 +1154,7 @@ def test_dataset_type_error(sample_data_3d):
         xrft.dft(sample_data_3d)
 
 
-def test_phase_preservation():
+def test_total_phase_preservation():
     """Test if dft is (phase-) preserved when signal is at same place but coords range is changed"""
     x = np.arange(-15, 15)
     y = np.random.rand(len(x))
@@ -1168,7 +1168,7 @@ def test_phase_preservation():
         dims=("x",),
         coords={"x": np.concatenate([l, x, r])},
     )
-    S1 = xrft.dft(s1, dim="x")
+    S1 = xrft.dft(s1, dim="x", preserve_total_phase=True)
 
     N3 = N1
     while N3 == N1:
@@ -1182,6 +1182,6 @@ def test_phase_preservation():
         dims=("x",),
         coords={"x": np.concatenate([l, x, r])},
     )
-    S2 = xrft.dft(s2, dim="x")
+    S2 = xrft.dft(s2, dim="x", preserve_total_phase=True)
 
     npt.assert_almost_equal(S1.data, S2.data)
