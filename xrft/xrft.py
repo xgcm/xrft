@@ -469,7 +469,7 @@ def dft(
         da = _apply_window(da, dim)
 
     if true_phase:
-        f = fft_fn(np.fft.ifftshift(da.data, axes=axis_num), axes=axis_num)
+        f = fft_fn(fft.ifftshift(da.data, axes=axis_num), axes=axis_num)
     else:
         f = fft_fn(da.data, axes=axis_num)
 
