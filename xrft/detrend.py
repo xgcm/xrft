@@ -9,7 +9,32 @@ import scipy.linalg as spl
 
 
 def detrend(da, dim, detrend_type="constant"):
-    """Detrend a DataArray along dimensions described by dim"""
+    """Detrend a DataArray
+
+    Parameters
+    ----------
+    da : xarray.DataArray
+        The data to detrend
+    dim : str or list
+        Dimensions along which to apply detrend.
+        Can be either one dimension or a list with two dimensions.
+        Higher-dimensional detrending is not supported.
+        If dask data are passed, the data must be chunked along dim.
+    detrend_type : {'constant', 'linear'}
+        If ``constant``, a constant offset will be removed from each dim.
+        If ``linear``, a linear least-squares fit will be estimated and removed
+        from the data.
+
+    Returns
+    -------
+    da : xarray.DataArray
+        The detrended data.
+
+    Notes
+    -----
+    This function will act lazily in the presence of dask arrays on the
+    input.
+    """
 
     if detrend_type not in ["constant", "linear", None]:
         raise NotImplementedError(
