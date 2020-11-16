@@ -914,12 +914,8 @@ def test_keep_coords(sample_data_3d, func, dim):
         assert c in ps.coords
 
 
-def test_dataset_type_error(sample_data_3d):
-    with pytest.raises(TypeError):
-        xrft.dft(sample_data_3d)
-
-
-def test_true_phase_preservation():
+@pytest.mark.parametrize("chunk", [False, True])
+def test_true_phase_preservation(chunk):
     """Test if dft is (phase-) preserved when signal is at same place but coords range is changed"""
     x = np.arange(-15, 15)
     y = np.random.rand(len(x))
@@ -933,7 +929,11 @@ def test_true_phase_preservation():
         dims=("x",),
         coords={"x": np.concatenate([l, x, r])},
     )
+    if chunk:
+        s1 = s1.chunk()
+
     S1 = xrft.dft(s1, dim="x", true_phase=True)
+    assert s1.chunks == S1.chunks
 
     N3 = N1
     while N3 == N1:
@@ -947,6 +947,10 @@ def test_true_phase_preservation():
         dims=("x",),
         coords={"x": np.concatenate([l, x, r])},
     )
-    S2 = xrft.dft(s2, dim="x", true_phase=True)
+    if chunk:
+        s2 = s2.chunk()
 
-    npt.assert_almost_equal(S1.data, S2.data)
+    S2 = xrft.dft(s2, dim="x", true_phase=True)
+    assert s2.chunks == S2.chunks
+
+    npt.assert_almost_equal(S1.values, S2.values)
