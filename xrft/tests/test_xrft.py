@@ -962,7 +962,7 @@ def test_true_phase():
     T = 4.0
     dx = 0.02
     x = np.arange(-8 * T, 5 * T + dx, dx)  # uncentered and odd number of points
-    y = np.cos(2 * np.pi * f0 * (x))
+    y = np.cos(2 * np.pi * f0 * x)
     y[np.abs(x) >= (T / 2.0)] = 0.0
     s = xr.DataArray(y, dims=("x",), coords={"x": x})
     lag = x[len(x) // 2]
@@ -972,3 +972,25 @@ def test_true_phase():
     expected = expected.assign_coords(freq_x_spacing=1 / (len(x) * dx))
     output = xrft.dft(s, dim="x", true_phase=True, shift=False, prefix="freq_")
     xrt.assert_allclose(expected, output)
+
+
+def test_theoretical_matching(rtol=1e-8, atol=1e-3):
+    """Test dft against theoretical results"""
+    f0 = 2.0
+    T = 4.0
+    dx = 1e-4
+    x = np.arange(-6 * T, 5 * T, dx)
+    y = np.cos(2.0 * np.pi * f0 * x)
+    y[np.abs(x) >= (T / 2.0)] = 0.0
+    s = xr.DataArray(y, dims=("x",), coords={"x": x})
+    S = (
+        xrft.dft(s, dim="x", true_phase=True) * dx
+    )  # Fast Fourier Transform of original signal
+    f = S.freq_x  # Frequency axis
+    TF_s = xr.DataArray(
+        (T / 2 * (np.sinc(T * (f - f0)) + np.sinc(T * (f + f0)))).astype(np.complex),
+        dims=("freq_x",),
+        coords={"freq_x": f},
+    )  # Theoretical expression of the Fourier transform
+    TF_s = TF_s.assign_coords(freq_x_spacing=1 / (len(x) * dx))
+    xrt.assert_allclose(S, TF_s, rtol=rtol, atol=atol)
