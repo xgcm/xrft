@@ -953,4 +953,22 @@ def test_true_phase_preservation(chunk):
     S2 = xrft.dft(s2, dim="x", true_phase=True)
     assert s2.chunks == S2.chunks
 
-    npt.assert_almost_equal(S1.values, S2.values)
+    xrt.assert_allclose(S1, S2)
+
+
+def test_true_phase():
+    """Test if true phase"""
+    f0 = 2.0
+    T = 4.0
+    dx = 0.02
+    x = np.arange(-8 * T, 5 * T + dx, dx)  # uncentered and odd number of points
+    y = np.cos(2 * np.pi * f0 * (x))
+    y[np.abs(x) >= (T / 2.0)] = 0.0
+    s = xr.DataArray(y, dims=("x",), coords={"x": x})
+    lag = x[len(x) // 2]
+    f = np.fft.fftfreq(len(x), dx)
+    expected = np.fft.fft(np.fft.ifftshift(y)) * np.exp(-1j * 2.0 * np.pi * f * lag)
+    expected = xr.DataArray(expected, dims="freq_x", coords={"freq_x": f})
+    expected = expected.assign_coords(freq_x_spacing=1 / (len(x) * dx))
+    output = xrft.dft(s, dim="x", true_phase=True, shift=False, prefix="freq_")
+    xrt.assert_allclose(expected, output)
