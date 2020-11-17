@@ -912,3 +912,85 @@ def test_keep_coords(sample_data_3d, func, dim):
     # check that all coords except dim from ds are kept in ps
     for c in ds.drop(dim).coords:
         assert c in ps.coords
+
+
+@pytest.mark.parametrize("chunk", [False, True])
+def test_true_phase_preservation(chunk):
+    """Test if dft is (phase-) preserved when signal is at same place but coords range is changed"""
+    x = np.arange(-15, 15)
+    y = np.random.rand(len(x))
+
+    N1 = np.random.randint(30) + 5
+    N2 = np.random.randint(30) + 5
+    l = np.arange(-N1, 0) + np.min(x)
+    r = np.arange(1, N2 + 1) + np.max(x)
+    s1 = xr.DataArray(
+        np.concatenate([np.zeros(N1), y, np.zeros(N2)]),
+        dims=("x",),
+        coords={"x": np.concatenate([l, x, r])},
+    )
+    if chunk:
+        s1 = s1.chunk()
+
+    S1 = xrft.dft(s1, dim="x", true_phase=True)
+    assert s1.chunks == S1.chunks
+
+    N3 = N1
+    while N3 == N1:
+        N3 = np.minimum(np.random.randint(30), N1 + N2)
+    N4 = N1 + N2 - N3
+
+    l = np.arange(-N3, 0) + np.min(x)
+    r = np.arange(1, N4 + 1) + np.max(x)
+    s2 = xr.DataArray(
+        np.concatenate([np.zeros(N3), y, np.zeros(N4)]),
+        dims=("x",),
+        coords={"x": np.concatenate([l, x, r])},
+    )
+    if chunk:
+        s2 = s2.chunk()
+
+    S2 = xrft.dft(s2, dim="x", true_phase=True)
+    assert s2.chunks == S2.chunks
+
+    xrt.assert_allclose(S1, S2)
+
+
+def test_true_phase():
+    """Test if true phase"""
+    f0 = 2.0
+    T = 4.0
+    dx = 0.02
+    x = np.arange(-8 * T, 5 * T + dx, dx)  # uncentered and odd number of points
+    y = np.cos(2 * np.pi * f0 * x)
+    y[np.abs(x) >= (T / 2.0)] = 0.0
+    s = xr.DataArray(y, dims=("x",), coords={"x": x})
+    lag = x[len(x) // 2]
+    f = np.fft.fftfreq(len(x), dx)
+    expected = np.fft.fft(np.fft.ifftshift(y)) * np.exp(-1j * 2.0 * np.pi * f * lag)
+    expected = xr.DataArray(expected, dims="freq_x", coords={"freq_x": f})
+    expected = expected.assign_coords(freq_x_spacing=1 / (len(x) * dx))
+    output = xrft.dft(s, dim="x", true_phase=True, shift=False, prefix="freq_")
+    xrt.assert_allclose(expected, output)
+
+
+def test_theoretical_matching(rtol=1e-8, atol=1e-3):
+    """Test dft against theoretical results"""
+    f0 = 2.0
+    T = 4.0
+    dx = 1e-4
+    x = np.arange(-6 * T, 5 * T, dx)
+    y = np.cos(2.0 * np.pi * f0 * x)
+    y[np.abs(x) >= (T / 2.0)] = 0.0
+    s = xr.DataArray(y, dims=("x",), coords={"x": x})
+    S = (
+        xrft.dft(s, dim="x", true_phase=True) * dx
+    )  # Fast Fourier Transform of original signal
+    f = S.freq_x  # Frequency axis
+    TF_s = xr.DataArray(
+        (T / 2 * (np.sinc(T * (f - f0)) + np.sinc(T * (f + f0)))).astype(np.complex),
+        dims=("freq_x",),
+        coords={"freq_x": f},
+    )  # Theoretical expression of the Fourier transform
+    TF_s = TF_s.assign_coords(freq_x_spacing=1 / (len(x) * dx))
+    xrt.assert_allclose(S, TF_s, rtol=rtol, atol=atol)

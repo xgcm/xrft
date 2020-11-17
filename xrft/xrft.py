@@ -137,7 +137,10 @@ def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
     for anum, d in zip(axis_num, dim):
         newdims[anum] = prefix + d if d[: len(prefix)] != prefix else d[len(prefix) :]
 
-    k_names = [prefix + d for d in dim]
+    # k_names = [prefix + d for d in dim]
+    k_names = [
+        prefix + d if d[: len(prefix)] != prefix else d[len(prefix) :] for d in dim
+    ]
     k_coords = {key: val for (key, val) in zip(k_names, wavenm)}
 
     newcoords = {}
@@ -153,7 +156,13 @@ def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
 
     dk = [l[1] - l[0] for l in wavenm]
     for this_dk, d in zip(dk, dim):
-        newcoords[prefix + d + "_spacing"] = this_dk
+        spacing_name = (
+            prefix + d + "_spacing"
+            if d[: len(prefix)] != prefix
+            else d[len(prefix) :] + "_spacing"
+        )
+        newcoords[spacing_name] = this_dk
+        # newcoords[prefix + d + "_spacing"] = this_dk
 
     return newdims, newcoords
 
@@ -176,6 +185,24 @@ def _diff_coord(coord):
         return np.diff(coord)
 
 
+def _lag_coord(coord):
+    """Returns the coordinate lag"""
+
+    v0 = coord.values[0]
+    calendar = getattr(v0, "calendar", None)
+    lag = coord[(len(coord.data)) // 2]
+    if calendar:
+        import cftime
+
+        ref_units = "seconds since 1800-01-01 00:00:00"
+        decoded_time = cftime.date2num(lag, ref_units, calendar)
+        return decoded_time
+    elif pd.api.types.is_datetime64_dtype(v0):
+        return lag.astype("timedelta64[s]").astype("f8").data
+    else:
+        return lag.data
+
+
 def _calc_normalization_factor(da, axis_num, chunks_to_segments):
     """Return the signal length, N, to be used in the normalisation of spectra"""
 
@@ -194,6 +221,7 @@ def dft(
     shift=True,
     detrend=None,
     window=False,
+    true_phase=False,
     chunks_to_segments=False,
     prefix="freq_",
 ):
@@ -229,6 +257,10 @@ def dft(
         Whether to apply a Hann window to the data before the Fourier
         transform is taken. A window will be applied to all the dimensions in
         dim.
+    true_phase : bool, optional
+        If set to False, standard fft algorithm is applied on signal without consideration of coordinates.
+        If set to True, coordinates location are correctly taken into account to evaluate Fourier Tranforrm phase and
+        fftshift is applied on input signal prior to fft  (fft algorithm intrinsically considers that input signal is on fftshifted grid).
     chunks_to_segments : bool, optional
         Whether the data is chunked along the axis to take FFT.
     prefix : str
@@ -268,15 +300,18 @@ def dft(
 
     # verify even spacing of input coordinates
     delta_x = []
+    lag_x = []
     for d in dim:
         diff = _diff_coord(da[d])
         delta = np.abs(diff[0])
+        lag = _lag_coord(da[d])
         if not np.allclose(diff, diff[0], rtol=spacing_tol):
             raise ValueError(
                 "Can't take Fourier transform because "
                 "coodinate %s is not evenly spaced" % d
             )
         delta_x.append(delta)
+        lag_x.append(lag)
 
     if detrend:
         da = _detrend(da, dim, detrend_type=detrend)
@@ -284,7 +319,10 @@ def dft(
     if window:
         da = _apply_window(da, dim)
 
-    f = fft_fn(da.data, axes=axis_num)
+    if true_phase:
+        f = fft_fn(fft.ifftshift(da.data, axes=axis_num), axes=axis_num)
+    else:
+        f = fft_fn(da.data, axes=axis_num)
 
     if shift:
         f = fft.fftshift(f, axes=axis_num)
@@ -294,6 +332,18 @@ def dft(
     newdims, newcoords = _new_dims_and_coords(da, axis_num, dim, k, prefix)
 
     daft = xr.DataArray(f, dims=newdims, coords=newcoords)
+
+    if true_phase:
+        updated_dims = [
+            newdims[i] for i in da.get_axis_num(dim)
+        ]  # List of transformed dimensions
+        for up_dim, lag in zip(updated_dims, lag_x):
+            daft = daft * xr.DataArray(
+                np.exp(-1j * 2.0 * np.pi * newcoords[up_dim] * lag),
+                dims=up_dim,
+                coords={up_dim: newcoords[up_dim]},
+            )  # taking advantage of xarray broadcasting and ordered coordinates
+
     if trans:
         enddims = [d for d in rawdims if d not in dim]
         enddims += [prefix + d for d in rawdims if d in dim]
