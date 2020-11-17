@@ -14,10 +14,10 @@ from dask import delayed
 import scipy.signal as sps
 import scipy.linalg as spl
 
+from .detrend import detrend as _detrend
+
 
 __all__ = [
-    "detrendn",
-    "detrend_wrap",
     "dft",
     "power_spectrum",
     "cross_spectrum",
@@ -61,143 +61,6 @@ def _apply_window(da, dims, window_type="hanning"):
     ]
 
     return da * reduce(operator.mul, windows[::-1])
-
-
-def detrendn(da, axes=None):
-    """
-    Detrend by subtracting out the least-square plane or least-square cubic fit
-    depending on the number of axis.
-
-    Parameters
-    ----------
-    da : `dask.array`
-        The data to be detrended
-
-    Returns
-    -------
-    da : `numpy.array`
-        The detrended input data
-    """
-    N = [da.shape[n] for n in axes]
-    M = []
-    for n in range(da.ndim):
-        if n not in axes:
-            M.append(da.shape[n])
-
-    if len(N) == 2:
-        G = np.ones((N[0] * N[1], 3))
-        for i in range(N[0]):
-            G[N[1] * i : N[1] * i + N[1], 1] = i + 1
-            G[N[1] * i : N[1] * i + N[1], 2] = np.arange(1, N[1] + 1)
-        if type(da) == xr.DataArray:
-            d_obs = np.reshape(da.copy().values, (N[0] * N[1], 1))
-        else:
-            d_obs = np.reshape(da.copy(), (N[0] * N[1], 1))
-    elif len(N) == 3:
-        if type(da) == xr.DataArray:
-            if da.ndim > 3:
-                raise NotImplementedError(
-                    "Cubic detrend is not implemented "
-                    "for 4-dimensional `xarray.DataArray`."
-                    " We suggest converting it to "
-                    "`dask.array`."
-                )
-            else:
-                d_obs = np.reshape(da.copy().values, (N[0] * N[1] * N[2], 1))
-        else:
-            d_obs = np.reshape(da.copy(), (N[0] * N[1] * N[2], 1))
-
-        G = np.ones((N[0] * N[1] * N[2], 4))
-        G[:, 3] = np.tile(np.arange(1, N[2] + 1), N[0] * N[1])
-        ys = np.zeros(N[1] * N[2])
-        for i in range(N[1]):
-            ys[N[2] * i : N[2] * i + N[2]] = i + 1
-        G[:, 2] = np.tile(ys, N[0])
-        for i in range(N[0]):
-            G[len(ys) * i : len(ys) * i + len(ys), 1] = i + 1
-    else:
-        raise NotImplementedError(
-            "Detrending over more than 4 axes is " "not implemented."
-        )
-
-    m_est = np.dot(np.dot(spl.inv(np.dot(G.T, G)), G.T), d_obs)
-    d_est = np.dot(G, m_est)
-
-    linear_fit = np.reshape(d_est, da.shape)
-
-    return da - linear_fit
-
-
-def detrend_wrap(detrend_func):
-    """
-    Wrapper function for `xrft.detrendn`.
-    """
-
-    def func(a, axes=None):
-
-        if len(set(axes)) < len(axes):
-            raise ValueError("Duplicate axes are not allowed.")
-
-        return dsar.map_blocks(detrend_func, a, axes, chunks=a.chunks, dtype=a.dtype)
-
-    return func
-
-
-def _apply_detrend(da, dim, axis_num, detrend_type):
-    """Wrapper function for applying detrending"""
-
-    if detrend_type not in ["constant", "linear", None]:
-        raise NotImplementedError(
-            "%s is not a valid detrending option. Valid "
-            "options are: 'constant','linear', or None." % detrend_type
-        )
-
-    if detrend_type == "constant":
-        return da - da.mean(dim=dim)
-
-    elif detrend_type == "linear":
-        if len(dim) == 1:
-            p = da.polyfit(dim=dim[0], deg=1)
-            linear_fit = xr.polyval(da[dim[0]], p.polyfit_coefficients)
-            return da - linear_fit
-
-        elif len(dim) > 3:
-            raise NotImplementedError(
-                "Detrending over more than 4 axes is " "not implemented."
-            )
-
-        # If taking FFT over all dimensions don't need to check for chunking
-        if len(dim) == len(da.dims):
-            da = detrendn(da, axes=axis_num)
-
-        else:
-            if da.chunks == None:
-                raise ValueError(
-                    "Linear detrending utilizes the "
-                    "`dask.map_blocks` API so the dimensions "
-                    "not being detrended must have a chunk "
-                    "length of 1. Please chunk your data "
-                    "first by calling, e.g., `da.chunk('dim': 1)`."
-                )
-
-            for d in da.dims:
-                if d not in dim:
-                    a_n = da.get_axis_num(d)
-                    if len(da.chunks[a_n]) != len(da[str(d)]):
-                        raise ValueError(
-                            "Linear detrending utilizes the "
-                            "`dask.map_blocks` API so the dimensions "
-                            "not being detrended must have a chunk "
-                            "length of 1. Please rechunk your data "
-                            "first by calling, e.g., `da.chunk('%s': 1)`. " % d
-                        )
-
-            func = detrend_wrap(detrendn)
-            da = xr.DataArray(
-                func(da.data, axes=axis_num), dims=da.dims, coords=da.coords
-            )
-
-        return da
 
 
 def _stack_chunks(da, dim, suffix="_segment"):
@@ -274,7 +137,10 @@ def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
     for anum, d in zip(axis_num, dim):
         newdims[anum] = prefix + d if d[: len(prefix)] != prefix else d[len(prefix) :]
 
-    k_names = [prefix + d for d in dim]
+    # k_names = [prefix + d for d in dim]
+    k_names = [
+        prefix + d if d[: len(prefix)] != prefix else d[len(prefix) :] for d in dim
+    ]
     k_coords = {key: val for (key, val) in zip(k_names, wavenm)}
 
     newcoords = {}
@@ -290,7 +156,13 @@ def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
 
     dk = [l[1] - l[0] for l in wavenm]
     for this_dk, d in zip(dk, dim):
-        newcoords[prefix + d + "_spacing"] = this_dk
+        spacing_name = (
+            prefix + d + "_spacing"
+            if d[: len(prefix)] != prefix
+            else d[len(prefix) :] + "_spacing"
+        )
+        newcoords[spacing_name] = this_dk
+        # newcoords[prefix + d + "_spacing"] = this_dk
 
     return newdims, newcoords
 
@@ -313,6 +185,24 @@ def _diff_coord(coord):
         return np.diff(coord)
 
 
+def _lag_coord(coord):
+    """Returns the coordinate lag"""
+
+    v0 = coord.values[0]
+    calendar = getattr(v0, "calendar", None)
+    lag = coord[(len(coord.data)) // 2]
+    if calendar:
+        import cftime
+
+        ref_units = "seconds since 1800-01-01 00:00:00"
+        decoded_time = cftime.date2num(lag, ref_units, calendar)
+        return decoded_time
+    elif pd.api.types.is_datetime64_dtype(v0):
+        return lag.astype("timedelta64[s]").astype("f8").data
+    else:
+        return lag.data
+
+
 def _calc_normalization_factor(da, axis_num, chunks_to_segments):
     """Return the signal length, N, to be used in the normalisation of spectra"""
 
@@ -331,6 +221,7 @@ def dft(
     shift=True,
     detrend=None,
     window=False,
+    true_phase=False,
     chunks_to_segments=False,
     prefix="freq_",
 ):
@@ -350,21 +241,26 @@ def dft(
         this restriction can be relaxed with this setting. Use caution.
     dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
-        dimensions will be transformed.
+        dimensions will be transformed. If the inputs are dask arrays, the
+        arrays must not be chunked along these dimensions.
     real : str, optional
         Real Fourier transform will be taken along this dimension.
     shift : bool, default
         Whether to shift the fft output. Default is `True`, unless `real=True`,
         in which case shift will be set to False always.
-    detrend : str, optional
+    detrend : {None, 'constant', 'linear'}
         If `constant`, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
         If `linear`, the linear least-square fit will be subtracted before
-        the FT.
+        the FT. For `linear`, only dims of length 1 and 2 are supported.
     window : bool, optional
         Whether to apply a Hann window to the data before the Fourier
         transform is taken. A window will be applied to all the dimensions in
         dim.
+    true_phase : bool, optional
+        If set to False, standard fft algorithm is applied on signal without consideration of coordinates.
+        If set to True, coordinates location are correctly taken into account to evaluate Fourier Tranforrm phase and
+        fftshift is applied on input signal prior to fft  (fft algorithm intrinsically considers that input signal is on fftshifted grid).
     chunks_to_segments : bool, optional
         Whether the data is chunked along the axis to take FFT.
     prefix : str
@@ -375,13 +271,6 @@ def dft(
     daft : `xarray.DataArray`
         The output of the Fourier transformation, with appropriate dimensions.
     """
-    # check for proper spacing tolerance input
-    if not isinstance(spacing_tol, float):
-        raise TypeError("Please provide a float argument")
-
-    # check for xr.da input
-    if not isinstance(da, xr.DataArray):
-        raise TypeError("Please provide xr.DataArray, found", type(da))
 
     rawdims = da.dims
     da, trans = _transpose(da, real)
@@ -389,15 +278,9 @@ def dft(
         dim = list(da.dims)
     else:
         if isinstance(dim, str):
-            dim = [
-                dim,
-            ]
+            dim = [dim]
     if real is not None and real not in dim:
         dim += [real]
-
-    if not da.chunks:
-        if np.isnan(da.values).any():
-            raise ValueError("Data cannot take Nans")
 
     fft = _fft_module(da)
 
@@ -417,23 +300,29 @@ def dft(
 
     # verify even spacing of input coordinates
     delta_x = []
+    lag_x = []
     for d in dim:
         diff = _diff_coord(da[d])
         delta = np.abs(diff[0])
+        lag = _lag_coord(da[d])
         if not np.allclose(diff, diff[0], rtol=spacing_tol):
             raise ValueError(
                 "Can't take Fourier transform because "
                 "coodinate %s is not evenly spaced" % d
             )
         delta_x.append(delta)
+        lag_x.append(lag)
 
     if detrend:
-        da = _apply_detrend(da, dim, axis_num, detrend)
+        da = _detrend(da, dim, detrend_type=detrend)
 
     if window:
         da = _apply_window(da, dim)
 
-    f = fft_fn(da.data, axes=axis_num)
+    if true_phase:
+        f = fft_fn(fft.ifftshift(da.data, axes=axis_num), axes=axis_num)
+    else:
+        f = fft_fn(da.data, axes=axis_num)
 
     if shift:
         f = fft.fftshift(f, axes=axis_num)
@@ -443,6 +332,18 @@ def dft(
     newdims, newcoords = _new_dims_and_coords(da, axis_num, dim, k, prefix)
 
     daft = xr.DataArray(f, dims=newdims, coords=newcoords)
+
+    if true_phase:
+        updated_dims = [
+            newdims[i] for i in da.get_axis_num(dim)
+        ]  # List of transformed dimensions
+        for up_dim, lag in zip(updated_dims, lag_x):
+            daft = daft * xr.DataArray(
+                np.exp(-1j * 2.0 * np.pi * newcoords[up_dim] * lag),
+                dims=up_dim,
+                coords={up_dim: newcoords[up_dim]},
+            )  # taking advantage of xarray broadcasting and ordered coordinates
+
     if trans:
         enddims = [d for d in rawdims if d not in dim]
         enddims += [prefix + d for d in rawdims if d in dim]

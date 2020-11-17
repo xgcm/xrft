@@ -12,7 +12,6 @@ import numpy.testing as npt
 import xarray.testing as xrt
 
 import xrft
-from xrft.xrft import _apply_detrend
 
 
 @pytest.fixture()
@@ -53,237 +52,6 @@ def time_data(request):
     else:
         units = "days since 2000-01-01 00:00:00"
         return cftime.num2date(np.arange(0, 10 * 365), units, request.param)
-
-
-def numpy_detrend(da):
-    """
-    Detrend a 2D field by subtracting out the least-square plane fit.
-
-    Parameters
-    ----------
-    da : `numpy.array`
-        The data to be detrended
-
-    Returns
-    -------
-    da : `numpy.array`
-        The detrended input data
-    """
-    N = da.shape
-
-    G = np.ones((N[0] * N[1], 3))
-    for i in range(N[0]):
-        G[N[1] * i : N[1] * i + N[1], 1] = i + 1
-        G[N[1] * i : N[1] * i + N[1], 2] = np.arange(1, N[1] + 1)
-
-    d_obs = np.reshape(da.copy(), (N[0] * N[1], 1))
-    m_est = np.dot(np.dot(spl.inv(np.dot(G.T, G)), G.T), d_obs)
-    d_est = np.dot(G, m_est)
-
-    linear_fit = np.reshape(d_est, N)
-
-    return da - linear_fit
-
-
-def test_detrend():
-    N = 16
-
-    nt, nz, ny, nx = N - 6, int(N / 2), N - 1, N + 1
-
-    t = np.linspace(-int(N / 2), int(N / 2), nt)
-    z = np.arange(nz)
-    y = np.arange(ny)
-    x = np.arange(nx)
-
-    # create some noise; make sure it has no trend
-    def detrended_noise(N, amplitude=1.0):
-        return sps.detrend(amplitude * np.random.rand(N))
-
-    noise_t = detrended_noise(nt, amplitude=0.12)
-    noise_z = detrended_noise(nz, amplitude=0.3)
-    noise_y = detrended_noise(ny, amplitude=0.2)
-    noise_x = detrended_noise(nx, amplitude=0.1)
-
-    # trended data
-    data_t = 1.0 * t + noise_t
-    data_z = 0.2 * z + noise_z
-    data_y = -0.3 * y + noise_y
-    data_x = 0.5 * x + noise_x
-
-    # construct some 2D, 3D, 4D numpy arrays to be used as tests for the detrendn function
-    array2D = data_y[:, np.newaxis] + data_x[np.newaxis, :]
-
-    array2D_detrended = noise_y[:, np.newaxis] + noise_x[np.newaxis, :]
-    array2D_detrended = (
-        array2D_detrended - array2D_detrended.mean()[np.newaxis, np.newaxis]
-    )
-
-    array3D = (
-        data_t[:, np.newaxis, np.newaxis]
-        + data_y[np.newaxis, :, np.newaxis]
-        + data_x[np.newaxis, np.newaxis, :]
-    )
-
-    array3D_detrended = (
-        noise_t[:, np.newaxis, np.newaxis]
-        + noise_y[np.newaxis, :, np.newaxis]
-        + noise_x[np.newaxis, np.newaxis, :]
-    )
-    array3D_detrended = (
-        array3D_detrended - array3D_detrended.mean()[np.newaxis, np.newaxis, np.newaxis]
-    )
-
-    array4D = (
-        data_t[:, np.newaxis, np.newaxis, np.newaxis]
-        + data_z[np.newaxis, :, np.newaxis, np.newaxis]
-        + data_y[np.newaxis, np.newaxis, :, np.newaxis]
-        + data_x[np.newaxis, np.newaxis, np.newaxis, :]
-    )
-
-    array4D_detrendedy = (
-        data_t[:, np.newaxis, np.newaxis, np.newaxis]
-        + data_z[np.newaxis, :, np.newaxis, np.newaxis]
-        + noise_y[np.newaxis, np.newaxis, :, np.newaxis]
-        + data_x[np.newaxis, np.newaxis, np.newaxis, :]
-    )
-    array4D_detrendedy = (
-        array4D_detrendedy - array4D_detrendedy.mean(axis=2)[:, :, np.newaxis, :]
-    )
-
-    array4D_detrendedxy = (
-        data_t[:, np.newaxis, np.newaxis, np.newaxis]
-        + data_z[np.newaxis, :, np.newaxis, np.newaxis]
-        + noise_y[np.newaxis, np.newaxis, :, np.newaxis]
-        + noise_x[np.newaxis, np.newaxis, np.newaxis, :]
-    )
-    array4D_detrendedxy = (
-        array4D_detrendedxy
-        - array4D_detrendedxy.mean(axis=(2, 3))[:, :, np.newaxis, np.newaxis]
-    )
-
-    array4D_detrendedxyz = (
-        data_t[:, np.newaxis, np.newaxis, np.newaxis]
-        + noise_z[np.newaxis, :, np.newaxis, np.newaxis]
-        + noise_y[np.newaxis, np.newaxis, :, np.newaxis]
-        + noise_x[np.newaxis, np.newaxis, np.newaxis, :]
-    )
-    array4D_detrendedxyz = (
-        array4D_detrendedxyz
-        - array4D_detrendedxyz.mean(axis=(1, 2, 3))[
-            :, np.newaxis, np.newaxis, np.newaxis
-        ]
-    )
-
-    array4D_nomean = (
-        array4D - array4D.mean()[np.newaxis, np.newaxis, np.newaxis, np.newaxis]
-    )
-
-    # now construct the equivalent 2D, 3D, 4D data arrays
-    da2D = xr.DataArray(array2D, dims=["y", "x"], coords={"y": y, "x": x})
-
-    da2D_detrended = xr.DataArray(
-        array2D_detrended, dims=["y", "x"], coords={"y": y, "x": x}
-    )
-
-    da3D = xr.DataArray(
-        array3D, dims=["time", "y", "x"], coords={"time": t, "y": y, "x": x}
-    )
-    da4D = xr.DataArray(
-        array4D,
-        dims=["time", "z", "y", "x"],
-        coords={"time": t, "z": z, "y": y, "x": x},
-    )
-
-    da3D_detrended = xr.DataArray(
-        array3D_detrended, dims=["time", "y", "x"], coords={"time": t, "y": y, "x": x}
-    )
-
-    da4D_detrendedy = xr.DataArray(
-        array4D_detrendedy,
-        dims=["time", "z", "y", "x"],
-        coords={"time": t, "z": z, "y": y, "x": x},
-    )
-
-    da4D_detrendedxy = xr.DataArray(
-        array4D_detrendedxy,
-        dims=["time", "z", "y", "x"],
-        coords={"time": t, "z": z, "y": y, "x": x},
-    )
-
-    da4D_detrendedxyz = xr.DataArray(
-        array4D_detrendedxyz,
-        dims=["time", "z", "y", "x"],
-        coords={"time": t, "z": z, "y": y, "x": x},
-    )
-
-    func = xrft.detrend_wrap(xrft.detrendn)
-
-    # let's begin testing
-
-    # detrend all dims of 2D dataarray
-    da = da2D
-    da_prime = _apply_detrend(da, {"x", "y"}, [0, 1], "linear")
-    npt.assert_allclose(da_prime, da2D_detrended)
-
-    # detrend all dims of 3D dataarray
-    da = da3D
-    da_prime = _apply_detrend(da, {"time", "x", "y"}, [0, 1, 2], "linear")
-    npt.assert_allclose(da_prime, da3D_detrended)
-
-    #########
-    # Chunk along the `time` axis
-    #########
-    da = da4D.chunk({"time": 1})
-
-    # test detrending along 1 dimension
-    da_prime = _apply_detrend(da, "y", 2, "linear")
-    npt.assert_allclose(da_prime, da4D_detrendedy)
-    npt.assert_allclose(da_prime[0, 0, :, 0].data, noise_y)
-
-    # test detrending along >1 dimensions
-    da_prime = func(da.data, axes=[1, 2, 3]).compute()
-    npt.assert_allclose(da_prime.data, array4D_detrendedxyz)
-    npt.assert_allclose(da_prime, da4D_detrendedxyz)
-
-    # detrend along all 4 dimensions should only work for 'constant'
-    with pytest.raises(NotImplementedError):
-        func(da.data, axes=[0, 1, 2, 3]).compute()
-
-    with pytest.raises(NotImplementedError):
-        _apply_detrend(da, {"time", "z", "y", "x"}, [0, 1, 2, 3], "linear").compute()
-
-    npt.assert_allclose(
-        _apply_detrend(da, {"time", "z", "y", "x"}, [0, 1, 2, 3], "constant").compute(),
-        array4D_nomean,
-    )
-
-    da = da3D.chunk({"time": None})
-    # test detrending along all dimensions (total dimensions <4)
-    da_prime = func(da.data, axes=[0, 1, 2]).compute()
-    npt.assert_allclose(da_prime, da3D_detrended)
-
-    #########
-    # Chunk along the `time` and `z` axes
-    #########
-    da = da4D.chunk({"time": 1, "z": 1})
-    with pytest.raises(ValueError):
-        func(da.data, axes=[1, 2]).compute()
-    with pytest.raises(ValueError):
-        func(da.data, axes=[2, 2]).compute()
-    da_prime = func(da.data, axes=[2, 3]).compute()
-    npt.assert_allclose(da_prime, da4D_detrendedxy)
-
-    # for linear detrending of 2 or 3 dimensions
-
-    # if dataarray is not chunked raise error
-    da = da4D
-    with pytest.raises(ValueError):
-        _apply_detrend(da, {"z", "x"}, [1, 2], "linear").compute()
-
-    # if the dimensions not being detrended don't have chunk length = 1 then error should be raised
-    da = da4D.chunk({"time": 2, "z": 2})
-    with pytest.raises(ValueError):
-        _apply_detrend(da, {"z", "x"}, [1, 2], "linear").compute()
 
 
 class TestDFTImag(object):
@@ -406,6 +174,7 @@ class TestDFTImag(object):
                 daft.values, xrft.dft(da, dim="time", shift=False, detrend="linear")
             )
 
+    @pytest.mark.skip(reason="3D detrending not implemented")
     def test_dft_4d(self):
         """Test the discrete Fourier transform on 2D data"""
         N = 16
@@ -417,13 +186,12 @@ class TestDFTImag(object):
         ft = xrft.dft(da, shift=False)
         npt.assert_almost_equal(ft.values, np.fft.fftn(da.values))
 
-        da_prime = xrft.detrendn(
-            da[:, 0].values, [0, 1, 2]
-        )  # cubic detrend over time, y, and x
+        dim = ["time", "y", "x"]
+        da_prime = xrft.detrend(da[:, 0], dim)  # cubic detrend over time, y, and x
         npt.assert_almost_equal(
             xrft.dft(
                 da[:, 0].drop("z"),
-                dim=["time", "y", "x"],
+                dim=dim,
                 shift=False,
                 detrend="linear",
             ).values,
@@ -619,18 +387,12 @@ class TestSpectrum(object):
         npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.0)
 
         ### Remove least-square fit
-        if not dask:
-            with pytest.raises(ValueError):
-                ps = xrft.power_spectrum(
-                    da, dim=["y", "x"], window=True, density=False, detrend="linear"
-                )
-        else:
-            ps = xrft.power_spectrum(
-                da, dim=["y", "x"], window=True, density=False, detrend="linear"
-            )
-            daft = xrft.dft(da, dim=["y", "x"], window=True, detrend="linear")
-            npt.assert_almost_equal(ps.values, np.real(daft * np.conj(daft)))
-            npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.0)
+        ps = xrft.power_spectrum(
+            da, dim=["y", "x"], window=True, density=False, detrend="linear"
+        )
+        daft = xrft.dft(da, dim=["y", "x"], window=True, detrend="linear")
+        npt.assert_almost_equal(ps.values, np.real(daft * np.conj(daft)))
+        npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.0)
 
     @pytest.mark.parametrize("dask", [False, True])
     def test_cross_spectrum(self, dask):
@@ -870,10 +632,13 @@ def test_parseval(chunks_to_segments):
             dims=["time", "y", "x"],
             coords={"time": range(N), "y": range(N), "x": range(N)},
         ).chunk({"time": 1})
-        ps = xrft.power_spectrum(d3d, dim=["x", "y"], window=True, detrend="linear")
+        dim = ["x", "y"]
+        ps = xrft.power_spectrum(d3d, dim=dim, window=True, detrend="linear")
         npt.assert_almost_equal(
             (1 / delta_xy) * ps[0].values.mean(),
-            ((numpy_detrend(d3d[0].values) * window) ** 2).mean(),
+            (
+                (xrft.detrend(d3d, dim, detrend_type="linear")[0].values * window) ** 2
+            ).mean(),
             decimal=5,
         )
 
@@ -1149,6 +914,83 @@ def test_keep_coords(sample_data_3d, func, dim):
         assert c in ps.coords
 
 
-def test_dataset_type_error(sample_data_3d):
-    with pytest.raises(TypeError):
-        xrft.dft(sample_data_3d)
+@pytest.mark.parametrize("chunk", [False, True])
+def test_true_phase_preservation(chunk):
+    """Test if dft is (phase-) preserved when signal is at same place but coords range is changed"""
+    x = np.arange(-15, 15)
+    y = np.random.rand(len(x))
+
+    N1 = np.random.randint(30) + 5
+    N2 = np.random.randint(30) + 5
+    l = np.arange(-N1, 0) + np.min(x)
+    r = np.arange(1, N2 + 1) + np.max(x)
+    s1 = xr.DataArray(
+        np.concatenate([np.zeros(N1), y, np.zeros(N2)]),
+        dims=("x",),
+        coords={"x": np.concatenate([l, x, r])},
+    )
+    if chunk:
+        s1 = s1.chunk()
+
+    S1 = xrft.dft(s1, dim="x", true_phase=True)
+    assert s1.chunks == S1.chunks
+
+    N3 = N1
+    while N3 == N1:
+        N3 = np.minimum(np.random.randint(30), N1 + N2)
+    N4 = N1 + N2 - N3
+
+    l = np.arange(-N3, 0) + np.min(x)
+    r = np.arange(1, N4 + 1) + np.max(x)
+    s2 = xr.DataArray(
+        np.concatenate([np.zeros(N3), y, np.zeros(N4)]),
+        dims=("x",),
+        coords={"x": np.concatenate([l, x, r])},
+    )
+    if chunk:
+        s2 = s2.chunk()
+
+    S2 = xrft.dft(s2, dim="x", true_phase=True)
+    assert s2.chunks == S2.chunks
+
+    xrt.assert_allclose(S1, S2)
+
+
+def test_true_phase():
+    """Test if true phase"""
+    f0 = 2.0
+    T = 4.0
+    dx = 0.02
+    x = np.arange(-8 * T, 5 * T + dx, dx)  # uncentered and odd number of points
+    y = np.cos(2 * np.pi * f0 * x)
+    y[np.abs(x) >= (T / 2.0)] = 0.0
+    s = xr.DataArray(y, dims=("x",), coords={"x": x})
+    lag = x[len(x) // 2]
+    f = np.fft.fftfreq(len(x), dx)
+    expected = np.fft.fft(np.fft.ifftshift(y)) * np.exp(-1j * 2.0 * np.pi * f * lag)
+    expected = xr.DataArray(expected, dims="freq_x", coords={"freq_x": f})
+    expected = expected.assign_coords(freq_x_spacing=1 / (len(x) * dx))
+    output = xrft.dft(s, dim="x", true_phase=True, shift=False, prefix="freq_")
+    xrt.assert_allclose(expected, output)
+
+
+def test_theoretical_matching(rtol=1e-8, atol=1e-3):
+    """Test dft against theoretical results"""
+    f0 = 2.0
+    T = 4.0
+    dx = 1e-4
+    x = np.arange(-6 * T, 5 * T, dx)
+    y = np.cos(2.0 * np.pi * f0 * x)
+    y[np.abs(x) >= (T / 2.0)] = 0.0
+    s = xr.DataArray(y, dims=("x",), coords={"x": x})
+    S = (
+        xrft.dft(s, dim="x", true_phase=True) * dx
+    )  # Fast Fourier Transform of original signal
+    f = S.freq_x  # Frequency axis
+    TF_s = xr.DataArray(
+        (T / 2 * (np.sinc(T * (f - f0)) + np.sinc(T * (f + f0)))).astype(np.complex),
+        dims=("freq_x",),
+        coords={"freq_x": f},
+    )  # Theoretical expression of the Fourier transform
+    TF_s = TF_s.assign_coords(freq_x_spacing=1 / (len(x) * dx))
+    xrt.assert_allclose(S, TF_s, rtol=rtol, atol=atol)
