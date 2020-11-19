@@ -322,13 +322,12 @@ def dft(
     ]  # List of transformed dimensions
 
     if true_phase:
-        with xr.set_options(keep_attrs=True):
-            for up_dim, lag in zip(updated_dims, lag_x):
-                daft = daft * xr.DataArray(
-                    np.exp(-1j * 2.0 * np.pi * newcoords[up_dim] * lag),
-                    dims=up_dim,
-                    coords={up_dim: newcoords[up_dim]},
-                )  # taking advantage of xarray broadcasting and ordered coordinates
+        for up_dim, lag in zip(updated_dims, lag_x):
+            daft = daft * xr.DataArray(
+                np.exp(-1j * 2.0 * np.pi * newcoords[up_dim] * lag),
+                dims=up_dim,
+                coords={up_dim: newcoords[up_dim]},
+            )  # taking advantage of xarray broadcasting and ordered coordinates
 
     if trans:
         enddims = [d for d in rawdims if d not in dim]
