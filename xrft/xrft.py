@@ -131,40 +131,25 @@ def _freq(N, delta_x, real, shift):
     return k
 
 
-def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
+def _new_dims_and_coords(da, dim, wavenm, prefix):
     # set up new dimensions and coordinates for dataarray
-    newdims = list(da.dims)
-    for anum, d in zip(axis_num, dim):
-        newdims[anum] = prefix + d if d[: len(prefix)] != prefix else d[len(prefix) :]
 
-    # k_names = [prefix + d for d in dim]
-    k_names = [
-        prefix + d if d[: len(prefix)] != prefix else d[len(prefix) :] for d in dim
-    ]
-    k_coords = {key: val for (key, val) in zip(k_names, wavenm)}
+    new_coords = dict()
+    wavenm = dict(zip(dim, wavenm))
 
-    newcoords = {}
-    # keep former coords
-    if len(da.coords) > 1:
-        for c in da.drop(dim).coords:
-            newcoords[c] = da[c]
-    for d in newdims:
-        if d in k_coords:
-            newcoords[d] = k_coords[d]
-        elif d in da.coords:
-            newcoords[d] = da[d].data
+    for d in da.dims:
+        if d in dim:
+            k = wavenm[d]
+            new_name = prefix + d if d[: len(prefix)] != prefix else d[len(prefix) :]
+            new_dim = xr.DataArray(
+                k, dims=new_name, coords={new_name: k}, name=new_name
+            )
+            new_dim.attrs.update({"spacing": k[1] - k[0]})
+            new_coords[new_name] = new_dim
+        else:
+            new_coords[d] = da.coords[d]  # we keep the untransformed dimension
 
-    dk = [l[1] - l[0] for l in wavenm]
-    for this_dk, d in zip(dk, dim):
-        spacing_name = (
-            prefix + d + "_spacing"
-            if d[: len(prefix)] != prefix
-            else d[len(prefix) :] + "_spacing"
-        )
-        newcoords[spacing_name] = this_dk
-        # newcoords[prefix + d + "_spacing"] = this_dk
-
-    return newdims, newcoords
+    return new_coords
 
 
 def _diff_coord(coord):
@@ -329,20 +314,21 @@ def dft(
 
     k = _freq(N, delta_x, real, shift)
 
-    newdims, newcoords = _new_dims_and_coords(da, axis_num, dim, k, prefix)
+    newcoords = _new_dims_and_coords(da, dim, k, prefix)
+    daft = xr.DataArray(f, dims=newcoords.keys(), coords=newcoords)
 
-    daft = xr.DataArray(f, dims=newdims, coords=newcoords)
+    updated_dims = [
+        daft.dims[i] for i in da.get_axis_num(dim)
+    ]  # List of transformed dimensions
 
     if true_phase:
-        updated_dims = [
-            newdims[i] for i in da.get_axis_num(dim)
-        ]  # List of transformed dimensions
-        for up_dim, lag in zip(updated_dims, lag_x):
-            daft = daft * xr.DataArray(
-                np.exp(-1j * 2.0 * np.pi * newcoords[up_dim] * lag),
-                dims=up_dim,
-                coords={up_dim: newcoords[up_dim]},
-            )  # taking advantage of xarray broadcasting and ordered coordinates
+        with xr.set_options(keep_attrs=True):
+            for up_dim, lag in zip(updated_dims, lag_x):
+                daft = daft * xr.DataArray(
+                    np.exp(-1j * 2.0 * np.pi * newcoords[up_dim] * lag),
+                    dims=up_dim,
+                    coords={up_dim: newcoords[up_dim]},
+                )  # taking advantage of xarray broadcasting and ordered coordinates
 
     if trans:
         enddims = [d for d in rawdims if d not in dim]
