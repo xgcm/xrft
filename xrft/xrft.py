@@ -311,7 +311,9 @@ def dft(
     k = _freq(N, delta_x, real, shift)
 
     newcoords, swap_dims = _new_dims_and_coords(da, dim, k, prefix)
-    daft = xr.DataArray(f, dims=da.dims, coords=da.coords)
+    daft = xr.DataArray(
+        f, dims=da.dims, coords=dict([c for c in da.coords.items() if c[0] not in dim])
+    )
     daft = daft.swap_dims(swap_dims).assign_coords(newcoords)
     daft = daft.drop([d for d in dim if d in daft.coords])
 
