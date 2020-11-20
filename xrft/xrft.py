@@ -427,7 +427,8 @@ def _power_spectrum(daft, dim, N, density):
     if density:
         ps /= (np.asarray(N).prod()) ** 2
         for i in dim:
-            ps /= daft["freq_" + i + "_spacing"]
+            ps /= daft["freq_" + i].spacing
+            # ps /= daft["freq_" + i + "_spacing"]
 
     return ps
 
@@ -533,7 +534,8 @@ def _cross_spectrum(daft1, daft2, dim, N, density):
     if density:
         cs /= (np.asarray(N).prod()) ** 2
         for i in dim:
-            cs /= daft1["freq_" + i + "_spacing"]
+            # cs /= daft1["freq_" + i + "_spacing"]
+            cs /= daft1["freq_" + i].spacing
 
     return cs
 
