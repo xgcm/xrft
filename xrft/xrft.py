@@ -133,23 +133,19 @@ def _freq(N, delta_x, real, shift):
 
 def _new_dims_and_coords(da, dim, wavenm, prefix):
     # set up new dimensions and coordinates for dataarray
-
+    swap_dims = dict()
     new_coords = dict()
     wavenm = dict(zip(dim, wavenm))
 
-    for d in da.dims:
-        if d in dim:
-            k = wavenm[d]
-            new_name = prefix + d if d[: len(prefix)] != prefix else d[len(prefix) :]
-            new_dim = xr.DataArray(
-                k, dims=new_name, coords={new_name: k}, name=new_name
-            )
-            new_dim.attrs.update({"spacing": k[1] - k[0]})
-            new_coords[new_name] = new_dim
-        else:
-            new_coords[d] = da.coords[d]  # we keep the untransformed dimension
+    for d in dim:
+        k = wavenm[d]
+        new_name = prefix + d if d[: len(prefix)] != prefix else d[len(prefix) :]
+        new_dim = xr.DataArray(k, dims=new_name, coords={new_name: k}, name=new_name)
+        new_dim.attrs.update({"spacing": k[1] - k[0]})
+        new_coords[new_name] = new_dim
+        swap_dims[d] = new_name
 
-    return new_coords
+    return new_coords, swap_dims
 
 
 def _diff_coord(coord):
@@ -314,8 +310,10 @@ def dft(
 
     k = _freq(N, delta_x, real, shift)
 
-    newcoords = _new_dims_and_coords(da, dim, k, prefix)
-    daft = xr.DataArray(f, dims=newcoords.keys(), coords=newcoords)
+    newcoords, swap_dims = _new_dims_and_coords(da, dim, k, prefix)
+    daft = xr.DataArray(f, dims=da.dims, coords=da.coords)
+    daft = daft.swap_dims(swap_dims).assign_coords(newcoords)
+    daft = daft.drop([d for d in dim if d in daft.coords])
 
     updated_dims = [
         daft.dims[i] for i in da.get_axis_num(dim)
