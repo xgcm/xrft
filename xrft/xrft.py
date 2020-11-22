@@ -252,7 +252,6 @@ def dft(
     daft : `xarray.DataArray`
         The output of the Fourier transformation, with appropriate dimensions.
     """
-    rawdims = da.dims
 
     if dim is None:
         dim = list(da.dims)
@@ -266,14 +265,19 @@ def dft(
                 "The dimension along real FT is taken must be one of the existing dimensions."
             )
         else:
-            if real not in dim:
-                dim = list(dim) + [real]  # real dimension has to be added at the end !
-            else:
-                dim = [d for d in dim if d != real] + [
-                    real
-                ]  # real dim has to be moved at the end !
-            ordered_dims = [d for d in da.dims if d not in [real]] + [real]
-            da = da.transpose(*ordered_dims)
+            dim = [d for d in dim if d != real] + [
+                real
+            ]  # real dim has to be moved or added at the end !
+
+    if chunks_to_segments:
+        da = _stack_chunks(da, dim)
+
+    rawdims = da.dims  # take care of segmented dimesions is any
+
+    if real is not None:
+        da = da.transpose(
+            *[d for d in da.dims if d not in [real]] + [real]
+        )  # dimension for real transformed is moved at the end
 
     fft = _fft_module(da)
 
@@ -282,9 +286,6 @@ def dft(
     else:
         shift = False
         fft_fn = fft.rfftn
-
-    if chunks_to_segments:
-        da = _stack_chunks(da, dim)
 
     # the axes along which to take ffts
     axis_num = [
