@@ -96,20 +96,20 @@ def _stack_chunks(da, dim, suffix="_segment"):
     return da
 
 
-def _transpose(da, real, trans=False):
-    if real is not None:
-        transdim = list(da.dims)
-        if real not in transdim:
-            raise ValueError(
-                "The dimension along real FT is taken must "
-                "be one of the existing dimensions."
-            )
-        elif real != transdim[-1]:
-            transdim.remove(real)
-            transdim += [real]
-            da = da.transpose(*transdim)
-            trans = True
-    return da, trans
+# def _transpose(da, real, trans=False):
+# if real is not None:
+# transdim = list(da.dims)
+# if real not in transdim:
+# raise ValueError(
+# "The dimension along real FT is taken must "
+# "be one of the existing dimensions."
+# )
+# elif real != transdim[-1]:
+# transdim.remove(real)
+# transdim += [real]
+# da = da.transpose(*transdim)
+# trans = True
+# return da, trans
 
 
 def _freq(N, delta_x, real, shift):
@@ -252,16 +252,28 @@ def dft(
     daft : `xarray.DataArray`
         The output of the Fourier transformation, with appropriate dimensions.
     """
-
     rawdims = da.dims
-    da, trans = _transpose(da, real)
+
     if dim is None:
         dim = list(da.dims)
     else:
         if isinstance(dim, str):
             dim = [dim]
-    if real is not None and real not in dim:
-        dim += [real]
+
+    if real is not None:
+        if real not in da.dims:
+            raise ValueError(
+                "The dimension along real FT is taken must be one of the existing dimensions."
+            )
+        else:
+            if real not in dim:
+                dim = list(dim) + [real]  # real dimension has to be added at the end !
+            else:
+                dim = [d for d in dim if d != real] + [
+                    real
+                ]  # real dim has to be moved at the end !
+            ordered_dims = [d for d in da.dims if d not in [real]] + [real]
+            da = da.transpose(*ordered_dims)
 
     fft = _fft_module(da)
 
@@ -275,7 +287,9 @@ def dft(
         da = _stack_chunks(da, dim)
 
     # the axes along which to take ffts
-    axis_num = [da.get_axis_num(d) for d in dim]
+    axis_num = [
+        da.get_axis_num(d) for d in dim
+    ]  # if there is a real dim , it has to be the last one
 
     N = [da.shape[n] for n in axis_num]
 
@@ -329,12 +343,9 @@ def dft(
                 coords={up_dim: newcoords[up_dim]},
             )  # taking advantage of xarray broadcasting and ordered coordinates
 
-    if trans:
-        enddims = [d for d in rawdims if d not in dim]
-        enddims += [prefix + d for d in rawdims if d in dim]
-        return daft.transpose(*enddims)
-    else:
-        return daft
+    return daft.transpose(
+        *[swap_dims.get(d, d) for d in rawdims]
+    )  # Do nothing if da was not transposed
 
 
 def power_spectrum(
