@@ -96,22 +96,6 @@ def _stack_chunks(da, dim, suffix="_segment"):
     return da
 
 
-# def _transpose(da, real, trans=False):
-# if real is not None:
-# transdim = list(da.dims)
-# if real not in transdim:
-# raise ValueError(
-# "The dimension along real FT is taken must "
-# "be one of the existing dimensions."
-# )
-# elif real != transdim[-1]:
-# transdim.remove(real)
-# transdim += [real]
-# da = da.transpose(*transdim)
-# trans = True
-# return da, trans
-
-
 def _freq(N, delta_x, real, shift):
     # calculate frequencies from coordinates
     # coordinates are always loaded eagerly, so we use numpy
@@ -262,7 +246,7 @@ def dft(
     if real is not None:
         if real not in da.dims:
             raise ValueError(
-                "The dimension along real FT is taken must be one of the existing dimensions."
+                "The dimension along which real FT is taken must be one of the existing dimensions."
             )
         else:
             dim = [d for d in dim if d != real] + [
@@ -272,7 +256,7 @@ def dft(
     if chunks_to_segments:
         da = _stack_chunks(da, dim)
 
-    rawdims = da.dims  # take care of segmented dimesions is any
+    rawdims = da.dims  # take care of segmented dimesions, if any
 
     if real is not None:
         da = da.transpose(

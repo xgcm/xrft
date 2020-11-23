@@ -969,7 +969,6 @@ def test_true_phase():
     f = np.fft.fftfreq(len(x), dx)
     expected = np.fft.fft(np.fft.ifftshift(y)) * np.exp(-1j * 2.0 * np.pi * f * lag)
     expected = xr.DataArray(expected, dims="freq_x", coords={"freq_x": f})
-    # expected = expected.assign_coords(freq_x_spacing=1 / (len(x) * dx))
     output = xrft.dft(s, dim="x", true_phase=True, shift=False, prefix="freq_")
     xrt.assert_allclose(expected, output)
 
@@ -992,5 +991,4 @@ def test_theoretical_matching(rtol=1e-8, atol=1e-3):
         dims=("freq_x",),
         coords={"freq_x": f},
     )  # Theoretical expression of the Fourier transform
-    # TF_s = TF_s.assign_coords(freq_x_spacing=1 / (len(x) * dx))
     xrt.assert_allclose(S, TF_s, rtol=rtol, atol=atol)
