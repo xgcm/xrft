@@ -681,7 +681,6 @@ def _groupby_bins_agg(
     **cut_kwargs,
 ) -> xr.DataArray:
     """Faster equivalent of Xarray's groupby_bins(...).sum()."""
-    # TODO: implement this upstream in xarray:
     # https://github.com/pydata/xarray/issues/4473
     binned = pd.cut(np.ravel(group), bins, **cut_kwargs)
     new_dim_name = group.name + "_bins"
@@ -705,30 +704,6 @@ def _groupby_bins_agg(
     )
     result.coords[new_dim_name] = binned.categories
     return result
-
-# def _radial_wvnum(k, l, N, nfactor):
-#     """Creates a radial wavenumber based on two horizontal wavenumbers
-#     along with the appropriate index map
-#     """
-#
-#     # compute target wavenumbers
-#     k = k.values
-#     l = l.values
-#     K = np.sqrt(k[np.newaxis, :] ** 2 + l[:, np.newaxis] ** 2)
-#     nbins = int(N / nfactor)
-#     if k.max() > l.max():
-#         ki = np.linspace(0.0, l.max(), nbins)
-#     else:
-#         ki = np.linspace(0.0, k.max(), nbins)
-#
-#     # compute bin index
-#     kidx = np.digitize(np.ravel(K), ki)
-#     # compute number of points for each wavenumber
-#     area = np.bincount(kidx)
-#     # compute the average radial wavenumber for each bin
-#     kr = np.bincount(kidx, weights=K.ravel()) / np.ma.masked_where(area == 0, area)
-#
-#     return ki, kr[1:-1]
 
 
 def isotropize(ps, fftdim, nfactor=4):
@@ -757,7 +732,6 @@ def isotropize(ps, fftdim, nfactor=4):
     l = ps[fftdim[0]]
     N = [k.size, l.size]
     nbins = int(min(N) / nfactor)
-    # ki, kr = _radial_wvnum(k, l, min(N), nfactor)
     freq_r = np.sqrt(k**2 + l**2).rename('freq_r')
     kr = _groupby_bins_agg(
         freq_r,
@@ -765,13 +739,6 @@ def isotropize(ps, fftdim, nfactor=4):
         bins=nbins,
         func='mean')
 
-    # average azimuthally
-    # ps = ps.assign_coords(freq_r=np.sqrt(k ** 2 + l ** 2))
-    # iso_ps = (
-    #     ps.groupby_bins("freq_r", bins=ki, labels=kr)
-    #     .mean()
-    #     .rename({"freq_r_bins": "freq_r"})
-    # )
     iso_ps = (
         _groupby_bins_agg(
         ps,
