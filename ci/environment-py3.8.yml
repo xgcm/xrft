@@ -4,6 +4,7 @@ dependencies:
   - xarray
   - dask
   - numpy
+  - numpy_groupies
   - pytest
   - pip
   - black

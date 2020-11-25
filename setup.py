@@ -22,7 +22,7 @@ CLASSIFIERS = [
 ]
 
 INSTALL_REQUIRES = ["xarray", "dask", "numpy", "pandas", "scipy"]
-EXTRAS_REQUIRE = ["cftime"]
+EXTRAS_REQUIRE = ["cftime", "numpy_groupies"]
 SETUP_REQUIRES = ["pytest-runner"]
 TESTS_REQUIRE = ["pytest >= 2.8", "coverage"]
 
