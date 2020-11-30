@@ -96,22 +96,6 @@ def _stack_chunks(da, dim, suffix="_segment"):
     return da
 
 
-def _transpose(da, real, trans=False):
-    if real is not None:
-        transdim = list(da.dims)
-        if real not in transdim:
-            raise ValueError(
-                "The dimension along real FT is taken must "
-                "be one of the existing dimensions."
-            )
-        elif real != transdim[-1]:
-            transdim.remove(real)
-            transdim += [real]
-            da = da.transpose(*transdim)
-            trans = True
-    return da, trans
-
-
 def _freq(N, delta_x, real, shift):
     # calculate frequencies from coordinates
     # coordinates are always loaded eagerly, so we use numpy
@@ -131,40 +115,21 @@ def _freq(N, delta_x, real, shift):
     return k
 
 
-def _new_dims_and_coords(da, axis_num, dim, wavenm, prefix):
+def _new_dims_and_coords(da, dim, wavenm, prefix):
     # set up new dimensions and coordinates for dataarray
-    newdims = list(da.dims)
-    for anum, d in zip(axis_num, dim):
-        newdims[anum] = prefix + d if d[: len(prefix)] != prefix else d[len(prefix) :]
+    swap_dims = dict()
+    new_coords = dict()
+    wavenm = dict(zip(dim, wavenm))
 
-    # k_names = [prefix + d for d in dim]
-    k_names = [
-        prefix + d if d[: len(prefix)] != prefix else d[len(prefix) :] for d in dim
-    ]
-    k_coords = {key: val for (key, val) in zip(k_names, wavenm)}
+    for d in dim:
+        k = wavenm[d]
+        new_name = prefix + d if d[: len(prefix)] != prefix else d[len(prefix) :]
+        new_dim = xr.DataArray(k, dims=new_name, coords={new_name: k}, name=new_name)
+        new_dim.attrs.update({"spacing": k[1] - k[0]})
+        new_coords[new_name] = new_dim
+        swap_dims[d] = new_name
 
-    newcoords = {}
-    # keep former coords
-    if len(da.coords) > 1:
-        for c in da.drop(dim).coords:
-            newcoords[c] = da[c]
-    for d in newdims:
-        if d in k_coords:
-            newcoords[d] = k_coords[d]
-        elif d in da.coords:
-            newcoords[d] = da[d].data
-
-    dk = [l[1] - l[0] for l in wavenm]
-    for this_dk, d in zip(dk, dim):
-        spacing_name = (
-            prefix + d + "_spacing"
-            if d[: len(prefix)] != prefix
-            else d[len(prefix) :] + "_spacing"
-        )
-        newcoords[spacing_name] = this_dk
-        # newcoords[prefix + d + "_spacing"] = this_dk
-
-    return newdims, newcoords
+    return new_coords, swap_dims
 
 
 def _diff_coord(coord):
@@ -272,15 +237,31 @@ def dft(
         The output of the Fourier transformation, with appropriate dimensions.
     """
 
-    rawdims = da.dims
-    da, trans = _transpose(da, real)
     if dim is None:
         dim = list(da.dims)
     else:
         if isinstance(dim, str):
             dim = [dim]
-    if real is not None and real not in dim:
-        dim += [real]
+
+    if real is not None:
+        if real not in da.dims:
+            raise ValueError(
+                "The dimension along which real FT is taken must be one of the existing dimensions."
+            )
+        else:
+            dim = [d for d in dim if d != real] + [
+                real
+            ]  # real dim has to be moved or added at the end !
+
+    if chunks_to_segments:
+        da = _stack_chunks(da, dim)
+
+    rawdims = da.dims  # take care of segmented dimesions, if any
+
+    if real is not None:
+        da = da.transpose(
+            *[d for d in da.dims if d not in [real]] + [real]
+        )  # dimension for real transformed is moved at the end
 
     fft = _fft_module(da)
 
@@ -290,11 +271,10 @@ def dft(
         shift = False
         fft_fn = fft.rfftn
 
-    if chunks_to_segments:
-        da = _stack_chunks(da, dim)
-
     # the axes along which to take ffts
-    axis_num = [da.get_axis_num(d) for d in dim]
+    axis_num = [
+        da.get_axis_num(d) for d in dim
+    ]  # if there is a real dim , it has to be the last one
 
     N = [da.shape[n] for n in axis_num]
 
@@ -329,14 +309,18 @@ def dft(
 
     k = _freq(N, delta_x, real, shift)
 
-    newdims, newcoords = _new_dims_and_coords(da, axis_num, dim, k, prefix)
+    newcoords, swap_dims = _new_dims_and_coords(da, dim, k, prefix)
+    daft = xr.DataArray(
+        f, dims=da.dims, coords=dict([c for c in da.coords.items() if c[0] not in dim])
+    )
+    daft = daft.swap_dims(swap_dims).assign_coords(newcoords)
+    daft = daft.drop([d for d in dim if d in daft.coords])
 
-    daft = xr.DataArray(f, dims=newdims, coords=newcoords)
+    updated_dims = [
+        daft.dims[i] for i in da.get_axis_num(dim)
+    ]  # List of transformed dimensions
 
     if true_phase:
-        updated_dims = [
-            newdims[i] for i in da.get_axis_num(dim)
-        ]  # List of transformed dimensions
         for up_dim, lag in zip(updated_dims, lag_x):
             daft = daft * xr.DataArray(
                 np.exp(-1j * 2.0 * np.pi * newcoords[up_dim] * lag),
@@ -344,12 +328,9 @@ def dft(
                 coords={up_dim: newcoords[up_dim]},
             )  # taking advantage of xarray broadcasting and ordered coordinates
 
-    if trans:
-        enddims = [d for d in rawdims if d not in dim]
-        enddims += [prefix + d for d in rawdims if d in dim]
-        return daft.transpose(*enddims)
-    else:
-        return daft
+    return daft.transpose(
+        *[swap_dims.get(d, d) for d in rawdims]
+    )  # Do nothing if da was not transposed
 
 
 def power_spectrum(
@@ -442,7 +423,8 @@ def _power_spectrum(daft, dim, N, density):
     if density:
         ps /= (np.asarray(N).prod()) ** 2
         for i in dim:
-            ps /= daft["freq_" + i + "_spacing"]
+            ps /= daft["freq_" + i].spacing
+            # ps /= daft["freq_" + i + "_spacing"]
 
     return ps
 
@@ -548,7 +530,8 @@ def _cross_spectrum(daft1, daft2, dim, N, density):
     if density:
         cs /= (np.asarray(N).prod()) ** 2
         for i in dim:
-            cs /= daft1["freq_" + i + "_spacing"]
+            # cs /= daft1["freq_" + i + "_spacing"]
+            cs /= daft1["freq_" + i].spacing
 
     return cs
 
