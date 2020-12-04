@@ -19,6 +19,7 @@ from .detrend import detrend as _detrend
 
 __all__ = [
     "dft",
+    "idft",
     "power_spectrum",
     "cross_spectrum",
     "cross_phase",
@@ -327,6 +328,186 @@ def dft(
                 dims=up_dim,
                 coords={up_dim: newcoords[up_dim]},
             )  # taking advantage of xarray broadcasting and ordered coordinates
+
+    return daft.transpose(
+        *[swap_dims.get(d, d) for d in rawdims]
+    )  # Do nothing if da was not transposed
+
+
+def idft(
+    da,
+    spacing_tol=1e-3,
+    dim=None,
+    real=None,
+    shift=True,
+    detrend=None,
+    true_phase=False,
+    window=False,
+    chunks_to_segments=False,
+    prefix="freq_",
+    lag=None,
+):
+    """
+    Perform inverse discrete Fourier transform of xarray data-array `da` along the
+    specified dimensions.
+
+    .. math::
+        daft = \mathbb{F}(da - \overline{da})
+
+    Parameters
+    ----------
+    da : `xarray.DataArray`
+        The data to be transformed
+    spacing_tol: float, optional
+        Spacing tolerance. Fourier transform should not be applied to uneven grid but
+        this restriction can be relaxed with this setting. Use caution.
+    dim : str or sequence of str, optional
+        The dimensions along which to take the transformation. If `None`, all
+        dimensions will be transformed.
+    real : str, optional
+        Real Fourier transform will be taken along this dimension.
+    shift : bool, default
+        Whether to shift the fft output. Default is `True`, unless `real=True`,
+        in which case shift will be set to False always.
+    detrend : str, optional
+        If `constant`, the mean across the transform dimensions will be
+        subtracted before calculating the Fourier transform (FT).
+        If `linear`, the linear least-square fit will be subtracted before
+        the FT.
+    window : bool, optional
+        Whether to apply a Hann window to the data before the Fourier
+        transform is taken. A window will be applied to all the dimensions in
+        dim.
+    chunks_to_segments : bool, optional
+        Whether the data is chunked along the axis to take FFT.
+    prefix : str
+        The prefix for the new transformed dimensions.
+    lag : float or sequence of float, optional
+        If lag is None or zero, output coordinates are centered on zero.
+        If defined, lag must have same length as dim.
+        Output coordinates corresponding to transformed dimensions will be shifted by corresponding lag values.
+        Correct phase will be preserved if true_phase is set to True.
+
+    Returns
+    -------
+    daft : `xarray.DataArray`
+        The output of the Inverse Fourier transformation, with appropriate dimensions.
+    """
+    import warnings
+
+    if dim is None:
+        dim = list(da.dims)
+    else:
+        if isinstance(dim, str):
+            dim = [dim]
+
+    if real is not None:
+        if real not in da.dims:
+            raise ValueError(
+                "The dimension along which real FT is taken must be one of the existing dimensions."
+            )
+        else:
+            dim = [d for d in dim if d != real] + [
+                real
+            ]  # real dim has to be moved or added at the end !
+
+    if lag is not None:
+        if isinstance(lag, float) or isinstance(lag, int):
+            lag = [lag]
+        if len(dim) != len(lag):
+            raise ValueError("dim and lag must have the same length.")
+        if not true_phase:
+            msg = "Setting lag with true_phase=False do not guaranty accurate idft."
+            warnings.warn(msg, Warning)
+
+        for d, l in zip(dim, lag):
+            da = da * np.exp(1j * 2.0 * np.pi * da[d] * l)
+
+    if chunks_to_segments:
+        da = _stack_chunks(da, dim)
+
+    rawdims = da.dims  # take care of segmented dimesions, if any
+
+    if real is not None:
+        da = da.transpose(
+            *[d for d in da.dims if d not in [real]] + [real]
+        )  # dimension for real transformed is moved at the end
+
+    fft = _fft_module(da)
+
+    if real is None:
+        fft_fn = fft.ifftn
+    else:
+        shift = False
+        fft_fn = fft.irfftn
+
+    # the axes along which to take ffts
+    axis_num = [da.get_axis_num(d) for d in dim]
+
+    N = [da.shape[n] for n in axis_num]
+
+    # verify even spacing of input coordinates (It handle fftshifted grids)
+    delta_x = []
+    for d in dim:
+        diff = _diff_coord(da[d])
+        delta = np.abs(diff[0])
+        l = _lag_coord(da[d])
+        if not np.allclose(
+            diff, diff[0], rtol=spacing_tol
+        ):  # means that input is not on regular increasing grid
+            reordered_coord = da[d].copy()
+            reordered_coord = reordered_coord.sortby(d)
+            diff = _diff_coord(reordered_coord)
+            l = _lag_coord(reordered_coord)
+            if np.allclose(
+                diff, diff[0], rtol=spacing_tol
+            ):  # means that input is on fftshifted grid
+                da = da.sortby(d)  # reordering the input
+            else:
+                raise ValueError(
+                    "Can't take Fourier transform because "
+                    "coodinate %s is not evenly spaced" % d
+                )
+        if np.abs(l) > spacing_tol:
+            raise ValueError(
+                "idft can not be computed because coordinate %s is not centered on zero frequency"
+                % d
+            )
+        delta_x.append(delta)
+
+    if detrend:
+        da = _apply_detrend(da, dim, axis_num, detrend)
+
+    if window:
+        da = _apply_window(da, dim)
+
+    f = fft.ifftshift(
+        da.data, axes=axis_num
+    )  # Force to be on fftshift grid before Fourier Transform
+    f = fft_fn(f, axes=axis_num)
+
+    if not true_phase:
+        f = fft.ifftshift(f, axes=axis_num)
+
+    if shift:
+        f = fft.fftshift(f, axes=axis_num)
+
+    k = _freq(N, delta_x, real, shift)
+
+    newcoords, swap_dims = _new_dims_and_coords(da, dim, k, prefix)
+    daft = xr.DataArray(
+        f, dims=da.dims, coords=dict([c for c in da.coords.items() if c[0] not in dim])
+    )
+    daft = daft.swap_dims(swap_dims).assign_coords(newcoords)
+    daft = daft.drop([d for d in dim if d in daft.coords])
+
+    if lag is not None:
+        with xr.set_options(
+            keep_attrs=True
+        ):  # This line ensures keeping spacing attribute in output coordinates
+            for d, l in zip(dim, lag):
+                tfd = swap_dims[d]
+                daft = daft.assign_coords({tfd: daft[tfd] + l})
 
     return daft.transpose(
         *[swap_dims.get(d, d) for d in rawdims]
