@@ -70,7 +70,7 @@ class TestDFTImag(object):
         freq_x_expected = np.fft.fftshift(np.fft.fftfreq(Nx, dx))
         npt.assert_allclose(ft["freq_x"], freq_x_expected)
         # check that a spacing variable was created
-        assert ft["freq_x_spacing"] == freq_x_expected[1] - freq_x_expected[0]
+        assert ft["freq_x"].spacing == freq_x_expected[1] - freq_x_expected[0]
         # make sure the function is lazy
         assert isinstance(ft.data, type(da.data))
         # check that the Fourier transform itself is correct
@@ -216,7 +216,7 @@ class TestDFTReal(object):
         freq_x_expected = np.fft.rfftfreq(Nx, dx)
         npt.assert_allclose(ft["freq_x"], freq_x_expected)
         # check that a spacing variable was created
-        assert ft["freq_x_spacing"] == freq_x_expected[1] - freq_x_expected[0]
+        assert ft["freq_x"].spacing == freq_x_expected[1] - freq_x_expected[0]
         # make sure the function is lazy
         assert isinstance(ft.data, type(da.data))
         # check that the Fourier transform itself is correct
@@ -969,7 +969,6 @@ def test_true_phase():
     f = np.fft.fftfreq(len(x), dx)
     expected = np.fft.fft(np.fft.ifftshift(y)) * np.exp(-1j * 2.0 * np.pi * f * lag)
     expected = xr.DataArray(expected, dims="freq_x", coords={"freq_x": f})
-    expected = expected.assign_coords(freq_x_spacing=1 / (len(x) * dx))
     output = xrft.dft(s, dim="x", true_phase=True, shift=False, prefix="freq_")
     xrt.assert_allclose(expected, output)
 
@@ -992,5 +991,4 @@ def test_theoretical_matching(rtol=1e-8, atol=1e-3):
         dims=("freq_x",),
         coords={"freq_x": f},
     )  # Theoretical expression of the Fourier transform
-    TF_s = TF_s.assign_coords(freq_x_spacing=1 / (len(x) * dx))
     xrt.assert_allclose(S, TF_s, rtol=rtol, atol=atol)
