@@ -789,22 +789,39 @@ def test_isotropize(N=512):
     _test_iso(theta)
 
 
-def test_isotropic_ps_slope(N=512, dL=1.0, amp=1e1, s=-3.0):
+@pytest.mark.parametrize("chunk", [False, True])
+def test_isotropic_ps_slope(chunk, N=512, dL=1.0, amp=1e1, s=-3.0):
     """Test the spectral slope of isotropic power spectrum."""
 
-    theta = xr.DataArray(
-        synthetic_field(N, dL, amp, s),
-        dims=["y", "x"],
-        coords={"y": range(N), "x": range(N)},
+    theta = synthetic_field_xr(
+        N,
+        dL,
+        amp,
+        s,
+        other_dim_sizes=[10],
+        dim_order=True,
     )
-    iso_ps = xrft.isotropic_power_spectrum(theta, detrend="constant", density=True)
-    npt.assert_almost_equal(np.ma.masked_invalid(iso_ps[1:]).mask.sum(), 0.0)
-    y_fit, a, b = xrft.fit_loglog(iso_ps.freq_r.values[4:], iso_ps.values[4:])
 
+    if chunk:
+        theta = theta.chunk({"d0": 2})
+
+    iso_ps = xrft.isotropic_power_spectrum(
+        theta, dim=["y", "x"], detrend="constant", density=True
+    ).mean("d0")
+    npt.assert_almost_equal(np.ma.masked_invalid(iso_ps).mask.sum(), 0.0)
+    y_fit, a, b = xrft.fit_loglog(iso_ps.freq_r.values[4:], iso_ps.values[4:])
     npt.assert_allclose(a, s, atol=0.1)
 
+    iso_ps_sequal = np.zeros((len(theta.d0), int(N / 4)))
+    for i in range(len(theta.d0)):
+        iso_ps_sequal[i] = xrft.isotropic_power_spectrum(
+            theta.isel(d0=i), detrend="constant", density=True
+        )
+    npt.assert_almost_equal(iso_ps.values, iso_ps_sequal.mean(axis=0))
 
-def test_isotropic_ps():
+
+@pytest.mark.parametrize("chunk", [False, True])
+def test_isotropic_ps(chunk):
     """Test data with extra coordinates"""
     da = xr.DataArray(
         np.random.rand(2, 5, 16, 32),
@@ -819,13 +836,16 @@ def test_isotropic_ps():
     )
     with pytest.raises(ValueError):
         xrft.isotropic_power_spectrum(da, dim=["z", "y", "x"])
+
+    if chunk:
+        da = da.chunk({"time": 1, "z": 1})
+
     iso_ps = xrft.isotropic_power_spectrum(da, dim=["y", "x"])
-    npt.assert_equal(
-        np.ma.masked_invalid(iso_ps.isel(freq_r=slice(1, None))).mask.sum(), 0.0
-    )
+    npt.assert_equal(np.ma.masked_invalid(iso_ps).mask.sum(), 0.0)
 
 
-def test_isotropic_cs():
+@pytest.mark.parametrize("chunk", [False, True])
+def test_isotropic_cs(chunk):
     """Test isotropic cross spectrum"""
     N = 16
     da = xr.DataArray(
@@ -836,9 +856,7 @@ def test_isotropic_cs():
     )
 
     iso_cs = xrft.isotropic_cross_spectrum(da, da2, window=True)
-    npt.assert_equal(
-        np.ma.masked_invalid(iso_cs.isel(freq_r=slice(1, None))).mask.sum(), 0.0
-    )
+    npt.assert_equal(np.ma.masked_invalid(iso_cs).mask.sum(), 0.0)
 
     da2 = xr.DataArray(
         np.random.rand(N, N),
@@ -873,10 +891,13 @@ def test_isotropic_cs():
 
     with pytest.raises(ValueError):
         xrft.isotropic_cross_spectrum(da, da2, dim=["z", "y", "x"])
+
+    if chunk:
+        da = da.chunk({"time": 1})
+        da2 = da2.chunk({"time": 1})
+
     iso_cs = xrft.isotropic_cross_spectrum(da, da2, dim=["y", "x"], window=True)
-    npt.assert_equal(
-        np.ma.masked_invalid(iso_cs.isel(freq_r=slice(1, None))).mask.sum(), 0.0
-    )
+    npt.assert_equal(np.ma.masked_invalid(iso_cs).mask.sum(), 0.0)
 
 
 def test_spacing_tol(test_data_1d):
