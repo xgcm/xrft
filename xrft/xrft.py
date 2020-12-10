@@ -18,6 +18,8 @@ from .detrend import detrend as _detrend
 
 
 __all__ = [
+    "fft",
+    "ifft",
     "dft",
     "idft",
     "power_spectrum",
@@ -179,6 +181,28 @@ def _calc_normalization_factor(da, axis_num, chunks_to_segments):
         return [da.shape[n] for n in axis_num]
 
 
+def fft(da, **kwargs):
+    if kwargs.pop("true_phase", False):
+        print("true_phase argument is ignored in xrft.fft")
+    if kwargs.pop("true_amplitude", False):
+        print("true_amplitude argument is ignored in xrft.fft")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return dft(da, true_phase=False, true_amplitude=False, **kwargs)
+
+
+def ifft(da, **kwargs):
+    if kwargs.pop("true_phase", False):
+        print("true_phase argument is ignored in xrft.ifft")
+    if kwargs.pop("true_amplitude", False):
+        print("true_amplitude argument is ignored in xrft.ifft")
+    if kwargs.pop("lag", False):
+        print("lag argument is ignored in xrft.ifft")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return idft(da, true_phase=False, true_amplitude=False, **kwargs)
+
+
 def dft(
     da,
     spacing_tol=1e-3,
@@ -188,6 +212,7 @@ def dft(
     detrend=None,
     window=False,
     true_phase=False,
+    true_amplitude=False,
     chunks_to_segments=False,
     prefix="freq_",
 ):
@@ -227,6 +252,9 @@ def dft(
         If set to False, standard fft algorithm is applied on signal without consideration of coordinates.
         If set to True, coordinates location are correctly taken into account to evaluate Fourier Tranforrm phase and
         fftshift is applied on input signal prior to fft  (fft algorithm intrinsically considers that input signal is on fftshifted grid).
+    true_amplitude : bool, optional
+        If set to False, standard fft algorithm is applied on signal without consideration of input signal spacing.
+        If set to True, output is multiplied by the spacing of the transformed variables to match theoretical FT
     chunks_to_segments : bool, optional
         Whether the data is chunked along the axis to take FFT.
     prefix : str
@@ -237,6 +265,10 @@ def dft(
     daft : `xarray.DataArray`
         The output of the Fourier transformation, with appropriate dimensions.
     """
+
+    if not true_phase and not true_amplitude:
+        msg = "xrft.dft default behaviour will be modified in future versions of xrft. Use xrft.fft to ensure future compatibility and deactivate this warning"
+        warnings.warn(msg, FutureWarning)
 
     if dim is None:
         dim = list(da.dims)
@@ -329,6 +361,9 @@ def dft(
                 coords={up_dim: newcoords[up_dim]},
             )  # taking advantage of xarray broadcasting and ordered coordinates
 
+    if true_amplitude:
+        daft = daft * np.prod(delta_x)
+
     return daft.transpose(
         *[swap_dims.get(d, d) for d in rawdims]
     )  # Do nothing if da was not transposed
@@ -342,6 +377,7 @@ def idft(
     shift=True,
     detrend=None,
     true_phase=False,
+    true_amplitude=False,
     window=False,
     chunks_to_segments=False,
     prefix="freq_",
@@ -393,7 +429,10 @@ def idft(
     daft : `xarray.DataArray`
         The output of the Inverse Fourier transformation, with appropriate dimensions.
     """
-    import warnings
+
+    if not true_phase and not true_amplitude:
+        msg = "xrft.idft default behaviour will be modified in future versions of xrft. Use xrft.ifft to ensure future compatibility and deactivate this warning"
+        warnings.warn(msg, FutureWarning)
 
     if dim is None:
         dim = list(da.dims)
@@ -433,13 +472,13 @@ def idft(
             *[d for d in da.dims if d not in [real]] + [real]
         )  # dimension for real transformed is moved at the end
 
-    fft = _fft_module(da)
+    fftm = _fft_module(da)
 
     if real is None:
-        fft_fn = fft.ifftn
+        fft_fn = fftm.ifftn
     else:
         shift = False
-        fft_fn = fft.irfftn
+        fft_fn = fftm.irfftn
 
     # the axes along which to take ffts
     axis_num = [da.get_axis_num(d) for d in dim]
@@ -470,7 +509,7 @@ def idft(
                 )
         if np.abs(l) > spacing_tol:
             raise ValueError(
-                "idft can not be computed because coordinate %s is not centered on zero frequency"
+                "Inverse Fourier Transform can not be computed because coordinate %s is not centered on zero frequency"
                 % d
             )
         delta_x.append(delta)
@@ -481,16 +520,16 @@ def idft(
     if window:
         da = _apply_window(da, dim)
 
-    f = fft.ifftshift(
+    f = fftm.ifftshift(
         da.data, axes=axis_num
     )  # Force to be on fftshift grid before Fourier Transform
     f = fft_fn(f, axes=axis_num)
 
     if not true_phase:
-        f = fft.ifftshift(f, axes=axis_num)
+        f = fftm.ifftshift(f, axes=axis_num)
 
     if shift:
-        f = fft.fftshift(f, axes=axis_num)
+        f = fftm.fftshift(f, axes=axis_num)
 
     k = _freq(N, delta_x, real, shift)
 
@@ -508,6 +547,11 @@ def idft(
             for d, l in zip(dim, lag):
                 tfd = swap_dims[d]
                 daft = daft.assign_coords({tfd: daft[tfd] + l})
+
+    if true_amplitude:
+        daft = daft / np.prod(
+            [float(daft[up_dim].spacing) for up_dim in swap_dims.values()]
+        )
 
     return daft.transpose(
         *[swap_dims.get(d, d) for d in rawdims]
@@ -567,7 +611,7 @@ def power_spectrum(
         Two-dimensional power spectrum
     """
 
-    daft = dft(
+    daft = fft(
         da,
         spacing_tol,
         dim=dim,
@@ -662,7 +706,7 @@ def cross_spectrum(
         Two-dimensional cross spectrum
     """
 
-    daft1 = dft(
+    daft1 = fft(
         da1,
         spacing_tol,
         dim=dim,
@@ -672,7 +716,7 @@ def cross_spectrum(
         chunks_to_segments=chunks_to_segments,
         prefix=prefix,
     )
-    daft2 = dft(
+    daft2 = fft(
         da2,
         spacing_tol,
         dim=dim,
@@ -778,7 +822,7 @@ def cross_phase(
             "Cross phase calculation should only be done along " "a single dimension."
         )
 
-    daft1 = dft(
+    daft1 = fft(
         da1,
         spacing_tol,
         dim=dim,
@@ -788,7 +832,7 @@ def cross_phase(
         window=window,
         chunks_to_segments=chunks_to_segments,
     )
-    daft2 = dft(
+    daft2 = fft(
         da2,
         spacing_tol,
         dim=dim,
