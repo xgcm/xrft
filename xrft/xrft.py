@@ -613,7 +613,7 @@ def power_spectrum(
 
     daft = fft(
         da,
-        spacing_tol,
+        spacing_tol=spacing_tol,
         dim=dim,
         real=real,
         shift=shift,
@@ -708,7 +708,7 @@ def cross_spectrum(
 
     daft1 = fft(
         da1,
-        spacing_tol,
+        spacing_tol=spacing_tol,
         dim=dim,
         shift=shift,
         detrend=detrend,
@@ -718,7 +718,7 @@ def cross_spectrum(
     )
     daft2 = fft(
         da2,
-        spacing_tol,
+        spacing_tol=spacing_tol,
         dim=dim,
         shift=shift,
         detrend=detrend,
@@ -824,7 +824,7 @@ def cross_phase(
 
     daft1 = fft(
         da1,
-        spacing_tol,
+        spacing_tol=spacing_tol,
         dim=dim,
         real=dim[0],
         shift=False,
@@ -834,7 +834,7 @@ def cross_phase(
     )
     daft2 = fft(
         da2,
-        spacing_tol,
+        spacing_tol=spacing_tol,
         dim=dim,
         real=dim[0],
         shift=False,
@@ -992,7 +992,7 @@ def isotropic_power_spectrum(
 
     ps = power_spectrum(
         da,
-        spacing_tol,
+        spacing_tol=spacing_tol,
         dim=dim,
         shift=shift,
         detrend=detrend,
@@ -1087,7 +1087,7 @@ def isotropic_cross_spectrum(
     cs = cross_spectrum(
         da1,
         da2,
-        spacing_tol,
+        spacing_tol=spacing_tol,
         dim=dim,
         shift=shift,
         detrend=detrend,
