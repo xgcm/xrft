@@ -642,6 +642,50 @@ def test_parseval(chunks_to_segments):
             decimal=5,
         )
 
+    ###Testing parseval identity in 1D with dft###
+    Nx = 40
+    dx = np.random.rand()
+    s = xr.DataArray(
+        np.random.rand(Nx) + 1j * np.random.rand(Nx),
+        dims="x",
+        coords={
+            "x": dx
+            * (
+                np.arange(-Nx // 2, -Nx // 2 + Nx)
+                + np.random.randint(-Nx // 2, Nx // 2)
+            )
+        },
+    )
+    FTs = xrft.dft(s, dim="x", true_phase=True, true_amplitude=True)
+    npt.assert_almost_equal(
+        (np.abs(s) ** 2).sum() * dx, (np.abs(FTs) ** 2).sum() * FTs["freq_x"].spacing
+    )
+
+    ###Testing parseval identity in 2D with dft###
+    Nx, Ny = 40, 60
+    dx, dy = np.random.rand(), np.random.rand()
+    s = xr.DataArray(
+        np.random.rand(Nx, Ny) + 1j * np.random.rand(Nx, Ny),
+        dims=("x", "y"),
+        coords={
+            "x": dx
+            * (
+                np.arange(-Nx // 2, -Nx // 2 + Nx)
+                + np.random.randint(-Nx // 2, Nx // 2)
+            ),
+            "y": dy
+            * (
+                np.arange(-Ny // 2, -Ny // 2 + Ny)
+                + np.random.randint(-Ny // 2, Ny // 2)
+            ),
+        },
+    )
+    FTs = xrft.dft(s, dim=("x", "y"), true_phase=True, true_amplitude=True)
+    npt.assert_almost_equal(
+        (np.abs(s) ** 2).sum() * dx * dy,
+        (np.abs(FTs) ** 2).sum() * FTs["freq_x"].spacing * FTs["freq_y"].spacing,
+    )
+
 
 def synthetic_field(N, dL, amp, s):
     """
@@ -1033,53 +1077,3 @@ def test_idft_dft():
         FTs, shift=True, true_phase=True, true_amplitude=True, lag=mean_lag
     )
     xrt.assert_allclose(s, IFTs)
-
-
-def test_parseval_dft1d():
-    """Testing parseval identity in 1D"""
-    Nx = 40
-    dx = np.random.rand()
-
-    s = xr.DataArray(
-        np.random.rand(Nx) + 1j * np.random.rand(Nx),
-        dims="x",
-        coords={
-            "x": dx
-            * (
-                np.arange(-Nx // 2, -Nx // 2 + Nx)
-                + np.random.randint(-Nx // 2, Nx // 2)
-            )
-        },
-    )
-    FTs = xrft.dft(s, dim="x", true_phase=True, true_amplitude=True)
-    npt.assert_almost_equal(
-        (np.abs(s) ** 2).sum() * dx, (np.abs(FTs) ** 2).sum() * FTs["freq_x"].spacing
-    )
-
-
-def test_parseval_dft2d():
-    """Testing parseval identity in 2D"""
-    Nx, Ny = 40, 60
-    dx, dy = np.random.rand(), np.random.rand()
-
-    s = xr.DataArray(
-        np.random.rand(Nx, Ny) + 1j * np.random.rand(Nx, Ny),
-        dims=("x", "y"),
-        coords={
-            "x": dx
-            * (
-                np.arange(-Nx // 2, -Nx // 2 + Nx)
-                + np.random.randint(-Nx // 2, Nx // 2)
-            ),
-            "y": dy
-            * (
-                np.arange(-Ny // 2, -Ny // 2 + Ny)
-                + np.random.randint(-Ny // 2, Ny // 2)
-            ),
-        },
-    )
-    FTs = xrft.dft(s, dim=("x", "y"), true_phase=True, true_amplitude=True)
-    npt.assert_almost_equal(
-        (np.abs(s) ** 2).sum() * dx * dy,
-        (np.abs(FTs) ** 2).sum() * FTs["freq_x"].spacing * FTs["freq_y"].spacing,
-    )
