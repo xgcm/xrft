@@ -994,3 +994,42 @@ def test_theoretical_matching(rtol=1e-8, atol=1e-3):
         coords={"freq_x": f},
     )  # Theoretical expression of the Fourier transform
     xrt.assert_allclose(S, TF_s, rtol=rtol, atol=atol)
+
+
+def test_ifft_fft():
+    """
+    Testing ifft(fft(s.data)) == s.data
+    """
+    N = 20
+    s = xr.DataArray(
+        np.random.rand(N) + 1j * np.random.rand(N),
+        dims="x",
+        coords={"x": np.arange(0, N)},
+    )
+    FTs = xrft.fft(s)
+    IFTs = xrft.ifft(FTs, shift=True)  # Shift=True is mandatory for the assestion below
+    npt.assert_allclose(s.data, IFTs.data)
+
+
+def test_idft_dft():
+    """
+    Testing idft(dft(s)) == s
+    """
+    N = 40
+    dx = np.random.rand()
+    s = xr.DataArray(
+        np.random.rand(N) + 1j * np.random.rand(N),
+        dims="x",
+        coords={
+            "x": dx
+            * (np.arange(-N // 2, -N // 2 + N) + np.random.randint(-N // 2, N // 2))
+        },
+    )
+    FTs = xrft.dft(s, true_phase=True, true_amplitude=True)
+    mean_lag = float(
+        s["x"][{"x": s.sizes["x"] // 2}]
+    )  # lag ensure IFTs to be on the same coordinate range than s
+    IFTs = xrft.idft(
+        FTs, shift=True, true_phase=True, true_amplitude=True, lag=mean_lag
+    )
+    xrt.assert_allclose(s, IFTs)

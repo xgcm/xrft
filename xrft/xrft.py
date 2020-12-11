@@ -182,6 +182,9 @@ def _calc_normalization_factor(da, axis_num, chunks_to_segments):
 
 
 def fft(da, **kwargs):
+    """
+    See xrft.dft for argument list
+    """
     if kwargs.pop("true_phase", False):
         print("true_phase argument is ignored in xrft.fft")
     if kwargs.pop("true_amplitude", False):
@@ -192,12 +195,16 @@ def fft(da, **kwargs):
 
 
 def ifft(da, **kwargs):
+    """
+    See xrft.idft for argument list
+    """
     if kwargs.pop("true_phase", False):
         print("true_phase argument is ignored in xrft.ifft")
     if kwargs.pop("true_amplitude", False):
         print("true_amplitude argument is ignored in xrft.ifft")
     if kwargs.pop("lag", False):
         print("lag argument is ignored in xrft.ifft")
+    msg = "xrft.ifft do not guaranty output coordinate phasing. Prefer xrft.dft and xrft.idft as forward and backward Fourier Transforms with true_phase flag set to True for accurate coordinates handling."
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         return idft(da, true_phase=False, true_amplitude=False, **kwargs)
@@ -253,8 +260,8 @@ def dft(
         If set to True, coordinates location are correctly taken into account to evaluate Fourier Tranforrm phase and
         fftshift is applied on input signal prior to fft  (fft algorithm intrinsically considers that input signal is on fftshifted grid).
     true_amplitude : bool, optional
-        If set to False, standard fft algorithm is applied on signal without consideration of input signal spacing.
-        If set to True, output is multiplied by the spacing of the transformed variables to match theoretical FT
+        If set to True, output is multiplied by the spacing of the transformed variables to match theoretical FT amplitude.
+        If set to False, amplitude regularisation by spacing is not applied (as in numpy.fft)
     chunks_to_segments : bool, optional
         Whether the data is chunked along the axis to take FFT.
     prefix : str
@@ -267,7 +274,7 @@ def dft(
     """
 
     if not true_phase and not true_amplitude:
-        msg = "xrft.dft default behaviour will be modified in future versions of xrft. Use xrft.fft to ensure future compatibility and deactivate this warning"
+        msg = "xrft.dft default behaviour will be modified in future versions of xrft. Prefer xrft.fft to ensure future compatibility and deactivate this warning. Consider using xrft.dft for accurate coordinates phasing and FT amplitude handling."
         warnings.warn(msg, FutureWarning)
 
     if dim is None:
@@ -418,11 +425,18 @@ def idft(
         Whether the data is chunked along the axis to take FFT.
     prefix : str
         The prefix for the new transformed dimensions.
+    true_phase : bool, optional
+        If set to False, standard ifft algorithm is applied on signal without consideration of coordinates order.
+        If set to True, coordinates are correctly taken into account to evaluate Inverse Fourier Tranforrm phase and
+        fftshift is applied on input signal prior to ifft (ifft algorithm intrinsically considers that input signal is on fftshifted grid).
+    true_amplitude : bool, optional
+        If set to True, output is divided by the spacing of the transformed variables to match theoretical IFT amplitude.
+        If set to False, amplitude regularisation by spacing is not applied (as in numpy.ifft)
     lag : float or sequence of float, optional
         If lag is None or zero, output coordinates are centered on zero.
         If defined, lag must have same length as dim.
         Output coordinates corresponding to transformed dimensions will be shifted by corresponding lag values.
-        Correct phase will be preserved if true_phase is set to True.
+        Correct signal phasing will be preserved if true_phase is set to True.
 
     Returns
     -------
@@ -921,8 +935,6 @@ def isotropic_powerspectrum(*args, **kwargs):  # pragma: no cover
     """
     Deprecated function. See isotropic_power_spectrum doc
     """
-    import warnings
-
     msg = (
         "This function has been renamed and will disappear in the future."
         + " Please use isotropic_power_spectrum instead"
@@ -1009,8 +1021,6 @@ def isotropic_crossspectrum(*args, **kwargs):  # pragma: no cover
     """
     Deprecated function. See isotropic_cross_spectrum doc
     """
-    import warnings
-
     msg = (
         "This function has been renamed and will disappear in the future."
         + " Please use isotropic_cross_spectrum instead"
