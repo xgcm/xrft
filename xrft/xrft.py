@@ -186,28 +186,28 @@ def fft(da, **kwargs):
     See xrft.dft for argument list
     """
     if kwargs.pop("true_phase", False):
-        print("true_phase argument is ignored in xrft.fft")
+        warnings.warn("true_phase argument is ignored in xrft.fft")
     if kwargs.pop("true_amplitude", False):
-        print("true_amplitude argument is ignored in xrft.fft")
+        warnings.warn("true_amplitude argument is ignored in xrft.fft")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         return dft(da, true_phase=False, true_amplitude=False, **kwargs)
 
 
-def ifft(da, **kwargs):
+def ifft(daft, **kwargs):
     """
     See xrft.idft for argument list
     """
     if kwargs.pop("true_phase", False):
-        print("true_phase argument is ignored in xrft.ifft")
+        warnings.warn("true_phase argument is ignored in xrft.ifft")
     if kwargs.pop("true_amplitude", False):
-        print("true_amplitude argument is ignored in xrft.ifft")
+        warnings.warn("true_amplitude argument is ignored in xrft.ifft")
     if kwargs.pop("lag", False):
-        print("lag argument is ignored in xrft.ifft")
-    msg = "xrft.ifft do not guaranty output coordinate phasing. Prefer xrft.dft and xrft.idft as forward and backward Fourier Transforms with true_phase flag set to True for accurate coordinates handling."
+        warnings.warn("lag argument is ignored in xrft.ifft")
+    msg = "xrft.ifft does not guarantee correct coordinate phasing for its output. We recommend xrft.dft and xrft.idft as forward and backward Fourier Transforms with true_phase flags set to True for accurate coordinate handling."
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        return idft(da, true_phase=False, true_amplitude=False, **kwargs)
+        return idft(daft, true_phase=False, true_amplitude=False, **kwargs)
 
 
 def dft(
@@ -274,7 +274,7 @@ def dft(
     """
 
     if not true_phase and not true_amplitude:
-        msg = "xrft.dft default behaviour will be modified in future versions of xrft. Prefer xrft.fft to ensure future compatibility and deactivate this warning. Consider using xrft.dft for accurate coordinates phasing and FT amplitude handling."
+        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft to preserve the theoretical phasing and amplitude of FT. Consider using xrft.fft to ensure future compatibility with numpy.fft like behavior and to deactivate this warning."
         warnings.warn(msg, FutureWarning)
 
     if dim is None:
@@ -377,7 +377,7 @@ def dft(
 
 
 def idft(
-    da,
+    daft,
     spacing_tol=1e-3,
     dim=None,
     real=None,
@@ -391,15 +391,15 @@ def idft(
     lag=None,
 ):
     """
-    Perform inverse discrete Fourier transform of xarray data-array `da` along the
+    Perform inverse discrete Fourier transform of xarray data-array `daft` along the
     specified dimensions.
 
     .. math::
-        daft = \mathbb{F}(da - \overline{da})
+        da = \mathbb{F}(daft - \overline{daft})
 
     Parameters
     ----------
-    da : `xarray.DataArray`
+    daft : `xarray.DataArray`
         The data to be transformed
     spacing_tol: float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
@@ -440,7 +440,7 @@ def idft(
 
     Returns
     -------
-    daft : `xarray.DataArray`
+    da : `xarray.DataArray`
         The output of the Inverse Fourier transformation, with appropriate dimensions.
     """
 
@@ -449,13 +449,13 @@ def idft(
         warnings.warn(msg, FutureWarning)
 
     if dim is None:
-        dim = list(da.dims)
+        dim = list(daft.dims)
     else:
         if isinstance(dim, str):
             dim = [dim]
 
     if real is not None:
-        if real not in da.dims:
+        if real not in daft.dims:
             raise ValueError(
                 "The dimension along which real FT is taken must be one of the existing dimensions."
             )
@@ -474,19 +474,19 @@ def idft(
             warnings.warn(msg, Warning)
 
         for d, l in zip(dim, lag):
-            da = da * np.exp(1j * 2.0 * np.pi * da[d] * l)
+            daft = daft * np.exp(1j * 2.0 * np.pi * daft[d] * l)
 
     if chunks_to_segments:
-        da = _stack_chunks(da, dim)
+        daft = _stack_chunks(daft, dim)
 
-    rawdims = da.dims  # take care of segmented dimesions, if any
+    rawdims = daft.dims  # take care of segmented dimesions, if any
 
     if real is not None:
-        da = da.transpose(
-            *[d for d in da.dims if d not in [real]] + [real]
+        daft = daft.transpose(
+            *[d for d in daft.dims if d not in [real]] + [real]
         )  # dimension for real transformed is moved at the end
 
-    fftm = _fft_module(da)
+    fftm = _fft_module(daft)
 
     if real is None:
         fft_fn = fftm.ifftn
@@ -495,27 +495,27 @@ def idft(
         fft_fn = fftm.irfftn
 
     # the axes along which to take ffts
-    axis_num = [da.get_axis_num(d) for d in dim]
+    axis_num = [daft.get_axis_num(d) for d in dim]
 
-    N = [da.shape[n] for n in axis_num]
+    N = [daft.shape[n] for n in axis_num]
 
     # verify even spacing of input coordinates (It handle fftshifted grids)
     delta_x = []
     for d in dim:
-        diff = _diff_coord(da[d])
+        diff = _diff_coord(daft[d])
         delta = np.abs(diff[0])
-        l = _lag_coord(da[d])
+        l = _lag_coord(daft[d])
         if not np.allclose(
             diff, diff[0], rtol=spacing_tol
         ):  # means that input is not on regular increasing grid
-            reordered_coord = da[d].copy()
+            reordered_coord = daft[d].copy()
             reordered_coord = reordered_coord.sortby(d)
             diff = _diff_coord(reordered_coord)
             l = _lag_coord(reordered_coord)
             if np.allclose(
                 diff, diff[0], rtol=spacing_tol
             ):  # means that input is on fftshifted grid
-                da = da.sortby(d)  # reordering the input
+                daft = daft.sortby(d)  # reordering the input
             else:
                 raise ValueError(
                     "Can't take Fourier transform because "
@@ -529,13 +529,13 @@ def idft(
         delta_x.append(delta)
 
     if detrend:
-        da = _apply_detrend(da, dim, axis_num, detrend)
+        daft = _apply_detrend(daft, dim, axis_num, detrend)
 
     if window:
-        da = _apply_window(da, dim)
+        daft = _apply_window(daft, dim)
 
     f = fftm.ifftshift(
-        da.data, axes=axis_num
+        daft.data, axes=axis_num
     )  # Force to be on fftshift grid before Fourier Transform
     f = fft_fn(f, axes=axis_num)
 
@@ -547,12 +547,14 @@ def idft(
 
     k = _freq(N, delta_x, real, shift)
 
-    newcoords, swap_dims = _new_dims_and_coords(da, dim, k, prefix)
-    daft = xr.DataArray(
-        f, dims=da.dims, coords=dict([c for c in da.coords.items() if c[0] not in dim])
+    newcoords, swap_dims = _new_dims_and_coords(daft, dim, k, prefix)
+    da = xr.DataArray(
+        f,
+        dims=daft.dims,
+        coords=dict([c for c in daft.coords.items() if c[0] not in dim]),
     )
-    daft = daft.swap_dims(swap_dims).assign_coords(newcoords)
-    daft = daft.drop([d for d in dim if d in daft.coords])
+    da = da.swap_dims(swap_dims).assign_coords(newcoords)
+    da = da.drop([d for d in dim if d in da.coords])
 
     if lag is not None:
         with xr.set_options(
@@ -560,16 +562,14 @@ def idft(
         ):  # This line ensures keeping spacing attribute in output coordinates
             for d, l in zip(dim, lag):
                 tfd = swap_dims[d]
-                daft = daft.assign_coords({tfd: daft[tfd] + l})
+                da = da.assign_coords({tfd: da[tfd] + l})
 
     if true_amplitude:
-        daft = daft / np.prod(
-            [float(daft[up_dim].spacing) for up_dim in swap_dims.values()]
-        )
+        da = da / np.prod([float(da[up_dim].spacing) for up_dim in swap_dims.values()])
 
-    return daft.transpose(
+    return da.transpose(
         *[swap_dims.get(d, d) for d in rawdims]
-    )  # Do nothing if da was not transposed
+    )  # Do nothing if daft was not transposed
 
 
 def power_spectrum(
