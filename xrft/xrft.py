@@ -118,6 +118,26 @@ def _freq(N, delta_x, real, shift):
     return k
 
 
+def _ifreq(N, delta_x, real, shift):
+    # calculate frequencies from coordinates
+    # coordinates are always loaded eagerly, so we use numpy
+    if real is None:
+        fftfreq = [np.fft.fftfreq] * len(N)
+    else:
+        irfftfreq = lambda Nx, dx: np.fft.fftfreq(
+            2 * (Nx - 1), dx
+        )  # Not in standard numpy !
+        fftfreq = [np.fft.fftfreq] * (len(N) - 1)
+        fftfreq.append(irfftfreq)
+
+    k = [fftfreq(Nx, dx) for (fftfreq, Nx, dx) in zip(fftfreq, N, delta_x)]
+
+    if shift:
+        k = [np.fft.fftshift(l) for l in k]
+
+    return k
+
+
 def _new_dims_and_coords(da, dim, wavenm, prefix):
     # set up new dimensions and coordinates for dataarray
     swap_dims = dict()
@@ -410,8 +430,7 @@ def idft(
     real : str, optional
         Real Fourier transform will be taken along this dimension.
     shift : bool, default
-        Whether to shift the fft output. Default is `True`, unless `real=True`,
-        in which case shift will be set to False always.
+        Whether to shift the fft output. Default is `True`.
     detrend : str, optional
         If `constant`, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
@@ -457,7 +476,7 @@ def idft(
     if real is not None:
         if real not in daft.dims:
             raise ValueError(
-                "The dimension along which real FT is taken must be one of the existing dimensions."
+                "The dimension along which real IFT is taken must be one of the existing dimensions."
             )
         else:
             dim = [d for d in dim if d != real] + [
@@ -470,7 +489,7 @@ def idft(
         if len(dim) != len(lag):
             raise ValueError("dim and lag must have the same length.")
         if not true_phase:
-            msg = "Setting lag with true_phase=False do not guaranty accurate idft."
+            msg = "Setting lag with true_phase=False does not guarantee accurate idft."
             warnings.warn(msg, Warning)
 
         for d, l in zip(dim, lag):
@@ -491,7 +510,6 @@ def idft(
     if real is None:
         fft_fn = fftm.ifftn
     else:
-        shift = False
         fft_fn = fftm.irfftn
 
     # the axes along which to take ffts
@@ -504,7 +522,7 @@ def idft(
     for d in dim:
         diff = _diff_coord(daft[d])
         delta = np.abs(diff[0])
-        l = _lag_coord(daft[d])
+        l = _lag_coord(daft[d]) if d is not real else daft[d][0].data
         if not np.allclose(
             diff, diff[0], rtol=spacing_tol
         ):  # means that input is not on regular increasing grid
@@ -534,8 +552,12 @@ def idft(
     if window:
         daft = _apply_window(daft, dim)
 
+    axis_shift = [
+        daft.get_axis_num(d) for d in dim if d is not real
+    ]  # remove real dim of the list
+
     f = fftm.ifftshift(
-        daft.data, axes=axis_num
+        daft.data, axes=axis_shift
     )  # Force to be on fftshift grid before Fourier Transform
     f = fft_fn(f, axes=axis_num)
 
@@ -545,7 +567,7 @@ def idft(
     if shift:
         f = fftm.fftshift(f, axes=axis_num)
 
-    k = _freq(N, delta_x, real, shift)
+    k = _ifreq(N, delta_x, real, shift)
 
     newcoords, swap_dims = _new_dims_and_coords(daft, dim, k, prefix)
     da = xr.DataArray(
