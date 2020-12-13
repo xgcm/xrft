@@ -191,16 +191,6 @@ def _lag_coord(coord):
         return lag.data
 
 
-def _calc_normalization_factor(da, axis_num, chunks_to_segments):
-    """Return the signal length, N, to be used in the normalisation of spectra"""
-
-    if chunks_to_segments:
-        # Use chunk sizes for normalisation
-        return [da.chunks[n][0] for n in axis_num]
-    else:
-        return [da.shape[n] for n in axis_num]
-
-
 def fft(da, **kwargs):
     """
     See xrft.dft for argument list
@@ -594,100 +584,131 @@ def idft(
     )  # Do nothing if daft was not transposed
 
 
-def power_spectrum(
-    da,
-    spacing_tol=1e-3,
-    dim=None,
-    real=None,
-    shift=True,
-    detrend=None,
-    window=False,
-    chunks_to_segments=False,
-    density=True,
-    prefix="freq_",
-):
+def power_spectrum(da, density=True, **kwargs):
     """
-    Calculates the power spectrum of da.
-
-    .. math::
-        da' = da - \overline{da}
-    .. math::
-        ps = \mathbb{F}(da') {\mathbb{F}(da')}^*
-
-    Parameters
-    ----------
     da : `xarray.DataArray`
         The data to be transformed
-    spacing_tol: float, optional
-        Spacing tolerance. Fourier transform should not be applied to uneven grid but
-        this restriction can be relaxed with this setting. Use caution.
-    dim : str or sequence of str, optional
-        The dimensions along which to take the transformation. If `None`, all
-        dimensions will be transformed.
-    real : str, optional
-        Real Fourier transform will be taken along this dimension.
-    shift : bool, optional
-        Whether to shift the fft output.
-    detrend : str, optional
-        If `constant`, the mean across the transform dimensions will be
-        subtracted before calculating the Fourier transform (FT).
-        If `linear`, the linear least-square fit will be subtracted before
-        the FT.
     density : bool, optional
         If true, it will normalize the spectrum to spectral density
-    window : bool, optional
-        Whether to apply a Hann window to the data before the Fourier
-        transform is taken
-    chunks_to_segments : bool, optional
-        Whether the data is chunked along the axis to take FFT.
-
-    Returns
-    -------
-    ps : `xarray.DataArray`
-        Two-dimensional power spectrum
+    kwargs : dict : see xrft.dft for argument list
     """
+    kwargs.update({"true_amplitude": True, "true_phase": False})
 
-    daft = fft(
-        da,
-        spacing_tol=spacing_tol,
-        dim=dim,
-        real=real,
-        shift=shift,
-        detrend=detrend,
-        window=window,
-        chunks_to_segments=chunks_to_segments,
-        prefix=prefix,
-    )
-
-    if dim is None:
-        dim = list(da.dims)
-    else:
-        if isinstance(dim, str):
-            dim = [
-                dim,
-            ]
-    if real is not None and real not in dim:
-        dim += [real]
-
-    # the axes along which to take ffts
-    axis_num = [da.get_axis_num(d) for d in dim]
-
-    N = _calc_normalization_factor(da, axis_num, chunks_to_segments)
-
-    return _power_spectrum(daft, dim, N, density)
-
-
-def _power_spectrum(daft, dim, N, density):
-
-    ps = (daft * np.conj(daft)).real
-
+    daft = dft(da, **kwargs)
+    updated_dims = [
+        d for d in daft.dims if (d not in da.dims and "spacing" in daft[d].attrs)
+    ]  # checking spacing to be sure that it is not a segmented dimension
+    ps = np.abs(daft) ** 2
+    d = np.prod([float(ps.sizes[d] * ps[d].spacing) for d in updated_dims])
     if density:
-        ps /= (np.asarray(N).prod()) ** 2
-        for i in dim:
-            ps /= daft["freq_" + i].spacing
-            # ps /= daft["freq_" + i + "_spacing"]
-
+        ps /= d
+    else:
+        ps *= d ** 2
     return ps
+
+
+# def _calc_normalization_factor(da, axis_num, chunks_to_segments):
+# """Return the signal length, N, to be used in the normalisation of spectra"""
+
+# if chunks_to_segments:
+##Use chunk sizes for normalisation
+# return [da.chunks[n][0] for n in axis_num]
+# else:
+# return [da.shape[n] for n in axis_num]
+
+# def power_spectrum(
+# da,
+# spacing_tol=1e-3,
+# dim=None,
+# real=None,
+# shift=True,
+# detrend=None,
+# window=False,
+# chunks_to_segments=False,
+# density=True,
+# prefix="freq_",
+# ):
+# """
+# Calculates the power spectrum of da.
+
+# .. math::
+# da' = da - \overline{da}
+# .. math::
+# ps = \mathbb{F}(da') {\mathbb{F}(da')}^*
+
+# Parameters
+# ----------
+# da : `xarray.DataArray`
+# The data to be transformed
+# spacing_tol: float, optional
+# Spacing tolerance. Fourier transform should not be applied to uneven grid but
+# this restriction can be relaxed with this setting. Use caution.
+# dim : str or sequence of str, optional
+# The dimensions along which to take the transformation. If `None`, all
+# dimensions will be transformed.
+# real : str, optional
+# Real Fourier transform will be taken along this dimension.
+# shift : bool, optional
+# Whether to shift the fft output.
+# detrend : str, optional
+# If `constant`, the mean across the transform dimensions will be
+# subtracted before calculating the Fourier transform (FT).
+# If `linear`, the linear least-square fit will be subtracted before
+# the FT.
+# density : bool, optional
+# If true, it will normalize the spectrum to spectral density
+# window : bool, optional
+# Whether to apply a Hann window to the data before the Fourier
+# transform is taken
+# chunks_to_segments : bool, optional
+# Whether the data is chunked along the axis to take FFT.
+
+# Returns
+# -------
+# ps : `xarray.DataArray`
+# Two-dimensional power spectrum
+# """
+
+# daft = fft(
+# da,
+# spacing_tol=spacing_tol,
+# dim=dim,
+# real=real,
+# shift=shift,
+# detrend=detrend,
+# window=window,
+# chunks_to_segments=chunks_to_segments,
+# prefix=prefix,
+# )
+
+# if dim is None:
+# dim = list(da.dims)
+# else:
+# if isinstance(dim, str):
+# dim = [
+# dim,
+# ]
+# if real is not None and real not in dim:
+# dim += [real]
+
+##the axes along which to take ffts
+# axis_num = [da.get_axis_num(d) for d in dim]
+
+# N = _calc_normalization_factor(da, axis_num, chunks_to_segments)
+
+# return _power_spectrum(daft, dim, N, density)
+
+
+# def _power_spectrum(daft, dim, N, density):
+
+# ps = (daft * np.conj(daft)).real
+
+# if density:
+# ps /= (np.asarray(N).prod()) ** 2
+# for i in dim:
+# ps /= daft["freq_" + i].spacing
+
+# return ps
 
 
 def cross_spectrum(
