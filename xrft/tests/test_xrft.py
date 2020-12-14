@@ -299,7 +299,7 @@ def test_chunks_to_segments():
     )
     npt.assert_almost_equal(
         ps.values,
-        (ft * np.conj(ft)).real.values,
+        (ft * np.conj(ft)).values,
     )
     da2 = xr.DataArray(
         np.random.rand(N, N, N),
@@ -322,7 +322,7 @@ def test_chunks_to_segments():
     )
     npt.assert_almost_equal(
         cs.values,
-        (ft * np.conj(ft2)).real.values,
+        (ft * np.conj(ft2)).values,
     )
 
 
