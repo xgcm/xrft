@@ -586,6 +586,15 @@ def idft(
 
 def power_spectrum(da, density=True, **kwargs):
     """
+    Calculates the power spectrum of da.
+
+    .. math::
+    da' = da - \overline{da}
+    .. math::
+    ps = \mathbb{F}(da') {\mathbb{F}(da')}^*
+
+    Parameters
+    ----------
     da : `xarray.DataArray`
         The data to be transformed
     density : bool, optional
@@ -596,133 +605,19 @@ def power_spectrum(da, density=True, **kwargs):
 
     daft = dft(da, **kwargs)
     updated_dims = [
-        d for d in daft.dims if (d not in da.dims and "spacing" in daft[d].attrs)
-    ]  # checking spacing to be sure that it is not a segmented dimension
+        d for d in daft.dims if (d not in da.dims and "segment" not in d)
+    ]  # Transformed dimensions
     ps = np.abs(daft) ** 2
-    d = np.prod([float(ps.sizes[d] * ps[d].spacing) for d in updated_dims])
     if density:
-        ps /= d
+        fs = np.prod([float(ps[d].spacing) for d in updated_dims])
+        ps *= fs
     else:
-        ps *= d ** 2
+        s = np.prod([float(ps.sizes[d] * ps[d].spacing) for d in updated_dims])
+        ps *= s ** 2
     return ps
 
 
-# def _calc_normalization_factor(da, axis_num, chunks_to_segments):
-# """Return the signal length, N, to be used in the normalisation of spectra"""
-
-# if chunks_to_segments:
-##Use chunk sizes for normalisation
-# return [da.chunks[n][0] for n in axis_num]
-# else:
-# return [da.shape[n] for n in axis_num]
-
-# def power_spectrum(
-# da,
-# spacing_tol=1e-3,
-# dim=None,
-# real=None,
-# shift=True,
-# detrend=None,
-# window=False,
-# chunks_to_segments=False,
-# density=True,
-# prefix="freq_",
-# ):
-# """
-# Calculates the power spectrum of da.
-
-# .. math::
-# da' = da - \overline{da}
-# .. math::
-# ps = \mathbb{F}(da') {\mathbb{F}(da')}^*
-
-# Parameters
-# ----------
-# da : `xarray.DataArray`
-# The data to be transformed
-# spacing_tol: float, optional
-# Spacing tolerance. Fourier transform should not be applied to uneven grid but
-# this restriction can be relaxed with this setting. Use caution.
-# dim : str or sequence of str, optional
-# The dimensions along which to take the transformation. If `None`, all
-# dimensions will be transformed.
-# real : str, optional
-# Real Fourier transform will be taken along this dimension.
-# shift : bool, optional
-# Whether to shift the fft output.
-# detrend : str, optional
-# If `constant`, the mean across the transform dimensions will be
-# subtracted before calculating the Fourier transform (FT).
-# If `linear`, the linear least-square fit will be subtracted before
-# the FT.
-# density : bool, optional
-# If true, it will normalize the spectrum to spectral density
-# window : bool, optional
-# Whether to apply a Hann window to the data before the Fourier
-# transform is taken
-# chunks_to_segments : bool, optional
-# Whether the data is chunked along the axis to take FFT.
-
-# Returns
-# -------
-# ps : `xarray.DataArray`
-# Two-dimensional power spectrum
-# """
-
-# daft = fft(
-# da,
-# spacing_tol=spacing_tol,
-# dim=dim,
-# real=real,
-# shift=shift,
-# detrend=detrend,
-# window=window,
-# chunks_to_segments=chunks_to_segments,
-# prefix=prefix,
-# )
-
-# if dim is None:
-# dim = list(da.dims)
-# else:
-# if isinstance(dim, str):
-# dim = [
-# dim,
-# ]
-# if real is not None and real not in dim:
-# dim += [real]
-
-##the axes along which to take ffts
-# axis_num = [da.get_axis_num(d) for d in dim]
-
-# N = _calc_normalization_factor(da, axis_num, chunks_to_segments)
-
-# return _power_spectrum(daft, dim, N, density)
-
-
-# def _power_spectrum(daft, dim, N, density):
-
-# ps = (daft * np.conj(daft)).real
-
-# if density:
-# ps /= (np.asarray(N).prod()) ** 2
-# for i in dim:
-# ps /= daft["freq_" + i].spacing
-
-# return ps
-
-
-def cross_spectrum(
-    da1,
-    da2,
-    spacing_tol=1e-3,
-    dim=None,
-    shift=True,
-    detrend=None,
-    window=False,
-    chunks_to_segments=False,
-    density=True,
-    prefix="freq_",
-):
+def cross_spectrum(da1, da2, density=True, **kwargs):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -737,96 +632,32 @@ def cross_spectrum(
         The data to be transformed
     da2 : `xarray.DataArray`
         The data to be transformed
-    spacing_tol: float, optional
-        Spacing tolerance. Fourier transform should not be applied to uneven grid but
-        this restriction can be relaxed with this setting. Use caution.
-    dim : str or sequence of str, optional
-        The dimensions along which to take the transformation. If `None`, all
-        dimensions will be transformed.
-    shift : bool, optional
-        Whether to shift the fft output.
-    detrend : str, optional
-        If `constant`, the mean across the transform dimensions will be
-        subtracted before calculating the Fourier transform (FT).
-        If `linear`, the linear least-square fit along one axis will be
-        subtracted before the FT. It will give an error if the length of
-        `dim` is longer than one.
     density : bool, optional
         If true, it will normalize the spectrum to spectral density
-    window : bool, optional
-        Whether to apply a Hann window to the data before the Fourier
-        transform is taken
-
-    Returns
-    -------
-    cs : `xarray.DataArray`
-        Two-dimensional cross spectrum
+    kwargs : dict : see xrft.dft for argument list
     """
+    kwargs.update({"true_amplitude": True, "true_phase": False})
 
-    daft1 = fft(
-        da1,
-        spacing_tol=spacing_tol,
-        dim=dim,
-        shift=shift,
-        detrend=detrend,
-        window=window,
-        chunks_to_segments=chunks_to_segments,
-        prefix=prefix,
-    )
-    daft2 = fft(
-        da2,
-        spacing_tol=spacing_tol,
-        dim=dim,
-        shift=shift,
-        detrend=detrend,
-        window=window,
-        chunks_to_segments=chunks_to_segments,
-        prefix=prefix,
-    )
+    daft1 = dft(da, **kwargs)
+    daft2 = dft(da, **kwargs)
 
-    if dim is None:
-        dim = da1.dims
-        dim2 = da2.dims
-        if dim != dim2:
-            raise ValueError("The two datasets have different dimensions")
-    else:
-        if isinstance(dim, str):
-            dim = [
-                dim,
-            ]
-            dim2 = [
-                dim,
-            ]
+    if daft1.dims != daft2.dims:
+        raise ValueError("The two datasets have different dimensions")
 
-    # the axes along which to take ffts
-    axis_num = [da1.get_axis_num(d) for d in dim]
-
-    N = _calc_normalization_factor(da1, axis_num, chunks_to_segments)
-
-    return _cross_spectrum(daft1, daft2, dim, N, density)
-
-
-def _cross_spectrum(daft1, daft2, dim, N, density):
+    updated_dims = [
+        d for d in daft1.dims if (d not in da1.dims and "segment" not in d)
+    ]  # Transformed dimensions
     cs = (daft1 * np.conj(daft2)).real
-
     if density:
-        cs /= (np.asarray(N).prod()) ** 2
-        for i in dim:
-            # cs /= daft1["freq_" + i + "_spacing"]
-            cs /= daft1["freq_" + i].spacing
-
+        fs = np.prod([float(ps[d].spacing) for d in updated_dims])
+        cs *= fs
+    else:
+        s = np.prod([float(ps.sizes[d] * ps[d].spacing) for d in updated_dims])
+        cs *= s ** 2
     return cs
 
 
-def cross_phase(
-    da1,
-    da2,
-    spacing_tol=1e-3,
-    dim=None,
-    detrend=None,
-    window=False,
-    chunks_to_segments=False,
-):
+def cross_phase(da1, da2, true_phase=False, **kwargs):
     """
     Calculates the cross-phase between da1 and da2.
 
@@ -843,28 +674,7 @@ def cross_phase(
         The data to be transformed
     da2 : `xarray.DataArray`
         The data to be transformed
-    spacing_tol: float, optional
-        Spacing tolerance. Fourier transform should not be applied to uneven grid but
-        this restriction can be relaxed with this setting. Use caution.
-    dim : list, optional
-        The dimension along which to take the real Fourier transformation.
-        If `None`, all dimensions will be transformed.
-    shift : bool, optional
-        Whether to shift the fft output.
-    detrend : str, optional
-        If `constant`, the mean across the transform dimensions will be
-        subtracted before calculating the Fourier transform (FT).
-        If `linear`, the linear least-square fit along one axis will be
-        subtracted before the FT. It will give an error if the length of
-        `dim` is longer than one.
-    window : bool, optional
-        Whether to apply a Hann window to the data before the Fourier
-        transform is taken
-
-    Returns
-    -------
-    cp : `xarray.DataArray`
-        Cross-phase as a function of frequency.
+    kwargs : dict : see xrft.dft for argument list
     """
 
     if dim is None:
@@ -879,32 +689,13 @@ def cross_phase(
             "Cross phase calculation should only be done along " "a single dimension."
         )
 
-    daft1 = fft(
-        da1,
-        spacing_tol=spacing_tol,
-        dim=dim,
-        real=dim[0],
-        shift=False,
-        detrend=detrend,
-        window=window,
-        chunks_to_segments=chunks_to_segments,
-    )
-    daft2 = fft(
-        da2,
-        spacing_tol=spacing_tol,
-        dim=dim,
-        real=dim[0],
-        shift=False,
-        detrend=detrend,
-        window=window,
-        chunks_to_segments=chunks_to_segments,
-    )
+    daft1 = dft(da1, true_amplitude=False, true_phase=true_phase, **kwargs)
+    daft2 = dft(da2, true_amplitude=False, true_phase=true_phase, **kwargs)
 
-    if daft1.chunks and daft2.chunks:
-        _cross_phase = lambda a, b: dsar.angle(a * dsar.conj(b))
-    else:
-        _cross_phase = lambda a, b: np.angle(a * np.conj(b))
-    cp = xr.apply_ufunc(_cross_phase, daft1, daft2, dask="allowed")
+    if daft1.dims != daft2.dims:
+        raise ValueError("The two datasets have different dimensions")
+
+    cp = xr.ufuncs.angle(daft1 * np.conj(daft2))
 
     if da1.name and da2.name:
         cp.name = "{}_{}_phase".format(da1.name, da2.name)
