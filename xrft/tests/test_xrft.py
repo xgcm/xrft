@@ -533,8 +533,6 @@ class TestCrossPhase(object):
             dims=["y", "x"],
             coords={"y": np.arange(Ny), "x": x},
         )
-        with pytest.raises(ValueError):
-            xrft.cross_phase(da1, da2, dim=["y", "x"])
 
         if dask:
             da1 = da1.chunk({"x": 16})
