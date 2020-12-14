@@ -525,13 +525,13 @@ class TestCrossPhase(object):
             data=signal1 * y[:, np.newaxis],
             name="a",
             dims=["y", "x"],
-            coords={"y": y, "x": x},
+            coords={"y": np.arange(Ny), "x": x},
         )
         da2 = xr.DataArray(
             data=signal2 * y[:, np.newaxis],
             name="b",
             dims=["y", "x"],
-            coords={"y": y, "x": x},
+            coords={"y": np.arange(Ny), "x": x},
         )
         with pytest.raises(ValueError):
             xrft.cross_phase(da1, da2, dim=["y", "x"])
