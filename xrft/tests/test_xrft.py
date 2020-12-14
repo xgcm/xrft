@@ -426,13 +426,13 @@ class TestSpectrum(object):
         cs = xrft.cross_spectrum(
             da, da2, dim=dim, window=True, density=False, detrend="constant"
         )
-        npt.assert_almost_equal(cs.values, np.real(daft * np.conj(daft2)))
+        npt.assert_almost_equal(cs.values, daft * np.conj(daft2))
         npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.0)
 
         cs = xrft.cross_spectrum(
             da, da2, dim=dim, shift=True, window=True, detrend="constant"
         )
-        test = (daft * np.conj(daft2)).real.values / N ** 4
+        test = (daft * np.conj(daft2)).values / N ** 4
 
         dk = np.diff(np.fft.fftfreq(N, 1.0))[0]
         test /= dk ** 2

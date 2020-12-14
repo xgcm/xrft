@@ -613,6 +613,9 @@ def power_spectrum(da, density=True, **kwargs):
         ps *= fs
     else:
         s = np.prod([float(ps.sizes[d] * ps[d].spacing) for d in updated_dims])
+        real = kwargs.get("real", None)
+        if real is not None:
+            s *= da.sizes[real] / (da.sizes[real] // 2 + 1)
         ps *= s ** 2
     return ps
 
@@ -653,6 +656,9 @@ def cross_spectrum(da1, da2, density=True, true_phase=False, **kwargs):
         cs *= fs
     else:
         s = np.prod([float(cs.sizes[d] * cs[d].spacing) for d in updated_dims])
+        real = kwargs.get("real", None)
+        if real is not None:
+            s *= da1.sizes[real] / (da1.sizes[real] // 2 + 1)
         cs *= s ** 2
     return cs
 
