@@ -514,32 +514,56 @@ class TestCrossPhase(object):
 
     @pytest.mark.parametrize("dask", [False, True])
     def test_cross_phase_2d(self, dask):
-        Ny, Nx = (32, 16)
-        x = np.linspace(0, 1, num=Nx, endpoint=False)
-        y = np.ones(Ny)
-        f = 6
-        phase_offset = np.pi / 2
-        signal1 = np.cos(2 * np.pi * f * x)  # frequency = 1/(2*pi)
-        signal2 = np.cos(2 * np.pi * f * x - phase_offset)
-        da1 = xr.DataArray(
-            data=signal1 * y[:, np.newaxis],
-            name="a",
-            dims=["y", "x"],
-            coords={"y": np.arange(Ny), "x": x},
-        )
-        da2 = xr.DataArray(
-            data=signal2 * y[:, np.newaxis],
-            name="b",
-            dims=["y", "x"],
-            coords={"y": np.arange(Ny), "x": x},
-        )
-
+        dx = 0.1
+        dy = 0.14
+        x = np.arange(-10, 10, dx)
+        y = np.arange(-18, 18, dy)
+        x = xr.DataArray(x, dims="x", coords={"x": x})
+        y = xr.DataArray(y, dims="y", coords={"y": y})
+        fx = np.random.choice(np.fft.fftfreq(len(x), dx))
+        fy = np.random.choice(np.fft.fftfreq(len(y), dy))
+        phase_offset = 2 * (np.random.rand() - 0.5) * np.pi
+        da1 = np.cos(2 * np.pi * fx * x + 2 * np.pi * fy * y)
+        da2 = np.cos(2 * np.pi * fx * x + 2 * np.pi * fy * y - phase_offset)
         if dask:
-            da1 = da1.chunk({"x": 16})
-            da2 = da2.chunk({"x": 16})
-        cp = xrft.cross_phase(da1, da2, dim=["x"])
-        actual_phase_offset = cp.sel(freq_x=f).values
-        npt.assert_almost_equal(actual_phase_offset, phase_offset)
+            da1 = da1.chunk()
+            da2 = da2.chunk()
+
+        cp = xrft.cross_phase(da1, da2)
+        offset = cp[
+            {
+                "freq_x": (np.abs(cp["freq_x"] - fx)).argmin(),
+                "freq_y": (np.abs(cp["freq_y"] - fy)).argmin(),
+            }
+        ].data
+        npt.assert_almost_equal(offset, phase_offset)
+
+    def test_cross_phase_true_phase_2d(self, dask):
+        """With true_phase = True, a lag on the coordinates should be recovered in cross_phase"""
+        dx = 0.1
+        dy = 0.14
+        x = np.arange(-10, 10, dx)
+        y = np.arange(-18, 18, dy)
+        x = xr.DataArray(x, dims="x", coords={"x": x})
+        y = xr.DataArray(y, dims="y", coords={"y": y})
+        fx = np.random.choice(np.fft.fftfreq(len(x), dx))
+        fy = np.random.choice(np.fft.fftfreq(len(y), dy))
+        da1 = np.cos(2 * np.pi * fx * x + 2 * np.pi * fy * y)
+        lagx = np.random.rand() * x.max().data
+        lagy = np.random.rand() * y.max().data
+        da2 = da1.assign_coords(x=da1["x"] + lagx, y=da1["y"] + lagy)
+        cp = xrft.cross_phase(da1, da2, true_phase=True)
+        offset = cp[
+            {
+                "freq_x": (np.abs(cp["freq_x"] - fx)).argmin(),
+                "freq_y": (np.abs(cp["freq_y"] - fy)).argmin(),
+            }
+        ].data
+        phase_offset = 2 * np.pi * (fx * lagx + fy * lagy)
+        phase_offset = np.arctan2(
+            np.sin(phase_offset), np.cos(phase_offset)
+        )  # Offset in [-pi, pi]
+        npt.assert_almost_equal(offset, phase_offset)
 
 
 @pytest.mark.parametrize("chunks_to_segments", [False, True])
