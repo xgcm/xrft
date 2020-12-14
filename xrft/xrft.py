@@ -617,7 +617,7 @@ def power_spectrum(da, density=True, **kwargs):
     return ps
 
 
-def cross_spectrum(da1, da2, density=True, **kwargs):
+def cross_spectrum(da1, da2, density=True, true_phase=False, **kwargs):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -636,10 +636,10 @@ def cross_spectrum(da1, da2, density=True, **kwargs):
         If true, it will normalize the spectrum to spectral density
     kwargs : dict : see xrft.dft for argument list
     """
-    kwargs.update({"true_amplitude": True, "true_phase": False})
+    kwargs.update({"true_amplitude": True})
 
-    daft1 = dft(da, **kwargs)
-    daft2 = dft(da, **kwargs)
+    daft1 = dft(da1, true_phase=true_phase, **kwargs)
+    daft2 = dft(da2, true_phase=true_phase, **kwargs)
 
     if daft1.dims != daft2.dims:
         raise ValueError("The two datasets have different dimensions")
@@ -647,12 +647,12 @@ def cross_spectrum(da1, da2, density=True, **kwargs):
     updated_dims = [
         d for d in daft1.dims if (d not in da1.dims and "segment" not in d)
     ]  # Transformed dimensions
-    cs = (daft1 * np.conj(daft2)).real
+    cs = daft1 * np.conj(daft2)
     if density:
-        fs = np.prod([float(ps[d].spacing) for d in updated_dims])
+        fs = np.prod([float(cs[d].spacing) for d in updated_dims])
         cs *= fs
     else:
-        s = np.prod([float(ps.sizes[d] * ps[d].spacing) for d in updated_dims])
+        s = np.prod([float(cs.sizes[d] * cs[d].spacing) for d in updated_dims])
         cs *= s ** 2
     return cs
 
@@ -676,26 +676,7 @@ def cross_phase(da1, da2, true_phase=False, **kwargs):
         The data to be transformed
     kwargs : dict : see xrft.dft for argument list
     """
-
-    if dim is None:
-        dim = da1.dims
-        dim2 = da2.dims
-        if dim != dim2:
-            raise ValueError("The two datasets have different dimensions")
-    elif not isinstance(dim, list):
-        dim = [dim]
-    if len(dim) > 1:
-        raise ValueError(
-            "Cross phase calculation should only be done along " "a single dimension."
-        )
-
-    daft1 = dft(da1, true_amplitude=False, true_phase=true_phase, **kwargs)
-    daft2 = dft(da2, true_amplitude=False, true_phase=true_phase, **kwargs)
-
-    if daft1.dims != daft2.dims:
-        raise ValueError("The two datasets have different dimensions")
-
-    cp = xr.ufuncs.angle(daft1 * np.conj(daft2))
+    cp = xr.ufuncs.angle(cross_spectrum(da1, da2, true_phase=true_phase, **kwargs))
 
     if da1.name and da2.name:
         cp.name = "{}_{}_phase".format(da1.name, da2.name)
