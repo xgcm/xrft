@@ -528,7 +528,6 @@ class TestCrossPhase(object):
         if dask:
             da1 = da1.chunk()
             da2 = da2.chunk()
-
         cp = xrft.cross_phase(da1, da2)
         offset = cp[
             {
@@ -538,6 +537,7 @@ class TestCrossPhase(object):
         ].data
         npt.assert_almost_equal(offset, phase_offset)
 
+    @pytest.mark.parametrize("dask", [False, True])
     def test_cross_phase_true_phase_2d(self, dask):
         """With true_phase = True, a lag on the coordinates should be recovered in cross_phase"""
         dx = 0.1
@@ -552,6 +552,9 @@ class TestCrossPhase(object):
         lagx = np.random.rand() * x.max().data
         lagy = np.random.rand() * y.max().data
         da2 = da1.assign_coords(x=da1["x"] + lagx, y=da1["y"] + lagy)
+        if dask:
+            da1 = da1.chunk()
+            da2 = da2.chunk()
         cp = xrft.cross_phase(da1, da2, true_phase=True)
         offset = cp[
             {
