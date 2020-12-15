@@ -214,7 +214,9 @@ def ifft(daft, **kwargs):
         warnings.warn("true_amplitude argument is ignored in xrft.ifft")
     if kwargs.pop("lag", False):
         warnings.warn("lag argument is ignored in xrft.ifft")
-    return idft(daft, true_phase=False, true_amplitude=False, **kwargs)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return idft(daft, true_phase=False, true_amplitude=False, **kwargs)
 
 
 def dft(
@@ -281,7 +283,7 @@ def dft(
     """
 
     if not true_phase and not true_amplitude:
-        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft to preserve the theoretical phasing and amplitude of FT. Consider using xrft.fft to ensure future compatibility with numpy.fft like behavior and to deactivate this warning."
+        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.dft to preserve the theoretical phasing and amplitude of FT. Consider using xrft.fft to ensure future compatibility with numpy.fft like behavior and to deactivate this warning."
         warnings.warn(msg, FutureWarning)
 
     if dim is None:
@@ -395,8 +397,8 @@ def idft(
     real=None,
     shift=True,
     detrend=None,
-    true_phase=True,
-    true_amplitude=True,
+    true_phase=False,
+    true_amplitude=False,
     window=False,
     chunks_to_segments=False,
     prefix="freq_",
@@ -454,6 +456,10 @@ def idft(
     da : `xarray.DataArray`
         The output of the Inverse Fourier transformation, with appropriate dimensions.
     """
+
+    if not true_phase and not true_amplitude:
+        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.idft to preserve the theoretical phasing and amplitude of IFT. Consider using xrft.ifft to ensure future compatibility with numpy.ifft like behavior and to deactivate this warning."
+        warnings.warn(msg, FutureWarning)
 
     if dim is None:
         dim = list(daft.dims)
