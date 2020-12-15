@@ -568,6 +568,12 @@ class TestCrossPhase(object):
         )  # Offset in [-pi, pi]
         npt.assert_almost_equal(offset, phase_offset)
 
+    def test_scaling_density_flag(self):
+        N = 25
+        s = xr.DataArray(np.random.rand(N), dims="x", coords={"x": range(N)})
+        with pytest.raises(ValueError):
+            ps = xrft.power_spectrum(s, dim="x", scaling="spectrum", density=True)
+
 
 @pytest.mark.parametrize("chunks_to_segments", [False, True])
 def test_parseval(chunks_to_segments):

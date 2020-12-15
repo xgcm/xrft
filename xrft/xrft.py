@@ -606,14 +606,16 @@ def power_spectrum(da, scaling="density", **kwargs):
     if "density" in kwargs:
         density = kwargs.pop("density")
         msg = (
-            "density flag will be removed in future version of xrft.power_spectrum and replaced by scaling flag. "
+            "density flag will be deprecated in future version of xrft.power_spectrum and replaced by scaling flag. "
             + 'density=True should be replaced by scaling="density" and '
             + "density=False will not be maintained"
         )
         warnings.warn(msg, FutureWarning)
+        if scaling != "density":
+            raise ValueError(
+                "scaling flag and density flag can not be set simultenaously"
+            )
         if density:
-            if scaling != "density":
-                raise ValueError("Both scaling and density can not be defined")
             scaling = "density"
         else:
             warnings.warn("Scaling flag is ignored")
@@ -668,14 +670,16 @@ def cross_spectrum(da1, da2, scaling="density", true_phase=False, **kwargs):
     if "density" in kwargs:
         density = kwargs.pop("density")
         msg = (
-            "density flag will be removed in future version of xrft.cross_spectrum and replaced by scaling flag. "
+            "density flag will be deprecated in future version of xrft.power_spectrum and replaced by scaling flag. "
             + 'density=True should be replaced by scaling="density" and '
             + "density=False will not be maintained"
         )
         warnings.warn(msg, FutureWarning)
+        if scaling != "density":
+            raise ValueError(
+                "scaling flag and density flag can not be set simultenaously"
+            )
         if density:
-            if scaling != "density":
-                raise ValueError("Both scaling and density can not be defined")
             scaling = "density"
         else:
             warnings.warn("Scaling flag is ignored")
