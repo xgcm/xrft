@@ -1131,3 +1131,28 @@ def test_idft_dft():
         FTs, shift=True, true_phase=True, true_amplitude=True, lag=mean_lag
     )
     xrt.assert_allclose(s, IFTs)
+
+    def test_idft_centered_coordinates():
+        """error should be raised if coordinates are not centered on zero in idft"""
+        N = 20
+        s = xr.DataArray(
+            np.random.rand(N) + 1j * np.random.rand(N),
+            dims="freq_x",
+            coords={"freq_x": np.arange(-N // 2, N // 2) + 2},
+        )
+        with pytest.raises(ValueError):
+            xrft.idft(s)
+
+    def test_constant_coordinates():
+        """error should be raised if coordinates are constant"""
+        N = 20
+        s = xr.DataArray(
+            np.random.rand(N) + 1j * np.random.rand(N),
+            dims="freq_x",
+            coords={"freq_x": np.zeros(N)},
+        )
+        with pytest.raises(ValueError):
+            xrft.dft(s)
+
+        with pytest.raises(ValueError):
+            xrft.idft(s)

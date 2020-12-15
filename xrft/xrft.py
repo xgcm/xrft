@@ -214,10 +214,7 @@ def ifft(daft, **kwargs):
         warnings.warn("true_amplitude argument is ignored in xrft.ifft")
     if kwargs.pop("lag", False):
         warnings.warn("lag argument is ignored in xrft.ifft")
-    msg = "xrft.ifft does not guarantee correct coordinate phasing for its output. We recommend xrft.dft and xrft.idft as forward and backward Fourier Transforms with true_phase flags set to True for accurate coordinate handling."
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        return idft(daft, true_phase=False, true_amplitude=False, **kwargs)
+    return idft(daft, true_phase=False, true_amplitude=False, **kwargs)
 
 
 def dft(
@@ -340,6 +337,11 @@ def dft(
                 "Can't take Fourier transform because "
                 "coodinate %s is not evenly spaced" % d
             )
+        if delta == 0.0:
+            raise ValueError(
+                "Can't take Fourier transform because spacing in coordinate %s is zero"
+                % d
+            )
         delta_x.append(delta)
         lag_x.append(lag)
 
@@ -393,8 +395,8 @@ def idft(
     real=None,
     shift=True,
     detrend=None,
-    true_phase=False,
-    true_amplitude=False,
+    true_phase=True,
+    true_amplitude=True,
     window=False,
     chunks_to_segments=False,
     prefix="freq_",
@@ -452,10 +454,6 @@ def idft(
     da : `xarray.DataArray`
         The output of the Inverse Fourier transformation, with appropriate dimensions.
     """
-
-    if not true_phase and not true_amplitude:
-        msg = "xrft.idft default behaviour will be modified in future versions of xrft. Use xrft.ifft to ensure future compatibility and deactivate this warning"
-        warnings.warn(msg, FutureWarning)
 
     if dim is None:
         dim = list(daft.dims)
@@ -532,6 +530,11 @@ def idft(
         if np.abs(l) > spacing_tol:
             raise ValueError(
                 "Inverse Fourier Transform can not be computed because coordinate %s is not centered on zero frequency"
+                % d
+            )
+        if delta == 0.0:
+            raise ValueError(
+                "Can't take Inverse Fourier transform because spacing in coordinate %s is zero"
                 % d
             )
         delta_x.append(delta)
