@@ -283,7 +283,7 @@ def dft(
     """
 
     if not true_phase and not true_amplitude:
-        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.dft to preserve the theoretical phasing and amplitude of FT. Consider using xrft.fft to ensure future compatibility with numpy.fft like behavior and to deactivate this warning."
+        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.dft to preserve the theoretical phasing and amplitude of Fourier Transform. Consider using xrft.fft to ensure future compatibility with numpy.fft like behavior and to deactivate this warning."
         warnings.warn(msg, FutureWarning)
 
     if dim is None:
@@ -458,7 +458,7 @@ def idft(
     """
 
     if not true_phase and not true_amplitude:
-        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.idft to preserve the theoretical phasing and amplitude of IFT. Consider using xrft.ifft to ensure future compatibility with numpy.ifft like behavior and to deactivate this warning."
+        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.idft to preserve the theoretical phasing and amplitude of Inverse Fourier Transform. Consider using xrft.ifft to ensure future compatibility with numpy.ifft like behavior and to deactivate this warning."
         warnings.warn(msg, FutureWarning)
 
     if dim is None:
@@ -655,7 +655,7 @@ def power_spectrum(da, scaling="density", **kwargs):
     return ps
 
 
-def cross_spectrum(da1, da2, scaling="density", true_phase=False, **kwargs):
+def cross_spectrum(da1, da2, scaling="density", **kwargs):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -675,6 +675,13 @@ def cross_spectrum(da1, da2, scaling="density", true_phase=False, **kwargs):
         If 'spectrum', it will normalize the output to power spectrum
     kwargs : dict : see xrft.dft for argument list
     """
+
+    if "true_phase" not in kwargs:
+        msg = (
+            "true_phase flag will be set to True in future version of xrft.dft possibly impacting cross_spectrum output. "
+            + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility."
+        )
+        warnings.warn(msg, FutureWarning)
 
     if "density" in kwargs:
         density = kwargs.pop("density")
@@ -696,8 +703,8 @@ def cross_spectrum(da1, da2, scaling="density", true_phase=False, **kwargs):
 
     kwargs.update({"true_amplitude": True})
 
-    daft1 = dft(da1, true_phase=true_phase, **kwargs)
-    daft2 = dft(da2, true_phase=true_phase, **kwargs)
+    daft1 = dft(da1, **kwargs)
+    daft2 = dft(da2, **kwargs)
 
     if daft1.dims != daft2.dims:
         raise ValueError("The two datasets have different dimensions")
@@ -723,7 +730,7 @@ def cross_spectrum(da1, da2, scaling="density", true_phase=False, **kwargs):
     return cs
 
 
-def cross_phase(da1, da2, true_phase=False, **kwargs):
+def cross_phase(da1, da2, **kwargs):
     """
     Calculates the cross-phase between da1 and da2.
 
@@ -742,7 +749,14 @@ def cross_phase(da1, da2, true_phase=False, **kwargs):
         The data to be transformed
     kwargs : dict : see xrft.dft for argument list
     """
-    cp = xr.ufuncs.angle(cross_spectrum(da1, da2, true_phase=true_phase, **kwargs))
+    if "true_phase" not in kwargs:
+        msg = (
+            "true_phase flag will be set to True in future version of xrft.dft possibly impacting cross_phase output. "
+            + "Set explicitely true_phase = False in cross_phase arguments list to ensure future compatibility."
+        )
+        warnings.warn(msg, FutureWarning)
+
+    cp = xr.ufuncs.angle(cross_spectrum(da1, da2, **kwargs))
 
     if da1.name and da2.name:
         cp.name = "{}_{}_phase".format(da1.name, da2.name)
