@@ -593,7 +593,7 @@ def idft(
     )  # Do nothing if daft was not transposed
 
 
-def power_spectrum(da, **kwargs):
+def power_spectrum(da, scaling="density", **kwargs):
     """
     Calculates the power spectrum of da.
 
@@ -612,25 +612,21 @@ def power_spectrum(da, **kwargs):
     kwargs : dict : see xrft.dft for argument list
     """
 
-    if "scaling" in kwargs:
-        if "density" in kwargs:
-            raise ValueError(
-                "scaling flag and density flag can not be set simultaneously"
-            )
-    else:
-        if "density" in kwargs:
-            msg = (
-                "density flag will be deprecated in future version of xrft.power_spectrum and replaced by scaling flag. "
-                + 'density=True should be replaced by scaling="density" and '
-                + "density=False will not be maintained"
-            )
-            warnings.warn(msg, FutureWarning)
-            scaling = "density" if kwargs["density"] else "false_density"
-        else:
-            scaling = "density"
+    if "density" in kwargs:
+        density = kwargs.pop("density")
+        msg = (
+            "density flag will be deprecated in future version of xrft.power_spectrum and replaced by scaling flag. "
+            + 'density=True should be replaced by scaling="density" and '
+            + "density=False will not be maintained"
+        )
+        warnings.warn(msg, FutureWarning)
+        msg = "scaling flag is ignored !"
+        warnings.warn(msg, FutureWarning)
+        scaling = "density" if density else "false_density"
 
-    kwargs.pop("density", None)
-    kwargs.update({"true_amplitude": True, "true_phase": False})
+    kwargs.update(
+        {"true_amplitude": True, "true_phase": False}
+    )  # true_phase do not matter in power_spectrum
 
     daft = dft(da, **kwargs)
     updated_dims = [
@@ -655,7 +651,7 @@ def power_spectrum(da, **kwargs):
     return ps
 
 
-def cross_spectrum(da1, da2, **kwargs):
+def cross_spectrum(da1, da2, scaling="density", **kwargs):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -684,24 +680,18 @@ def cross_spectrum(da1, da2, **kwargs):
         )
         warnings.warn(msg, FutureWarning)
 
-    if "scaling" in kwargs:
-        if "density" in kwargs:
-            raise ValueError(
-                "scaling flag and density flag can not be set simultaneously"
-            )
-    else:
-        if "density" in kwargs:
-            msg = (
-                "density flag will be deprecated in future version of xrft.cross_spectrum and replaced by scaling flag. "
-                + 'density=True should be replaced by scaling="density" and '
-                + "density=False will not be maintained"
-            )
-            warnings.warn(msg, FutureWarning)
-            scaling = "density" if kwargs["density"] else "false_density"
-        else:
-            scaling = "density"
+    if "density" in kwargs:
+        density = kwargs.pop("density")
+        msg = (
+            "density flag will be deprecated in future version of xrft.cross_spectrum and replaced by scaling flag. "
+            + 'density=True should be replaced by scaling="density" and '
+            + "density=False will not be maintained"
+        )
+        warnings.warn(msg, FutureWarning)
+        msg = "scaling flag is ignored !"
+        warnings.warn(msg, FutureWarning)
 
-    kwargs.pop("density", None)
+        scaling = "density" if density else "false_density"
 
     kwargs.update({"true_amplitude": True})
 
