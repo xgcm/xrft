@@ -584,7 +584,65 @@ def idft(
     )  # Do nothing if daft was not transposed
 
 
-def power_spectrum(da, density=True, **kwargs):
+def power_spectrum(da, scaling="density", **kwargs):
+    """
+    Calculates the power spectrum of da.
+
+    .. math::
+    da' = da - \overline{da}
+    .. math::
+    ps = \mathbb{F}(da') {\mathbb{F}(da')}^*
+
+    Parameters
+    ----------
+    da : `xarray.DataArray`
+        The data to be transformed
+    scaling : str, optional
+        If 'density', it will normalize the output to power spectral density
+        If 'spectrum', it will normalize the output to power spectrum
+    kwargs : dict : see xrft.dft for argument list
+    """
+
+    if "density" in kwargs:
+        density = kwargs.pop("density")
+        msg = (
+            "density flag will be removed in future version of xrft.power_spectrum and replaced by scaling flag. "
+            + 'density=True should be replaced by scaling="density" and '
+            + "density=False will not be maintened"
+        )
+        warnings.warn(msg, FutureWarning)
+        if density:
+            if scaling != "density":
+                raise ValueError("Both scaling and density can not be defined")
+            scaling = "density"
+        else:
+            warnings.warn("Scaling flag is ignored")
+            scaling = None
+
+    kwargs.update({"true_amplitude": True, "true_phase": False})
+
+    daft = dft(da, **kwargs)
+    updated_dims = [
+        d for d in daft.dims if (d not in da.dims and "segment" not in d)
+    ]  # Transformed dimensions
+    ps = np.abs(daft) ** 2
+
+    if scaling == "density":
+        fs = np.prod([float(ps[d].spacing) for d in updated_dims])
+        ps *= fs
+    elif scaling == "spectrum":
+        fs = np.prod([float(ps[d].spacing) for d in updated_dims])
+        ps *= fs ** 2
+    else:  # Corresponds to density=False
+        s = np.prod([float(ps.sizes[d] * ps[d].spacing) for d in updated_dims])
+        real = kwargs.get("real", None)
+        if real is not None:
+            s *= da.sizes[real] / (da.sizes[real] // 2 + 1)
+        ps *= s ** 2
+    return ps
+
+
+def power_spectrum_old(da, density=True, **kwargs):
     """
     Calculates the power spectrum of da.
 
@@ -620,7 +678,7 @@ def power_spectrum(da, density=True, **kwargs):
     return ps
 
 
-def cross_spectrum(da1, da2, density=True, true_phase=False, **kwargs):
+def cross_spectrum(da1, da2, scaling="density", true_phase=False, **kwargs):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -635,10 +693,28 @@ def cross_spectrum(da1, da2, density=True, true_phase=False, **kwargs):
         The data to be transformed
     da2 : `xarray.DataArray`
         The data to be transformed
-    density : bool, optional
-        If true, it will normalize the spectrum to spectral density
+    scaling : str, optional
+        If 'density', it will normalize the output to power spectral density
+        If 'spectrum', it will normalize the output to power spectrum
     kwargs : dict : see xrft.dft for argument list
     """
+
+    if "density" in kwargs:
+        density = kwargs.pop("density")
+        msg = (
+            "density flag will be removed in future version of xrft.cross_spectrum and replaced by scaling flag. "
+            + 'density=True should be replaced by scaling="density" and '
+            + "density=False will not be maintened"
+        )
+        warnings.warn(msg, FutureWarning)
+        if density:
+            if scaling != "density":
+                raise ValueError("Both scaling and density can not be defined")
+            scaling = "density"
+        else:
+            warnings.warn("Scaling flag is ignored")
+            scaling = None
+
     kwargs.update({"true_amplitude": True})
 
     daft1 = dft(da1, true_phase=true_phase, **kwargs)
@@ -651,14 +727,17 @@ def cross_spectrum(da1, da2, density=True, true_phase=False, **kwargs):
         d for d in daft1.dims if (d not in da1.dims and "segment" not in d)
     ]  # Transformed dimensions
     cs = daft1 * np.conj(daft2)
-    if density:
+    if scaling == "density":
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
         cs *= fs
-    else:
+    elif scaling == "spectrum":
+        fs = np.prod([float(cs[d].spacing) for d in updated_dims])
+        cs *= fs ** 2
+    else:  # Corresponds to density=False
         s = np.prod([float(cs.sizes[d] * cs[d].spacing) for d in updated_dims])
         real = kwargs.get("real", None)
         if real is not None:
-            s *= da1.sizes[real] / (da1.sizes[real] // 2 + 1)
+            s *= da.sizes[real] / (da.sizes[real] // 2 + 1)
         cs *= s ** 2
     return cs
 

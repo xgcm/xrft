@@ -1065,6 +1065,28 @@ def test_theoretical_matching(rtol=1e-8, atol=1e-3):
     xrt.assert_allclose(S, TF_s, rtol=rtol, atol=atol)
 
 
+def test_real_dft_true_phase():
+    """Test if real transform is half the total transform when signal is real and true_phase=True"""
+    Nx = 40
+    dx = np.random.rand()
+    s = xr.DataArray(
+        np.random.rand(Nx),
+        dims="x",
+        coords={
+            "x": dx
+            * (
+                np.arange(-Nx // 2, -Nx // 2 + Nx)
+                + np.random.randint(-Nx // 2, Nx // 2)
+            )
+        },
+    )
+    s1 = xrft.dft(s, dim="x", true_phase=True, shift=True)
+    s2 = xrft.dft(s, real="x", true_phase=True, shift=True)
+    s1 = np.conj(s1[{"freq_x": slice(None, s1.sizes["freq_x"] // 2 + 1)}])
+    s1 = s1.assign_coords(freq_x=-s1["freq_x"]).sortby("freq_x")
+    xrt.assert_allclose(s1, s2)
+
+
 def test_ifft_fft():
     """
     Testing ifft(fft(s.data)) == s.data
