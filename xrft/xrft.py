@@ -642,42 +642,6 @@ def power_spectrum(da, scaling="density", **kwargs):
     return ps
 
 
-def power_spectrum_old(da, density=True, **kwargs):
-    """
-    Calculates the power spectrum of da.
-
-    .. math::
-    da' = da - \overline{da}
-    .. math::
-    ps = \mathbb{F}(da') {\mathbb{F}(da')}^*
-
-    Parameters
-    ----------
-    da : `xarray.DataArray`
-        The data to be transformed
-    density : bool, optional
-        If true, it will normalize the spectrum to spectral density
-    kwargs : dict : see xrft.dft for argument list
-    """
-    kwargs.update({"true_amplitude": True, "true_phase": False})
-
-    daft = dft(da, **kwargs)
-    updated_dims = [
-        d for d in daft.dims if (d not in da.dims and "segment" not in d)
-    ]  # Transformed dimensions
-    ps = np.abs(daft) ** 2
-    if density:
-        fs = np.prod([float(ps[d].spacing) for d in updated_dims])
-        ps *= fs
-    else:
-        s = np.prod([float(ps.sizes[d] * ps[d].spacing) for d in updated_dims])
-        real = kwargs.get("real", None)
-        if real is not None:
-            s *= da.sizes[real] / (da.sizes[real] // 2 + 1)
-        ps *= s ** 2
-    return ps
-
-
 def cross_spectrum(da1, da2, scaling="density", true_phase=False, **kwargs):
     """
     Calculates the cross spectra of da1 and da2.
