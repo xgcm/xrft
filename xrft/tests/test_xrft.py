@@ -574,6 +574,8 @@ class TestCrossPhase(object):
         s = xr.DataArray(np.random.rand(N), dims="x", coords={"x": range(N)})
         with pytest.raises(ValueError):
             ps = xrft.power_spectrum(s, dim="x", scaling="spectrum", density=density)
+        with pytest.raises(ValueError):
+            ps = xrft.power_spectrum(s, dim="x", scaling="density", density=density)
 
 
 @pytest.mark.parametrize("chunks_to_segments", [False, True])

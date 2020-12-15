@@ -593,7 +593,7 @@ def idft(
     )  # Do nothing if daft was not transposed
 
 
-def power_spectrum(da, scaling="density", **kwargs):
+def power_spectrum(da, **kwargs):
     """
     Calculates the power spectrum of da.
 
@@ -612,24 +612,24 @@ def power_spectrum(da, scaling="density", **kwargs):
     kwargs : dict : see xrft.dft for argument list
     """
 
-    if "density" in kwargs:
-        density = kwargs.pop("density")
-        msg = (
-            "density flag will be deprecated in future version of xrft.power_spectrum and replaced by scaling flag. "
-            + 'density=True should be replaced by scaling="density" and '
-            + "density=False will not be maintained"
-        )
-        warnings.warn(msg, FutureWarning)
-        if scaling != "density":
+    if "scaling" in kwargs:
+        if "density" in kwargs:
             raise ValueError(
-                "scaling flag and density flag can not be set simultenaously"
+                "scaling flag and density flag can not be set simultaneously"
             )
-        if density:
-            scaling = "density"
+    else:
+        if "density" in kwargs:
+            msg = (
+                "density flag will be deprecated in future version of xrft.power_spectrum and replaced by scaling flag. "
+                + 'density=True should be replaced by scaling="density" and '
+                + "density=False will not be maintained"
+            )
+            warnings.warn(msg, FutureWarning)
+            scaling = "density" if kwargs["density"] else "false_density"
         else:
-            warnings.warn("Scaling flag is ignored")
-            scaling = "false_density"
+            scaling = "density"
 
+    kwargs.pop("density", None)
     kwargs.update({"true_amplitude": True, "true_phase": False})
 
     daft = dft(da, **kwargs)
@@ -655,7 +655,7 @@ def power_spectrum(da, scaling="density", **kwargs):
     return ps
 
 
-def cross_spectrum(da1, da2, scaling="density", **kwargs):
+def cross_spectrum(da1, da2, **kwargs):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -676,31 +676,24 @@ def cross_spectrum(da1, da2, scaling="density", **kwargs):
     kwargs : dict : see xrft.dft for argument list
     """
 
-    if "true_phase" not in kwargs:
-        msg = (
-            "true_phase flag will be set to True in future version of xrft.dft possibly impacting cross_spectrum output. "
-            + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
-            + "with numpy-like behavior where the coordinates are disregarded."
-        )
-        warnings.warn(msg, FutureWarning)
-
-    if "density" in kwargs:
-        density = kwargs.pop("density")
-        msg = (
-            "density flag will be deprecated in future version of xrft.power_spectrum and replaced by scaling flag. "
-            + 'density=True should be replaced by scaling="density" and '
-            + "density=False will not be maintained"
-        )
-        warnings.warn(msg, FutureWarning)
-        if scaling != "density":
+    if "scaling" in kwargs:
+        if "density" in kwargs:
             raise ValueError(
-                "scaling flag and density flag can not be set simultenaously"
+                "scaling flag and density flag can not be set simultaneously"
             )
-        if density:
-            scaling = "density"
+    else:
+        if "density" in kwargs:
+            msg = (
+                "density flag will be deprecated in future version of xrft.cross_spectrum and replaced by scaling flag. "
+                + 'density=True should be replaced by scaling="density" and '
+                + "density=False will not be maintained"
+            )
+            warnings.warn(msg, FutureWarning)
+            scaling = "density" if kwargs["density"] else "false_density"
         else:
-            warnings.warn("Scaling flag is ignored")
-            scaling = "false_density"
+            scaling = "density"
+
+    kwargs.pop("density", None)
 
     kwargs.update({"true_amplitude": True})
 
