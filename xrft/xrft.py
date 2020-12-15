@@ -676,6 +676,14 @@ def cross_spectrum(da1, da2, **kwargs):
     kwargs : dict : see xrft.dft for argument list
     """
 
+    if "true_phase" not in kwargs:
+        msg = (
+            "true_phase flag will be set to True in future version of xrft.dft possibly impacting cross_spectrum output. "
+            + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
+            + "with numpy-like behavior where the coordinates are disregarded."
+        )
+        warnings.warn(msg, FutureWarning)
+
     if "scaling" in kwargs:
         if "density" in kwargs:
             raise ValueError(
