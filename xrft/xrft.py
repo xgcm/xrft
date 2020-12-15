@@ -608,7 +608,7 @@ def power_spectrum(da, scaling="density", **kwargs):
         msg = (
             "density flag will be removed in future version of xrft.power_spectrum and replaced by scaling flag. "
             + 'density=True should be replaced by scaling="density" and '
-            + "density=False will not be maintened"
+            + "density=False will not be maintained"
         )
         warnings.warn(msg, FutureWarning)
         if density:
@@ -617,7 +617,7 @@ def power_spectrum(da, scaling="density", **kwargs):
             scaling = "density"
         else:
             warnings.warn("Scaling flag is ignored")
-            scaling = None
+            scaling = "false_density"
 
     kwargs.update({"true_amplitude": True, "true_phase": False})
 
@@ -633,12 +633,14 @@ def power_spectrum(da, scaling="density", **kwargs):
     elif scaling == "spectrum":
         fs = np.prod([float(ps[d].spacing) for d in updated_dims])
         ps *= fs ** 2
-    else:  # Corresponds to density=False
+    elif scaling == "false_density":  # Corresponds to density=False
         s = np.prod([float(ps.sizes[d] * ps[d].spacing) for d in updated_dims])
         real = kwargs.get("real", None)
         if real is not None:
             s *= da.sizes[real] / (da.sizes[real] // 2 + 1)
         ps *= s ** 2
+    else:
+        raise ValueError("Unknown {} scaling flag".format(scaling))
     return ps
 
 
@@ -668,7 +670,7 @@ def cross_spectrum(da1, da2, scaling="density", true_phase=False, **kwargs):
         msg = (
             "density flag will be removed in future version of xrft.cross_spectrum and replaced by scaling flag. "
             + 'density=True should be replaced by scaling="density" and '
-            + "density=False will not be maintened"
+            + "density=False will not be maintained"
         )
         warnings.warn(msg, FutureWarning)
         if density:
@@ -677,7 +679,7 @@ def cross_spectrum(da1, da2, scaling="density", true_phase=False, **kwargs):
             scaling = "density"
         else:
             warnings.warn("Scaling flag is ignored")
-            scaling = None
+            scaling = "false_density"
 
     kwargs.update({"true_amplitude": True})
 
@@ -697,12 +699,14 @@ def cross_spectrum(da1, da2, scaling="density", true_phase=False, **kwargs):
     elif scaling == "spectrum":
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
         cs *= fs ** 2
-    else:  # Corresponds to density=False
+    elif scaling == "false_density":  # Corresponds to density=False
         s = np.prod([float(cs.sizes[d] * cs[d].spacing) for d in updated_dims])
         real = kwargs.get("real", None)
         if real is not None:
             s *= da.sizes[real] / (da.sizes[real] // 2 + 1)
         cs *= s ** 2
+    else:
+        raise ValueError("Unknown {} scaling flag".format(scaling))
     return cs
 
 
