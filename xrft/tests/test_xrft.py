@@ -821,7 +821,7 @@ def test_isotropize(N=512):
     nfactor = 4
 
     def _test_iso(theta):
-        ps = xrft.power_spectrum(theta, spacing_tol, dim=dims)
+        ps = xrft.power_spectrum(theta, spacing_tol=spacing_tol, dim=dims)
         ps = np.sqrt(ps.freq_x ** 2 + ps.freq_y ** 2)
         ps_iso = xrft.isotropize(ps, fftdim, nfactor=nfactor)
         assert len(ps_iso.dims) == 1
