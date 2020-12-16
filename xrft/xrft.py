@@ -191,9 +191,15 @@ def _lag_coord(coord):
         return lag.data
 
 
-def fft(da, **kwargs):
+def fft(da, dim=None, **kwargs):
     """
-    See xrft.dft for argument list
+    da : `xarray.DataArray`
+        The data to be transformed
+    dim : str or sequence of str, optional
+        The dimensions along which to take the transformation. If `None`, all
+        dimensions will be transformed. If the inputs are dask arrays, the
+        arrays must not be chunked along these dimensions.
+    kwargs: See xrft.dft for argument list
     """
     if kwargs.pop("true_phase", False):
         warnings.warn("true_phase argument is ignored in xrft.fft")
@@ -201,12 +207,18 @@ def fft(da, **kwargs):
         warnings.warn("true_amplitude argument is ignored in xrft.fft")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        return dft(da, true_phase=False, true_amplitude=False, **kwargs)
+        return dft(da, dim=dim, true_phase=False, true_amplitude=False, **kwargs)
 
 
-def ifft(daft, **kwargs):
+def ifft(daft, dim=None, **kwargs):
     """
-    See xrft.idft for argument list
+    daft : `xarray.DataArray`
+        The data to be transformed
+    dim : str or sequence of str, optional
+        The dimensions along which to take the transformation. If `None`, all
+        dimensions will be transformed. If the inputs are dask arrays, the
+        arrays must not be chunked along these dimensions.
+    kwargs: See xrft.idft for argument list
     """
     if kwargs.pop("true_phase", False):
         warnings.warn("true_phase argument is ignored in xrft.ifft")
@@ -216,7 +228,7 @@ def ifft(daft, **kwargs):
         warnings.warn("lag argument is ignored in xrft.ifft")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        return idft(daft, true_phase=False, true_amplitude=False, **kwargs)
+        return idft(daft, dim=dim, true_phase=False, true_amplitude=False, **kwargs)
 
 
 def dft(
@@ -593,7 +605,7 @@ def idft(
     )  # Do nothing if daft was not transposed
 
 
-def power_spectrum(da, scaling="density", **kwargs):
+def power_spectrum(da, dim=None, scaling="density", **kwargs):
     """
     Calculates the power spectrum of da.
 
@@ -606,6 +618,9 @@ def power_spectrum(da, scaling="density", **kwargs):
     ----------
     da : `xarray.DataArray`
         The data to be transformed
+    dim : str or sequence of str, optional
+        The dimensions along which to take the transformation. If `None`, all
+        dimensions will be transformed.
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
@@ -617,10 +632,8 @@ def power_spectrum(da, scaling="density", **kwargs):
         msg = (
             "density flag will be deprecated in future version of xrft.power_spectrum and replaced by scaling flag. "
             + 'density=True should be replaced by scaling="density" and '
-            + "density=False will not be maintained"
+            + "density=False will not be maintained.\nscaling flag is ignored !"
         )
-        warnings.warn(msg, FutureWarning)
-        msg = "scaling flag is ignored !"
         warnings.warn(msg, FutureWarning)
         scaling = "density" if density else "false_density"
 
@@ -628,7 +641,7 @@ def power_spectrum(da, scaling="density", **kwargs):
         {"true_amplitude": True, "true_phase": False}
     )  # true_phase do not matter in power_spectrum
 
-    daft = dft(da, **kwargs)
+    daft = dft(da, dim=dim, **kwargs)
     updated_dims = [
         d for d in daft.dims if (d not in da.dims and "segment" not in d)
     ]  # Transformed dimensions
@@ -651,7 +664,7 @@ def power_spectrum(da, scaling="density", **kwargs):
     return ps
 
 
-def cross_spectrum(da1, da2, scaling="density", **kwargs):
+def cross_spectrum(da1, da2, dim=None, scaling="density", **kwargs):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -666,6 +679,9 @@ def cross_spectrum(da1, da2, scaling="density", **kwargs):
         The data to be transformed
     da2 : `xarray.DataArray`
         The data to be transformed
+    dim : str or sequence of str, optional
+        The dimensions along which to take the transformation. If `None`, all
+        dimensions will be transformed.
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
@@ -685,18 +701,16 @@ def cross_spectrum(da1, da2, scaling="density", **kwargs):
         msg = (
             "density flag will be deprecated in future version of xrft.cross_spectrum and replaced by scaling flag. "
             + 'density=True should be replaced by scaling="density" and '
-            + "density=False will not be maintained"
+            + "density=False will not be maintained.\nscaling flag is ignored !"
         )
-        warnings.warn(msg, FutureWarning)
-        msg = "scaling flag is ignored !"
         warnings.warn(msg, FutureWarning)
 
         scaling = "density" if density else "false_density"
 
     kwargs.update({"true_amplitude": True})
 
-    daft1 = dft(da1, **kwargs)
-    daft2 = dft(da2, **kwargs)
+    daft1 = dft(da1, dim=dim, **kwargs)
+    daft2 = dft(da2, dim=dim, **kwargs)
 
     if daft1.dims != daft2.dims:
         raise ValueError("The two datasets have different dimensions")
@@ -722,7 +736,7 @@ def cross_spectrum(da1, da2, scaling="density", **kwargs):
     return cs
 
 
-def cross_phase(da1, da2, **kwargs):
+def cross_phase(da1, da2, dim=None, **kwargs):
     """
     Calculates the cross-phase between da1 and da2.
 
@@ -749,7 +763,7 @@ def cross_phase(da1, da2, **kwargs):
         )
         warnings.warn(msg, FutureWarning)
 
-    cp = xr.ufuncs.angle(cross_spectrum(da1, da2, **kwargs))
+    cp = xr.ufuncs.angle(cross_spectrum(da1, da2, dim=dim, **kwargs))
 
     if da1.name and da2.name:
         cp.name = "{}_{}_phase".format(da1.name, da2.name)
