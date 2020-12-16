@@ -566,7 +566,7 @@ class TestCrossPhase(object):
         phase_offset = np.arctan2(
             np.sin(phase_offset), np.cos(phase_offset)
         )  # Offset in [-pi, pi]
-        npt.assert_almost_equal(offset, phase_offset)
+        npt.assert_almost_equal(np.float(offset), phase_offset)
 
 
 @pytest.mark.parametrize("chunks_to_segments", [False, True])
