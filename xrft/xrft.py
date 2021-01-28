@@ -19,7 +19,10 @@ from .detrend import detrend as _detrend
 
 
 __all__ = [
+    "fft",
+    "ifft",
     "dft",
+    "idft",
     "power_spectrum",
     "cross_spectrum",
     "cross_phase",
@@ -116,6 +119,26 @@ def _freq(N, delta_x, real, shift):
     return k
 
 
+def _ifreq(N, delta_x, real, shift):
+    # calculate frequencies from coordinates
+    # coordinates are always loaded eagerly, so we use numpy
+    if real is None:
+        fftfreq = [np.fft.fftfreq] * len(N)
+    else:
+        irfftfreq = lambda Nx, dx: np.fft.fftfreq(
+            2 * (Nx - 1), dx
+        )  # Not in standard numpy !
+        fftfreq = [np.fft.fftfreq] * (len(N) - 1)
+        fftfreq.append(irfftfreq)
+
+    k = [fftfreq(Nx, dx) for (fftfreq, Nx, dx) in zip(fftfreq, N, delta_x)]
+
+    if shift:
+        k = [np.fft.fftshift(l) for l in k]
+
+    return k
+
+
 def _new_dims_and_coords(da, dim, wavenm, prefix):
     # set up new dimensions and coordinates for dataarray
     swap_dims = dict()
@@ -169,14 +192,44 @@ def _lag_coord(coord):
         return lag.data
 
 
-def _calc_normalization_factor(da, axis_num, chunks_to_segments):
-    """Return the signal length, N, to be used in the normalisation of spectra"""
+def fft(da, dim=None, **kwargs):
+    """
+    da : `xarray.DataArray`
+        The data to be transformed
+    dim : str or sequence of str, optional
+        The dimensions along which to take the transformation. If `None`, all
+        dimensions will be transformed. If the inputs are dask arrays, the
+        arrays must not be chunked along these dimensions.
+    kwargs: See xrft.dft for argument list
+    """
+    if kwargs.pop("true_phase", False):
+        warnings.warn("true_phase argument is ignored in xrft.fft")
+    if kwargs.pop("true_amplitude", False):
+        warnings.warn("true_amplitude argument is ignored in xrft.fft")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return dft(da, dim=dim, true_phase=False, true_amplitude=False, **kwargs)
 
-    if chunks_to_segments:
-        # Use chunk sizes for normalisation
-        return [da.chunks[n][0] for n in axis_num]
-    else:
-        return [da.shape[n] for n in axis_num]
+
+def ifft(daft, dim=None, **kwargs):
+    """
+    daft : `xarray.DataArray`
+        The data to be transformed
+    dim : str or sequence of str, optional
+        The dimensions along which to take the transformation. If `None`, all
+        dimensions will be transformed. If the inputs are dask arrays, the
+        arrays must not be chunked along these dimensions.
+    kwargs: See xrft.idft for argument list
+    """
+    if kwargs.pop("true_phase", False):
+        warnings.warn("true_phase argument is ignored in xrft.ifft")
+    if kwargs.pop("true_amplitude", False):
+        warnings.warn("true_amplitude argument is ignored in xrft.ifft")
+    if kwargs.pop("lag", False):
+        warnings.warn("lag argument is ignored in xrft.ifft")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return idft(daft, dim=dim, true_phase=False, true_amplitude=False, **kwargs)
 
 
 def dft(
@@ -188,6 +241,7 @@ def dft(
     detrend=None,
     window=False,
     true_phase=False,
+    true_amplitude=False,
     chunks_to_segments=False,
     prefix="freq_",
 ):
@@ -227,6 +281,9 @@ def dft(
         If set to False, standard fft algorithm is applied on signal without consideration of coordinates.
         If set to True, coordinates location are correctly taken into account to evaluate Fourier Tranforrm phase and
         fftshift is applied on input signal prior to fft  (fft algorithm intrinsically considers that input signal is on fftshifted grid).
+    true_amplitude : bool, optional
+        If set to True, output is multiplied by the spacing of the transformed variables to match theoretical FT amplitude.
+        If set to False, amplitude regularisation by spacing is not applied (as in numpy.fft)
     chunks_to_segments : bool, optional
         Whether the data is chunked along the axis to take FFT.
     prefix : str
@@ -237,6 +294,10 @@ def dft(
     daft : `xarray.DataArray`
         The output of the Fourier transformation, with appropriate dimensions.
     """
+
+    if not true_phase and not true_amplitude:
+        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.dft to preserve the theoretical phasing and amplitude of Fourier Transform. Consider using xrft.fft to ensure future compatibility with numpy.fft like behavior and to deactivate this warning."
+        warnings.warn(msg, FutureWarning)
 
     if dim is None:
         dim = list(da.dims)
@@ -291,6 +352,11 @@ def dft(
                 "Can't take Fourier transform because "
                 "coodinate %s is not evenly spaced" % d
             )
+        if delta == 0.0:
+            raise ValueError(
+                "Can't take Fourier transform because spacing in coordinate %s is zero"
+                % d
+            )
         delta_x.append(delta)
         lag_x.append(lag)
 
@@ -329,34 +395,38 @@ def dft(
                 coords={up_dim: newcoords[up_dim]},
             )  # taking advantage of xarray broadcasting and ordered coordinates
 
+    if true_amplitude:
+        daft = daft * np.prod(delta_x)
+
     return daft.transpose(
         *[swap_dims.get(d, d) for d in rawdims]
     )  # Do nothing if da was not transposed
 
 
-def power_spectrum(
-    da,
+def idft(
+    daft,
     spacing_tol=1e-3,
     dim=None,
     real=None,
     shift=True,
     detrend=None,
+    true_phase=False,
+    true_amplitude=False,
     window=False,
     chunks_to_segments=False,
-    density=True,
     prefix="freq_",
+    lag=None,
 ):
     """
-    Calculates the power spectrum of da.
+    Perform inverse discrete Fourier transform of xarray data-array `daft` along the
+    specified dimensions.
 
     .. math::
-        da' = da - \overline{da}
-    .. math::
-        ps = \mathbb{F}(da') {\mathbb{F}(da')}^*
+        da = \mathbb{F}(daft - \overline{daft})
 
     Parameters
     ----------
-    da : `xarray.DataArray`
+    daft : `xarray.DataArray`
         The data to be transformed
     spacing_tol: float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
@@ -366,82 +436,236 @@ def power_spectrum(
         dimensions will be transformed.
     real : str, optional
         Real Fourier transform will be taken along this dimension.
-    shift : bool, optional
-        Whether to shift the fft output.
+    shift : bool, default
+        Whether to shift the fft output. Default is `True`.
     detrend : str, optional
         If `constant`, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
         If `linear`, the linear least-square fit will be subtracted before
         the FT.
-    density : bool, optional
-        If true, it will normalize the spectrum to spectral density
     window : bool, optional
         Whether to apply a Hann window to the data before the Fourier
-        transform is taken
+        transform is taken. A window will be applied to all the dimensions in
+        dim.
     chunks_to_segments : bool, optional
         Whether the data is chunked along the axis to take FFT.
+    prefix : str
+        The prefix for the new transformed dimensions.
+    true_phase : bool, optional
+        If set to False, standard ifft algorithm is applied on signal without consideration of coordinates order.
+        If set to True, coordinates are correctly taken into account to evaluate Inverse Fourier Tranforrm phase and
+        fftshift is applied on input signal prior to ifft (ifft algorithm intrinsically considers that input signal is on fftshifted grid).
+    true_amplitude : bool, optional
+        If set to True, output is divided by the spacing of the transformed variables to match theoretical IFT amplitude.
+        If set to False, amplitude regularisation by spacing is not applied (as in numpy.ifft)
+    lag : float or sequence of float, optional
+        If lag is None or zero, output coordinates are centered on zero.
+        If defined, lag must have same length as dim.
+        Output coordinates corresponding to transformed dimensions will be shifted by corresponding lag values.
+        Correct signal phasing will be preserved if true_phase is set to True.
 
     Returns
     -------
-    ps : `xarray.DataArray`
-        Two-dimensional power spectrum
+    da : `xarray.DataArray`
+        The output of the Inverse Fourier transformation, with appropriate dimensions.
     """
 
-    daft = dft(
-        da,
-        spacing_tol,
-        dim=dim,
-        real=real,
-        shift=shift,
-        detrend=detrend,
-        window=window,
-        chunks_to_segments=chunks_to_segments,
-        prefix=prefix,
-    )
+    if not true_phase and not true_amplitude:
+        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.idft to preserve the theoretical phasing and amplitude of Inverse Fourier Transform. Consider using xrft.ifft to ensure future compatibility with numpy.ifft like behavior and to deactivate this warning."
+        warnings.warn(msg, FutureWarning)
 
     if dim is None:
-        dim = list(da.dims)
+        dim = list(daft.dims)
     else:
         if isinstance(dim, str):
-            dim = [
-                dim,
-            ]
-    if real is not None and real not in dim:
-        dim += [real]
+            dim = [dim]
+
+    if real is not None:
+        if real not in daft.dims:
+            raise ValueError(
+                "The dimension along which real IFT is taken must be one of the existing dimensions."
+            )
+        else:
+            dim = [d for d in dim if d != real] + [
+                real
+            ]  # real dim has to be moved or added at the end !
+
+    if lag is not None:
+        if isinstance(lag, float) or isinstance(lag, int):
+            lag = [lag]
+        if len(dim) != len(lag):
+            raise ValueError("dim and lag must have the same length.")
+        if not true_phase:
+            msg = "Setting lag with true_phase=False does not guarantee accurate idft."
+            warnings.warn(msg, Warning)
+
+        for d, l in zip(dim, lag):
+            daft = daft * np.exp(1j * 2.0 * np.pi * daft[d] * l)
+
+    if chunks_to_segments:
+        daft = _stack_chunks(daft, dim)
+
+    rawdims = daft.dims  # take care of segmented dimesions, if any
+
+    if real is not None:
+        daft = daft.transpose(
+            *[d for d in daft.dims if d not in [real]] + [real]
+        )  # dimension for real transformed is moved at the end
+
+    fftm = _fft_module(daft)
+
+    if real is None:
+        fft_fn = fftm.ifftn
+    else:
+        fft_fn = fftm.irfftn
 
     # the axes along which to take ffts
-    axis_num = [da.get_axis_num(d) for d in dim]
+    axis_num = [daft.get_axis_num(d) for d in dim]
 
-    N = _calc_normalization_factor(da, axis_num, chunks_to_segments)
+    N = [daft.shape[n] for n in axis_num]
 
-    return _power_spectrum(daft, dim, N, density)
+    # verify even spacing of input coordinates (It handle fftshifted grids)
+    delta_x = []
+    for d in dim:
+        diff = _diff_coord(daft[d])
+        delta = np.abs(diff[0])
+        l = _lag_coord(daft[d]) if d is not real else daft[d][0].data
+        if not np.allclose(
+            diff, diff[0], rtol=spacing_tol
+        ):  # means that input is not on regular increasing grid
+            reordered_coord = daft[d].copy()
+            reordered_coord = reordered_coord.sortby(d)
+            diff = _diff_coord(reordered_coord)
+            l = _lag_coord(reordered_coord)
+            if np.allclose(
+                diff, diff[0], rtol=spacing_tol
+            ):  # means that input is on fftshifted grid
+                daft = daft.sortby(d)  # reordering the input
+            else:
+                raise ValueError(
+                    "Can't take Fourier transform because "
+                    "coodinate %s is not evenly spaced" % d
+                )
+        if np.abs(l) > spacing_tol:
+            raise ValueError(
+                "Inverse Fourier Transform can not be computed because coordinate %s is not centered on zero frequency"
+                % d
+            )
+        if delta == 0.0:
+            raise ValueError(
+                "Can't take Inverse Fourier transform because spacing in coordinate %s is zero"
+                % d
+            )
+        delta_x.append(delta)
+
+    if detrend:
+        daft = _apply_detrend(daft, dim, axis_num, detrend)
+
+    if window:
+        daft = _apply_window(daft, dim)
+
+    axis_shift = [
+        daft.get_axis_num(d) for d in dim if d is not real
+    ]  # remove real dim of the list
+
+    f = fftm.ifftshift(
+        daft.data, axes=axis_shift
+    )  # Force to be on fftshift grid before Fourier Transform
+    f = fft_fn(f, axes=axis_num)
+
+    if not true_phase:
+        f = fftm.ifftshift(f, axes=axis_num)
+
+    if shift:
+        f = fftm.fftshift(f, axes=axis_num)
+
+    k = _ifreq(N, delta_x, real, shift)
+
+    newcoords, swap_dims = _new_dims_and_coords(daft, dim, k, prefix)
+    da = xr.DataArray(
+        f,
+        dims=daft.dims,
+        coords=dict([c for c in daft.coords.items() if c[0] not in dim]),
+    )
+    da = da.swap_dims(swap_dims).assign_coords(newcoords)
+    da = da.drop([d for d in dim if d in da.coords])
+
+    if lag is not None:
+        with xr.set_options(
+            keep_attrs=True
+        ):  # This line ensures keeping spacing attribute in output coordinates
+            for d, l in zip(dim, lag):
+                tfd = swap_dims[d]
+                da = da.assign_coords({tfd: da[tfd] + l})
+
+    if true_amplitude:
+        da = da / np.prod([float(da[up_dim].spacing) for up_dim in swap_dims.values()])
+
+    return da.transpose(
+        *[swap_dims.get(d, d) for d in rawdims]
+    )  # Do nothing if daft was not transposed
 
 
-def _power_spectrum(daft, dim, N, density):
+def power_spectrum(da, dim=None, scaling="density", **kwargs):
+    """
+    Calculates the power spectrum of da.
 
-    ps = (daft * np.conj(daft)).real
+    .. math::
+    da' = da - \overline{da}
+    .. math::
+    ps = \mathbb{F}(da') {\mathbb{F}(da')}^*
 
-    if density:
-        ps /= (np.asarray(N).prod()) ** 2
-        for i in dim:
-            ps /= daft["freq_" + i].spacing
-            # ps /= daft["freq_" + i + "_spacing"]
+    Parameters
+    ----------
+    da : `xarray.DataArray`
+        The data to be transformed
+    dim : str or sequence of str, optional
+        The dimensions along which to take the transformation. If `None`, all
+        dimensions will be transformed.
+    scaling : str, optional
+        If 'density', it will normalize the output to power spectral density
+        If 'spectrum', it will normalize the output to power spectrum
+    kwargs : dict : see xrft.dft for argument list
+    """
 
+    if "density" in kwargs:
+        density = kwargs.pop("density")
+        msg = (
+            "density flag will be deprecated in future version of xrft.power_spectrum and replaced by scaling flag. "
+            + 'density=True should be replaced by scaling="density" and '
+            + "density=False will not be maintained.\nscaling flag is ignored !"
+        )
+        warnings.warn(msg, FutureWarning)
+        scaling = "density" if density else "false_density"
+
+    kwargs.update(
+        {"true_amplitude": True, "true_phase": False}
+    )  # true_phase do not matter in power_spectrum
+
+    daft = dft(da, dim=dim, **kwargs)
+    updated_dims = [
+        d for d in daft.dims if (d not in da.dims and "segment" not in d)
+    ]  # Transformed dimensions
+    ps = np.abs(daft) ** 2
+
+    if scaling == "density":
+        fs = np.prod([float(ps[d].spacing) for d in updated_dims])
+        ps *= fs
+    elif scaling == "spectrum":
+        fs = np.prod([float(ps[d].spacing) for d in updated_dims])
+        ps *= fs ** 2
+    elif scaling == "false_density":  # Corresponds to density=False
+        s = np.prod([float(ps.sizes[d] * ps[d].spacing) for d in updated_dims])
+        real = kwargs.get("real", None)
+        if real is not None:
+            s *= da.sizes[real] / (da.sizes[real] // 2 + 1)
+        ps *= s ** 2
+    else:
+        raise ValueError("Unknown {} scaling flag".format(scaling))
     return ps
 
 
-def cross_spectrum(
-    da1,
-    da2,
-    spacing_tol=1e-3,
-    dim=None,
-    shift=True,
-    detrend=None,
-    window=False,
-    chunks_to_segments=False,
-    density=True,
-    prefix="freq_",
-):
+def cross_spectrum(da1, da2, dim=None, scaling="density", **kwargs):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -456,96 +680,64 @@ def cross_spectrum(
         The data to be transformed
     da2 : `xarray.DataArray`
         The data to be transformed
-    spacing_tol: float, optional
-        Spacing tolerance. Fourier transform should not be applied to uneven grid but
-        this restriction can be relaxed with this setting. Use caution.
     dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    shift : bool, optional
-        Whether to shift the fft output.
-    detrend : str, optional
-        If `constant`, the mean across the transform dimensions will be
-        subtracted before calculating the Fourier transform (FT).
-        If `linear`, the linear least-square fit along one axis will be
-        subtracted before the FT. It will give an error if the length of
-        `dim` is longer than one.
-    density : bool, optional
-        If true, it will normalize the spectrum to spectral density
-    window : bool, optional
-        Whether to apply a Hann window to the data before the Fourier
-        transform is taken
-
-    Returns
-    -------
-    cs : `xarray.DataArray`
-        Two-dimensional cross spectrum
+    scaling : str, optional
+        If 'density', it will normalize the output to power spectral density
+        If 'spectrum', it will normalize the output to power spectrum
+    kwargs : dict : see xrft.dft for argument list
     """
 
-    daft1 = dft(
-        da1,
-        spacing_tol,
-        dim=dim,
-        shift=shift,
-        detrend=detrend,
-        window=window,
-        chunks_to_segments=chunks_to_segments,
-        prefix=prefix,
-    )
-    daft2 = dft(
-        da2,
-        spacing_tol,
-        dim=dim,
-        shift=shift,
-        detrend=detrend,
-        window=window,
-        chunks_to_segments=chunks_to_segments,
-        prefix=prefix,
-    )
+    if "true_phase" not in kwargs:
+        msg = (
+            "true_phase flag will be set to True in future version of xrft.dft possibly impacting cross_spectrum output. "
+            + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
+            + "with numpy-like behavior where the coordinates are disregarded."
+        )
+        warnings.warn(msg, FutureWarning)
 
-    if dim is None:
-        dim = da1.dims
-        dim2 = da2.dims
-        if dim != dim2:
-            raise ValueError("The two datasets have different dimensions")
+    if "density" in kwargs:
+        density = kwargs.pop("density")
+        msg = (
+            "density flag will be deprecated in future version of xrft.cross_spectrum and replaced by scaling flag. "
+            + 'density=True should be replaced by scaling="density" and '
+            + "density=False will not be maintained.\nscaling flag is ignored !"
+        )
+        warnings.warn(msg, FutureWarning)
+
+        scaling = "density" if density else "false_density"
+
+    kwargs.update({"true_amplitude": True})
+
+    daft1 = dft(da1, dim=dim, **kwargs)
+    daft2 = dft(da2, dim=dim, **kwargs)
+
+    if daft1.dims != daft2.dims:
+        raise ValueError("The two datasets have different dimensions")
+
+    updated_dims = [
+        d for d in daft1.dims if (d not in da1.dims and "segment" not in d)
+    ]  # Transformed dimensions
+    cs = daft1 * np.conj(daft2)
+    if scaling == "density":
+        fs = np.prod([float(cs[d].spacing) for d in updated_dims])
+        cs *= fs
+    elif scaling == "spectrum":
+        fs = np.prod([float(cs[d].spacing) for d in updated_dims])
+        cs *= fs ** 2
+    elif scaling == "false_density":  # Corresponds to density=False
+        s = np.prod([float(cs.sizes[d] * cs[d].spacing) for d in updated_dims])
+        real = kwargs.get("real", None)
+        if real is not None:
+            s *= da.sizes[real] / (da.sizes[real] // 2 + 1)
+        cs *= s ** 2
     else:
-        if isinstance(dim, str):
-            dim = [
-                dim,
-            ]
-            dim2 = [
-                dim,
-            ]
-
-    # the axes along which to take ffts
-    axis_num = [da1.get_axis_num(d) for d in dim]
-
-    N = _calc_normalization_factor(da1, axis_num, chunks_to_segments)
-
-    return _cross_spectrum(daft1, daft2, dim, N, density)
-
-
-def _cross_spectrum(daft1, daft2, dim, N, density):
-    cs = (daft1 * np.conj(daft2)).real
-
-    if density:
-        cs /= (np.asarray(N).prod()) ** 2
-        for i in dim:
-            # cs /= daft1["freq_" + i + "_spacing"]
-            cs /= daft1["freq_" + i].spacing
-
+        raise ValueError("Unknown {} scaling flag".format(scaling))
     return cs
 
 
-def cross_phase(
-    da1,
-    da2,
-    spacing_tol=1e-3,
-    dim=None,
-    detrend=None,
-    window=False,
-    chunks_to_segments=False,
-):
+def cross_phase(da1, da2, dim=None, **kwargs):
     """
     Calculates the cross-phase between da1 and da2.
 
@@ -562,68 +754,17 @@ def cross_phase(
         The data to be transformed
     da2 : `xarray.DataArray`
         The data to be transformed
-    spacing_tol: float, optional
-        Spacing tolerance. Fourier transform should not be applied to uneven grid but
-        this restriction can be relaxed with this setting. Use caution.
-    dim : list, optional
-        The dimension along which to take the real Fourier transformation.
-        If `None`, all dimensions will be transformed.
-    shift : bool, optional
-        Whether to shift the fft output.
-    detrend : str, optional
-        If `constant`, the mean across the transform dimensions will be
-        subtracted before calculating the Fourier transform (FT).
-        If `linear`, the linear least-square fit along one axis will be
-        subtracted before the FT. It will give an error if the length of
-        `dim` is longer than one.
-    window : bool, optional
-        Whether to apply a Hann window to the data before the Fourier
-        transform is taken
-
-    Returns
-    -------
-    cp : `xarray.DataArray`
-        Cross-phase as a function of frequency.
+    kwargs : dict : see xrft.dft for argument list
     """
-
-    if dim is None:
-        dim = da1.dims
-        dim2 = da2.dims
-        if dim != dim2:
-            raise ValueError("The two datasets have different dimensions")
-    elif not isinstance(dim, list):
-        dim = [dim]
-    if len(dim) > 1:
-        raise ValueError(
-            "Cross phase calculation should only be done along " "a single dimension."
+    if "true_phase" not in kwargs:
+        msg = (
+            "true_phase flag will be set to True in future version of xrft.dft possibly impacting cross_phase output. "
+            + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
+            + "with numpy-like behavior where the coordinates are disregarded."
         )
+        warnings.warn(msg, FutureWarning)
 
-    daft1 = dft(
-        da1,
-        spacing_tol,
-        dim=dim,
-        real=dim[0],
-        shift=False,
-        detrend=detrend,
-        window=window,
-        chunks_to_segments=chunks_to_segments,
-    )
-    daft2 = dft(
-        da2,
-        spacing_tol,
-        dim=dim,
-        real=dim[0],
-        shift=False,
-        detrend=detrend,
-        window=window,
-        chunks_to_segments=chunks_to_segments,
-    )
-
-    if daft1.chunks and daft2.chunks:
-        _cross_phase = lambda a, b: dsar.angle(a * dsar.conj(b))
-    else:
-        _cross_phase = lambda a, b: np.angle(a * np.conj(b))
-    cp = xr.apply_ufunc(_cross_phase, daft1, daft2, dask="allowed")
+    cp = xr.ufuncs.angle(cross_spectrum(da1, da2, dim=dim, **kwargs))
 
     if da1.name and da2.name:
         cp.name = "{}_{}_phase".format(da1.name, da2.name)
@@ -735,8 +876,6 @@ def isotropic_powerspectrum(*args, **kwargs):  # pragma: no cover
     """
     Deprecated function. See isotropic_power_spectrum doc
     """
-    import warnings
-
     msg = (
         "This function has been renamed and will disappear in the future."
         + " Please use isotropic_power_spectrum instead"
@@ -806,7 +945,7 @@ def isotropic_power_spectrum(
 
     ps = power_spectrum(
         da,
-        spacing_tol,
+        spacing_tol=spacing_tol,
         dim=dim,
         shift=shift,
         detrend=detrend,
@@ -823,8 +962,6 @@ def isotropic_crossspectrum(*args, **kwargs):  # pragma: no cover
     """
     Deprecated function. See isotropic_cross_spectrum doc
     """
-    import warnings
-
     msg = (
         "This function has been renamed and will disappear in the future."
         + " Please use isotropic_cross_spectrum instead"
@@ -901,7 +1038,7 @@ def isotropic_cross_spectrum(
     cs = cross_spectrum(
         da1,
         da2,
-        spacing_tol,
+        spacing_tol=spacing_tol,
         dim=dim,
         shift=shift,
         detrend=detrend,
