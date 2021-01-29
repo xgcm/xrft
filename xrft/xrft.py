@@ -782,7 +782,12 @@ def _binned_agg(
 ) -> np.ndarray:
     """NumPy helper function for aggregating over bins."""
 
-    import numpy_groupies
+    try:
+        import numpy_groupies
+    except ImportError:
+        raise ImportError(
+            "This function requires the `numpy_groupies` package to be installed. Please install it with pip or conda."
+        )
 
     mask = np.logical_not(np.isnan(indices))
     int_indices = indices[mask].astype(int)
