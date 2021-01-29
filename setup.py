@@ -21,8 +21,8 @@ CLASSIFIERS = [
     "Topic :: Scientific/Engineering",
 ]
 
-INSTALL_REQUIRES = ["xarray", "dask", "numpy", "pandas", "scipy"]
-EXTRAS_REQUIRE = ["cftime", "numpy_groupies"]
+INSTALL_REQUIRES = ["xarray", "dask", "numpy", "pandas", "scipy", "numpy_groupies"]
+EXTRAS_REQUIRE = ["cftime"]
 SETUP_REQUIRES = ["pytest-runner"]
 TESTS_REQUIRE = ["pytest >= 2.8", "coverage"]
 
