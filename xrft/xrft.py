@@ -5,7 +5,6 @@ import functools as ft
 from functools import reduce
 
 import numpy as np
-import numpy_groupies
 import xarray as xr
 import pandas as pd
 
@@ -782,6 +781,14 @@ def _binned_agg(
     dtype,
 ) -> np.ndarray:
     """NumPy helper function for aggregating over bins."""
+
+    try:
+        import numpy_groupies
+    except ImportError:
+        raise ImportError(
+            "This function requires the `numpy_groupies` package to be installed. Please install it with pip or conda."
+        )
+
     mask = np.logical_not(np.isnan(indices))
     int_indices = indices[mask].astype(int)
     shape = array.shape[: -indices.ndim] + (num_bins,)
