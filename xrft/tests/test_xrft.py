@@ -359,17 +359,12 @@ class TestSpectrum(object):
             dims=["x"],
             coords={
                 "x": range(N),
-            }
+            },
         )
-        f_scipy, p_scipy = sps.periodogram(da.values,
-                                           window='rectangular',
-                                           return_onesided=True
-                                           )
-        ps = xrft.xrft.power_spectrum(da,
-                                      dim='x',
-                                      real='x',
-                                      detrend='constant'
-                                      )
+        f_scipy, p_scipy = sps.periodogram(
+            da.values, window="rectangular", return_onesided=True
+        )
+        ps = xrft.xrft.power_spectrum(da, dim="x", real="x", detrend="constant")
         npt.assert_almost_equal(ps.values[1:-1], p_scipy[1:-1])
         da = xr.DataArray(
             np.random.rand(2, N, N),
@@ -378,7 +373,7 @@ class TestSpectrum(object):
                 "time": np.array(["2019-04-18", "2019-04-19"], dtype="datetime64"),
                 "y": range(N),
                 "x": range(N),
-            }
+            },
         )
         if dask:
             da = da.chunk({"time": 1})
@@ -393,7 +388,7 @@ class TestSpectrum(object):
             da, dim=["y"], real="x", window=True, density=False, detrend="constant"
         )
         daft = xrft.fft(da, dim=["y"], real="x", detrend="constant", window=True)
-        npt.assert_almost_equal(ps.values, 2*np.real(daft * np.conj(daft)))
+        npt.assert_almost_equal(ps.values, 2 * np.real(daft * np.conj(daft)))
 
         ### Normalized
         ps = xrft.power_spectrum(da, dim=["y", "x"], window=True, detrend="constant")
@@ -469,9 +464,7 @@ class TestSpectrum(object):
             },
         )
 
-        ps = xrft.power_spectrum(
-            da, dim="y", real="x", window=True, detrend="constant"
-        )
+        ps = xrft.power_spectrum(da, dim="y", real="x", window=True, detrend="constant")
         npt.assert_array_equal(
             ps.values,
             xrft.power_spectrum(

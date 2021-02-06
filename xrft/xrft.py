@@ -650,7 +650,7 @@ def power_spectrum(da, dim=None, real=None, scaling="density", **kwargs):
     ps = np.abs(daft) ** 2
 
     if real is not None:
-        ps = ps*2
+        ps = ps * 2
 
     if scaling == "density":
         fs = np.prod([float(ps[d].spacing) for d in updated_dims])
@@ -724,7 +724,7 @@ def cross_spectrum(da1, da2, dim=None, real=None, scaling="density", **kwargs):
     cs = daft1 * np.conj(daft2)
 
     if real is not None:
-        cs = cs*2
+        cs = cs * 2
 
     if scaling == "density":
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
