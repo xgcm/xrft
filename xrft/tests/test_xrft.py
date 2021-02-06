@@ -407,6 +407,11 @@ class TestSpectrum(object):
         npt.assert_almost_equal(ps.values, np.real(daft * np.conj(daft)))
         npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.0)
 
+        with pytest.raises(ValueError):
+            xrft.power_spectrum(
+                da, dim=["y", "x"], window=False, correct_amplitude=True
+            )
+
     @pytest.mark.parametrize("dask", [False, True])
     def test_cross_spectrum(self, dask):
         """Test the cross spectrum function"""
@@ -451,6 +456,9 @@ class TestSpectrum(object):
         test /= dk ** 2
         npt.assert_almost_equal(cs.values, test)
         npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.0)
+
+        with pytest.raises(ValueError):
+            xrft.cross_spectrum(da, da2, dim=dim, window=False, correct_amplitude=True)
 
     def test_spectrum_dim(self):
         N = 16
@@ -640,10 +648,14 @@ def test_parseval(chunks_to_segments):
         dims=dim,
         coords=da.coords,
     )
+
     # Check that the (rectangular) integral of the spectrum matches the windowed variance
+    # for i in dim:
+    #     da_corrected = (da_prime * window) ** 2 / np.mean(np.hanning(N / n_segments)**2)
     npt.assert_almost_equal(
         (1 / delta_xy) * ps.mean(fftdim).values,
         ((da_prime * window) ** 2).mean(dim).values,
+        # da_corrected.mean(dim).values,
         decimal=5,
     )
 
@@ -658,6 +670,7 @@ def test_parseval(chunks_to_segments):
     npt.assert_almost_equal(
         (1 / delta_xy) * cs.mean(fftdim).values,
         ((da_prime * window) * (da2_prime * window)).mean(dim).values,
+        # ((da_prime) * (da2_prime)).mean(dim).values,
         decimal=5,
     )
 
@@ -673,7 +686,9 @@ def test_parseval(chunks_to_segments):
         npt.assert_almost_equal(
             (1 / delta_xy) * ps[0].values.mean(),
             (
-                (xrft.detrend(d3d, dim, detrend_type="linear")[0].values * window) ** 2
+                (xrft.detrend(d3d, dim, detrend_type="linear")[0].values * window)
+                ** 2
+                # (xrft.detrend(d3d, dim, detrend_type="linear")[0].values) ** 2
             ).mean(),
             decimal=5,
         )

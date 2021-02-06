@@ -63,7 +63,7 @@ def _apply_window(da, dims, window_type="hanning"):
         for d in dims
     ]
 
-    return da * reduce(operator.mul, windows[::-1])
+    return windows, da * reduce(operator.mul, windows[::-1])
 
 
 def _stack_chunks(da, dim, suffix="_segment"):
@@ -363,7 +363,7 @@ def dft(
         da = _detrend(da, dim, detrend_type=detrend)
 
     if window:
-        da = _apply_window(da, dim)
+        _, da = _apply_window(da, dim)
 
     if true_phase:
         f = fft_fn(fft.ifftshift(da.data, axes=axis_num), axes=axis_num)
@@ -408,10 +408,8 @@ def idft(
     dim=None,
     real=None,
     shift=True,
-    detrend=None,
     true_phase=False,
     true_amplitude=False,
-    window=False,
     chunks_to_segments=False,
     prefix="freq_",
     lag=None,
@@ -557,12 +555,6 @@ def idft(
             )
         delta_x.append(delta)
 
-    if detrend:
-        daft = _apply_detrend(daft, dim, axis_num, detrend)
-
-    if window:
-        daft = _apply_window(daft, dim)
-
     axis_shift = [
         daft.get_axis_num(d) for d in dim if d is not real
     ]  # remove real dim of the list
@@ -605,7 +597,7 @@ def idft(
     )  # Do nothing if daft was not transposed
 
 
-def power_spectrum(da, dim=None, real=None, scaling="density", **kwargs):
+def power_spectrum(da, dim=None, scaling="density", correct_amplitude=False, **kwargs):
     """
     Calculates the power spectrum of da.
 
@@ -621,11 +613,11 @@ def power_spectrum(da, dim=None, real=None, scaling="density", **kwargs):
     dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    real : str, optional
-        Real Fourier transform will be taken along this dimension.
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
+    correct_amplitude : boolean
+        If True, it will correct for the amplitude change by the windowing
     kwargs : dict : see xrft.dft for argument list
     """
 
@@ -643,14 +635,22 @@ def power_spectrum(da, dim=None, real=None, scaling="density", **kwargs):
         {"true_amplitude": True, "true_phase": False}
     )  # true_phase do not matter in power_spectrum
 
-    daft = dft(da, dim=dim, real=real, **kwargs)
+    daft = dft(da, dim=dim, **kwargs)
     updated_dims = [
         d for d in daft.dims if (d not in da.dims and "segment" not in d)
     ]  # Transformed dimensions
     ps = np.abs(daft) ** 2
 
-    if real is not None:
-        ps = ps * 2
+    for arg in kwargs.keys():
+        if arg == "real" and arg is not None:
+            ps = ps * 2
+        if arg == "window" and correct_amplitude:
+            if arg is not True:
+                raise ValueError("Windowing needs to be turned on.")
+            else:
+                windows, _ = _apply_window(da, dim)
+                for i in range(len(windows)):
+                    ps = ps / (windows[i] ** 2).mean()
 
     if scaling == "density":
         fs = np.prod([float(ps[d].spacing) for d in updated_dims])
@@ -665,7 +665,9 @@ def power_spectrum(da, dim=None, real=None, scaling="density", **kwargs):
     return ps
 
 
-def cross_spectrum(da1, da2, dim=None, real=None, scaling="density", **kwargs):
+def cross_spectrum(
+    da1, da2, dim=None, scaling="density", correct_amplitude=False, **kwargs
+):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -683,11 +685,11 @@ def cross_spectrum(da1, da2, dim=None, real=None, scaling="density", **kwargs):
     dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    real : str, optional
-        Real Fourier transform will be taken along this dimension.
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
+    correct_amplitude : boolean
+        If True, it will correct for the amplitude change by the windowing
     kwargs : dict : see xrft.dft for argument list
     """
 
@@ -712,8 +714,8 @@ def cross_spectrum(da1, da2, dim=None, real=None, scaling="density", **kwargs):
 
     kwargs.update({"true_amplitude": True})
 
-    daft1 = dft(da1, dim=dim, real=real, **kwargs)
-    daft2 = dft(da2, dim=dim, real=real, **kwargs)
+    daft1 = dft(da1, dim=dim, **kwargs)
+    daft2 = dft(da2, dim=dim, **kwargs)
 
     if daft1.dims != daft2.dims:
         raise ValueError("The two datasets have different dimensions")
@@ -723,8 +725,16 @@ def cross_spectrum(da1, da2, dim=None, real=None, scaling="density", **kwargs):
     ]  # Transformed dimensions
     cs = daft1 * np.conj(daft2)
 
-    if real is not None:
-        cs = cs * 2
+    for arg in kwargs.keys():
+        if arg == "real" and arg is not None:
+            cs = cs * 2
+        if arg == "window" and correct_amplitude:
+            if arg is not True:
+                raise ValueError("Windowing needs to be turned on.")
+            else:
+                windows, _ = _apply_window(da, dim)
+                for i in range(len(windows)):
+                    cs = cs / (windows[i] ** 2).mean()
 
     if scaling == "density":
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
