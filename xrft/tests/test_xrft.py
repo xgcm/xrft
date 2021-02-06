@@ -650,14 +650,22 @@ def test_parseval(chunks_to_segments):
     )
 
     # Check that the (rectangular) integral of the spectrum matches the windowed variance
-    # for i in dim:
-    #     da_corrected = (da_prime * window) ** 2 / np.mean(np.hanning(N / n_segments)**2)
     npt.assert_almost_equal(
         (1 / delta_xy) * ps.mean(fftdim).values,
         ((da_prime * window) ** 2).mean(dim).values,
-        # da_corrected.mean(dim).values,
         decimal=5,
     )
+
+    # ps = xrft.power_spectrum(
+    #     da, window=True, detrend="constant", chunks_to_segments=chunks_to_segments, correct_amplitude=True
+    # )
+    # da_corrected = (da_prime * window) ** 2 / (window**2).mean()
+    # npt.assert_almost_equal(
+    #     (1 / delta_xy) * ps.mean(fftdim).values,
+    #     ((da_prime * window) ** 2).mean(dim).values,
+    #     da_corrected.mean(dim).values,
+    #     decimal=2,
+    # )
 
     ### Test Parseval's theorem for cross_spectrum with `window=True` and detrend='constant'
     cs = xrft.cross_spectrum(
@@ -670,7 +678,6 @@ def test_parseval(chunks_to_segments):
     npt.assert_almost_equal(
         (1 / delta_xy) * cs.mean(fftdim).values,
         ((da_prime * window) * (da2_prime * window)).mean(dim).values,
-        # ((da_prime) * (da2_prime)).mean(dim).values,
         decimal=5,
     )
 

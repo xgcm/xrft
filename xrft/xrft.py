@@ -63,7 +63,7 @@ def _apply_window(da, dims, window_type="hanning"):
         for d in dims
     ]
 
-    return windows, da * reduce(operator.mul, windows[::-1])
+    return reduce(operator.mul, windows[::-1]), da * reduce(operator.mul, windows[::-1])
 
 
 def _stack_chunks(da, dim, suffix="_segment"):
@@ -649,8 +649,7 @@ def power_spectrum(da, dim=None, scaling="density", correct_amplitude=False, **k
                 raise ValueError("Windowing needs to be turned on.")
             else:
                 windows, _ = _apply_window(da, dim)
-                for i in range(len(windows)):
-                    ps = ps / (windows[i] ** 2).mean()
+                ps = ps / (windows ** 2).mean()
 
     if scaling == "density":
         fs = np.prod([float(ps[d].spacing) for d in updated_dims])
@@ -733,8 +732,7 @@ def cross_spectrum(
                 raise ValueError("Windowing needs to be turned on.")
             else:
                 windows, _ = _apply_window(da, dim)
-                for i in range(len(windows)):
-                    cs = cs / (windows[i] ** 2).mean()
+                cs = cs / (windows ** 2).mean()
 
     if scaling == "density":
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
