@@ -352,7 +352,25 @@ class TestSpectrum(object):
     @pytest.mark.parametrize("dask", [False, True])
     def test_power_spectrum(self, dask):
         """Test the power spectrum function"""
+
         N = 16
+        da = xr.DataArray(
+            np.random.rand(N),
+            dims=["x"],
+            coords={
+                "x": range(N),
+            }
+        )
+        f_scipy, p_scipy = sps.periodogram(da.values,
+                                           window='rectangular',
+                                           return_onesided=True
+                                           )
+        ps = xrft.xrft.power_spectrum(da,
+                                      dim='x',
+                                      real='x',
+                                      detrend='constant'
+                                      )
+        npt.assert_almost_equal(ps.values[1:-1], p_scipy[1:-1])
         da = xr.DataArray(
             np.random.rand(2, N, N),
             dims=["time", "y", "x"],
@@ -360,7 +378,7 @@ class TestSpectrum(object):
                 "time": np.array(["2019-04-18", "2019-04-19"], dtype="datetime64"),
                 "y": range(N),
                 "x": range(N),
-            },
+            }
         )
         if dask:
             da = da.chunk({"time": 1})
@@ -375,7 +393,7 @@ class TestSpectrum(object):
             da, dim=["y"], real="x", window=True, density=False, detrend="constant"
         )
         daft = xrft.fft(da, dim=["y"], real="x", detrend="constant", window=True)
-        npt.assert_almost_equal(ps.values, np.real(daft * np.conj(daft)))
+        npt.assert_almost_equal(ps.values, 2*np.real(daft * np.conj(daft)))
 
         ### Normalized
         ps = xrft.power_spectrum(da, dim=["y", "x"], window=True, detrend="constant")
@@ -452,14 +470,15 @@ class TestSpectrum(object):
         )
 
         ps = xrft.power_spectrum(
-            da, dim="y", real="x", window=True, density=False, detrend="constant"
+            da, dim="y", real="x", window=True, detrend="constant"
         )
         npt.assert_array_equal(
             ps.values,
             xrft.power_spectrum(
-                da, dim=["y"], real="x", window=True, density=False, detrend="constant"
+                da, dim=["y"], real="x", window=True, detrend="constant"
             ).values,
         )
+        assert ps.dims == ("time", "freq_y", "freq_x")
 
         da2 = xr.DataArray(
             np.random.rand(2, N, N),
@@ -479,7 +498,6 @@ class TestSpectrum(object):
             ).values,
             cs.values,
         )
-        assert ps.dims == ("time", "freq_y", "freq_x")
         assert cs.dims == ("time", "freq_y", "x")
 
 

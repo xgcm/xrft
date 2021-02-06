@@ -605,7 +605,7 @@ def idft(
     )  # Do nothing if daft was not transposed
 
 
-def power_spectrum(da, dim=None, scaling="density", **kwargs):
+def power_spectrum(da, dim=None, real=None, scaling="density", **kwargs):
     """
     Calculates the power spectrum of da.
 
@@ -621,6 +621,8 @@ def power_spectrum(da, dim=None, scaling="density", **kwargs):
     dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
+    real : str, optional
+        Real Fourier transform will be taken along this dimension.
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
@@ -641,11 +643,14 @@ def power_spectrum(da, dim=None, scaling="density", **kwargs):
         {"true_amplitude": True, "true_phase": False}
     )  # true_phase do not matter in power_spectrum
 
-    daft = dft(da, dim=dim, **kwargs)
+    daft = dft(da, dim=dim, real=real, **kwargs)
     updated_dims = [
         d for d in daft.dims if (d not in da.dims and "segment" not in d)
     ]  # Transformed dimensions
     ps = np.abs(daft) ** 2
+
+    if real is not None:
+        ps = ps*2
 
     if scaling == "density":
         fs = np.prod([float(ps[d].spacing) for d in updated_dims])
@@ -654,17 +659,13 @@ def power_spectrum(da, dim=None, scaling="density", **kwargs):
         fs = np.prod([float(ps[d].spacing) for d in updated_dims])
         ps *= fs ** 2
     elif scaling == "false_density":  # Corresponds to density=False
-        s = np.prod([float(ps.sizes[d] * ps[d].spacing) for d in updated_dims])
-        real = kwargs.get("real", None)
-        if real is not None:
-            s *= da.sizes[real] / (da.sizes[real] // 2 + 1)
-        ps *= s ** 2
+        pass
     else:
         raise ValueError("Unknown {} scaling flag".format(scaling))
     return ps
 
 
-def cross_spectrum(da1, da2, dim=None, scaling="density", **kwargs):
+def cross_spectrum(da1, da2, dim=None, real=None, scaling="density", **kwargs):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -682,6 +683,8 @@ def cross_spectrum(da1, da2, dim=None, scaling="density", **kwargs):
     dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
+    real : str, optional
+        Real Fourier transform will be taken along this dimension.
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
@@ -709,8 +712,8 @@ def cross_spectrum(da1, da2, dim=None, scaling="density", **kwargs):
 
     kwargs.update({"true_amplitude": True})
 
-    daft1 = dft(da1, dim=dim, **kwargs)
-    daft2 = dft(da2, dim=dim, **kwargs)
+    daft1 = dft(da1, dim=dim, real=real, **kwargs)
+    daft2 = dft(da2, dim=dim, real=real, **kwargs)
 
     if daft1.dims != daft2.dims:
         raise ValueError("The two datasets have different dimensions")
@@ -719,6 +722,10 @@ def cross_spectrum(da1, da2, dim=None, scaling="density", **kwargs):
         d for d in daft1.dims if (d not in da1.dims and "segment" not in d)
     ]  # Transformed dimensions
     cs = daft1 * np.conj(daft2)
+
+    if real is not None:
+        cs = cs*2
+
     if scaling == "density":
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
         cs *= fs
@@ -726,11 +733,7 @@ def cross_spectrum(da1, da2, dim=None, scaling="density", **kwargs):
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
         cs *= fs ** 2
     elif scaling == "false_density":  # Corresponds to density=False
-        s = np.prod([float(cs.sizes[d] * cs[d].spacing) for d in updated_dims])
-        real = kwargs.get("real", None)
-        if real is not None:
-            s *= da.sizes[real] / (da.sizes[real] // 2 + 1)
-        cs *= s ** 2
+        pass
     else:
         raise ValueError("Unknown {} scaling flag".format(scaling))
     return cs
