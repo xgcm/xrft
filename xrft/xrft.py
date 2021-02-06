@@ -597,7 +597,7 @@ def idft(
     )  # Do nothing if daft was not transposed
 
 
-def power_spectrum(da, dim=None, scaling="density", correct_amplitude=False, **kwargs):
+def power_spectrum(da, dim=None, scaling="density", boost_amplitude=False, **kwargs):
     """
     Calculates the power spectrum of da.
 
@@ -616,7 +616,7 @@ def power_spectrum(da, dim=None, scaling="density", correct_amplitude=False, **k
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
-    correct_amplitude : boolean
+    boost_amplitude : boolean
         If True, it will correct for the amplitude change by the windowing
     kwargs : dict : see xrft.dft for argument list
     """
@@ -644,7 +644,7 @@ def power_spectrum(da, dim=None, scaling="density", correct_amplitude=False, **k
     for arg in kwargs.keys():
         if arg == "real" and arg is not None:
             ps = ps * 2
-        if arg == "window" and correct_amplitude:
+        if arg == "window" and boost_amplitude:
             if arg is not True:
                 raise ValueError("Windowing needs to be turned on.")
             else:
@@ -665,7 +665,7 @@ def power_spectrum(da, dim=None, scaling="density", correct_amplitude=False, **k
 
 
 def cross_spectrum(
-    da1, da2, dim=None, scaling="density", correct_amplitude=False, **kwargs
+    da1, da2, dim=None, scaling="density", boost_amplitude=False, **kwargs
 ):
     """
     Calculates the cross spectra of da1 and da2.
@@ -687,7 +687,7 @@ def cross_spectrum(
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
-    correct_amplitude : boolean
+    boost_amplitude : boolean
         If True, it will correct for the amplitude change by the windowing
     kwargs : dict : see xrft.dft for argument list
     """
@@ -727,7 +727,7 @@ def cross_spectrum(
     for arg in kwargs.keys():
         if arg == "real" and arg is not None:
             cs = cs * 2
-        if arg == "window" and correct_amplitude:
+        if arg == "window" and boost_amplitude:
             if arg is not True:
                 raise ValueError("Windowing needs to be turned on.")
             else:

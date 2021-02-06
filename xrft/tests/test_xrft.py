@@ -409,7 +409,7 @@ class TestSpectrum(object):
 
         with pytest.raises(ValueError):
             xrft.power_spectrum(
-                da, dim=["y", "x"], window=False, correct_amplitude=True
+                da, dim=["y", "x"], window=False, boost_amplitude=True
             )
 
     @pytest.mark.parametrize("dask", [False, True])
@@ -458,7 +458,7 @@ class TestSpectrum(object):
         npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.0)
 
         with pytest.raises(ValueError):
-            xrft.cross_spectrum(da, da2, dim=dim, window=False, correct_amplitude=True)
+            xrft.cross_spectrum(da, da2, dim=dim, window=False, boost_amplitude=True)
 
     def test_spectrum_dim(self):
         N = 16
