@@ -408,9 +408,7 @@ class TestSpectrum(object):
         npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.0)
 
         with pytest.raises(ValueError):
-            xrft.power_spectrum(
-                da, dim=["y", "x"], window=False, boost_amplitude=True
-            )
+            xrft.power_spectrum(da, dim=["y", "x"], window=False, boost_amplitude=True)
 
     @pytest.mark.parametrize("dask", [False, True])
     def test_cross_spectrum(self, dask):
