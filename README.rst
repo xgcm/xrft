@@ -15,6 +15,9 @@ It is:
 - **Easy-to-use**: It uses the native arguments of `numpy FFT`_ and provides a simple, high-level API.
 - **Fast**: It uses the `dask API of FFT`_ and `map_blocks`_ to allow parallelization of DFT.
 
+Please cite the `doi <https://doi.org/10.5281/zenodo.1402635>`_ if you find this
+package useful.
+
 .. _numpy FFT: https://docs.scipy.org/doc/numpy/reference/routines.fft.html
 .. _dask API of FFT: http://docs.dask.org/en/latest/array-api.html?highlight=fft#fast-fourier-transforms
 .. _map_blocks: http://docs.dask.org/en/latest/array-api.html?highlight=map_blocks#dask.array.core.map_blocks
