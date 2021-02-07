@@ -642,10 +642,10 @@ def power_spectrum(da, dim=None, scaling="density", boost_amplitude=False, **kwa
     ps = np.abs(daft) ** 2
 
     for arg in kwargs.keys():
-        if arg == "real" and arg is not None:
+        if arg == "real" and kwargs[arg] is not None:
             ps = ps * 2
         if arg == "window" and boost_amplitude:
-            if arg is not True:
+            if kwargs[arg] is not True:
                 raise ValueError("Windowing needs to be turned on.")
             else:
                 windows, _ = _apply_window(da, dim)
@@ -725,10 +725,10 @@ def cross_spectrum(
     cs = daft1 * np.conj(daft2)
 
     for arg in kwargs.keys():
-        if arg == "real" and arg is not None:
+        if arg == "real" and kwargs[arg] is not None:
             cs = cs * 2
         if arg == "window" and boost_amplitude:
-            if arg is not True:
+            if kwargs[arg] is not True:
                 raise ValueError("Windowing needs to be turned on.")
             else:
                 windows, _ = _apply_window(da, dim)
