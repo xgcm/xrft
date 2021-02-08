@@ -44,8 +44,33 @@ def _fft_module(da):
 def _apply_window(da, dims, window_type="hann"):
     """Creating windows in dimensions dims."""
 
-    # if window_type not in ["hann"]:
-    #     raise NotImplementedError("Only hann window is supported for now.")
+    if window_type not in [
+        "hann",
+        "hamming",
+        "kaiser",
+        "tukey",
+        "parzen",
+        "taylor",
+        "boxcar",
+        "barthann",
+        "bartlett",
+        "blackman",
+        "blackmanharris",
+        "bohman",
+        "chebwin",
+        "cosine",
+        "dpss",
+        "exponential",
+        "flattop",
+        "gaussian",
+        "general_cosine",
+        "general_gaussian",
+        "general_hamming",
+        "triang",
+    ]:
+        raise NotImplementedError(
+            "Please adhere to scipy.signal.windows' naming convention."
+        )
 
     # numpy_win_func = getattr(np, window_type)
     scipy_win_func = getattr(sps.windows, window_type)
