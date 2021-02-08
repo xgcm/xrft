@@ -663,7 +663,11 @@ def power_spectrum(da, dim=None, scaling="density", boost_amplitude=False, **kwa
 
     for arg in kwargs.keys():
         if arg == "real" and kwargs[arg] is not None:
-            real_dim = [d for d in updated_dims if kwargs[arg]==d[-len(kwargs[arg]):]][0] # find transformed real dimension
+            real_dim = [
+                d for d in updated_dims if kwargs[arg] == d[-len(kwargs[arg]) :]
+            ][
+                0
+            ]  # find transformed real dimension
             f = np.full(ps.sizes[real_dim], 2.0)
             f[0], f[-1] = 1.0, 1.0
             ps = ps * xr.DataArray(f, dims=real_dim)
@@ -751,7 +755,11 @@ def cross_spectrum(
 
     for arg in kwargs.keys():
         if arg == "real" and kwargs[arg] is not None:
-            real_dim = [d for d in updated_dims if kwargs[arg]==d[-len(kwargs[arg]):]][0] # find transformed real dimension
+            real_dim = [
+                d for d in updated_dims if kwargs[arg] == d[-len(kwargs[arg]) :]
+            ][
+                0
+            ]  # find transformed real dimension
             f = np.full(cs.sizes[real_dim], 2.0)
             f[0], f[-1] = 1.0, 1.0
             cs = cs * xr.DataArray(f, dims=real_dim)

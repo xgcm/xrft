@@ -393,7 +393,9 @@ class TestSpectrum(object):
                 chunks_to_segments=True,
             ).mean("x_segment")
             ps_corrected = ps / np.mean(sps.windows.hann(n_segment) ** 2)
-            npt.assert_allclose(ps_corrected.values, np.fft.fftshift(p_scipy), atol=1e-2)
+            npt.assert_allclose(
+                ps_corrected.values, np.fft.fftshift(p_scipy), atol=1e-2
+            )
 
         da = xr.DataArray(
             np.random.rand(2, N, N),
