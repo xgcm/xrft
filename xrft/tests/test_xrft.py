@@ -365,7 +365,7 @@ class TestSpectrum(object):
             da.values, window="rectangular", return_onesided=True
         )
         ps = xrft.xrft.power_spectrum(da, dim="x", real="x", detrend="constant")
-        npt.assert_almost_equal(ps.values[1:-1], p_scipy[1:-1])
+        npt.assert_almost_equal(ps.values, p_scipy)
         da = xr.DataArray(
             np.random.rand(2, N, N),
             dims=["time", "y", "x"],
@@ -388,7 +388,11 @@ class TestSpectrum(object):
             da, dim=["y"], real="x", window=True, density=False, detrend="constant"
         )
         daft = xrft.fft(da, dim=["y"], real="x", detrend="constant", window=True)
-        npt.assert_almost_equal(ps.values, 2 * np.real(daft * np.conj(daft)))
+        ps_test = np.real(daft * np.conj(daft))
+        f = np.full(ps_test.sizes["freq_x"], 2.0)
+        f[0], f[-1] = 1.0, 1.0
+        ps_test = ps_test * xr.DataArray(f, dims="freq_x")
+        npt.assert_almost_equal(ps.values, ps_test.values)
 
         ### Normalized
         ps = xrft.power_spectrum(da, dim=["y", "x"], window=True, detrend="constant")

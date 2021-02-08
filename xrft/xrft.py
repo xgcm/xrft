@@ -643,7 +643,9 @@ def power_spectrum(da, dim=None, scaling="density", boost_amplitude=False, **kwa
 
     for arg in kwargs.keys():
         if arg == "real" and kwargs[arg] is not None:
-            ps = ps * 2
+            f = np.full(ps.sizes["freq_" + kwargs[arg]], 2.0)
+            f[0], f[-1] = 1.0, 1.0
+            ps = ps * xr.DataArray(f, dims="freq_" + kwargs[arg])
         if arg == "window" and boost_amplitude:
             if kwargs[arg] is not True:
                 raise ValueError("Windowing needs to be turned on.")
@@ -726,7 +728,9 @@ def cross_spectrum(
 
     for arg in kwargs.keys():
         if arg == "real" and kwargs[arg] is not None:
-            cs = cs * 2
+            f = np.full(cs.sizes["freq_" + kwargs[arg]], 2.0)
+            f[0], f[-1] = 1.0, 1.0
+            cs = cs * xr.DataArray(f, dims="freq_" + kwargs[arg])
         if arg == "window" and boost_amplitude:
             if kwargs[arg] is not True:
                 raise ValueError("Windowing needs to be turned on.")
