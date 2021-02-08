@@ -123,7 +123,6 @@ class TestFFTImag(object):
 
         ft = xrft.fft(da, shift=False, window="hann", detrend="constant")
         dim = da.dims
-        # window = np.hanning(N) * np.hanning(N)[:, np.newaxis]
         window = sps.windows.hann(N) * sps.windows.hann(N)[:, np.newaxis]
         da_prime = (da - da.mean(dim=dim)).values
         npt.assert_almost_equal(ft.values, np.fft.fftn(da_prime * window))
@@ -693,17 +692,6 @@ def test_parseval(chunks_to_segments):
         ((da_prime * window) ** 2).mean(dim).values,
         decimal=5,
     )
-
-    # ps = xrft.power_spectrum(
-    #     da, window=True, detrend="constant", chunks_to_segments=chunks_to_segments, correct_amplitude=True
-    # )
-    # da_corrected = (da_prime * window) ** 2 / (window**2).mean()
-    # npt.assert_almost_equal(
-    #     (1 / delta_xy) * ps.mean(fftdim).values,
-    #     ((da_prime * window) ** 2).mean(dim).values,
-    #     da_corrected.mean(dim).values,
-    #     decimal=2,
-    # )
 
     ### Test Parseval's theorem for cross_spectrum with `window=True` and detrend='constant'
     cs = xrft.cross_spectrum(

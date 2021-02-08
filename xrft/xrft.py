@@ -70,10 +70,9 @@ def _apply_window(da, dims, window_type="hann"):
         "nuttall",
     ]:
         raise NotImplementedError(
-            "Please adhere to scipy.signal.windows' naming convention."
+            "Please adhere to scipy.signal.windows for naming convention."
         )
 
-    # numpy_win_func = getattr(np, window_type)
     scipy_win_func = getattr(sps.windows, window_type)
 
     if da.chunks:
@@ -615,7 +614,9 @@ def idft(
     )  # Do nothing if daft was not transposed
 
 
-def power_spectrum(da, dim=None, scaling="density", boost_amplitude=False, **kwargs):
+def power_spectrum(
+    da, dim=None, real=None, scaling="density", boost_amplitude=False, **kwargs
+):
     """
     Calculates the power spectrum of da.
 
@@ -695,7 +696,7 @@ def power_spectrum(da, dim=None, scaling="density", boost_amplitude=False, **kwa
 
 
 def cross_spectrum(
-    da1, da2, dim=None, scaling="density", boost_amplitude=False, **kwargs
+    da1, da2, dim=None, real=None, scaling="density", boost_amplitude=False, **kwargs
 ):
     """
     Calculates the cross spectra of da1 and da2.
@@ -987,7 +988,7 @@ def isotropic_power_spectrum(
         If true, it will normalize the spectrum to spectral density
     window : bool, optional
         Whether to apply a window to the data before the Fourier
-        transform is taken. Please adhere to scipy.signal.windows' naming convention.
+        transform is taken. Please adhere to scipy.signal.windows for naming convention.
     nfactor : int, optional
         Ratio of number of bins to take the azimuthal averaging with the
         data size. Default is 4.
@@ -1076,7 +1077,7 @@ def isotropic_cross_spectrum(
         If true, it will normalize the spectrum to spectral density
     window : bool (optional)
         Whether to apply a window to the data before the Fourier
-        transform is taken. Please adhere to scipy.signal.windows' naming convention.
+        transform is taken. Please adhere to scipy.signal.windows for naming convention.
     nfactor : int (optional)
         Ratio of number of bins to take the azimuthal averaging with the
         data size. Default is 4.
