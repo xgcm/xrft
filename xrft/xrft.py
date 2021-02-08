@@ -632,6 +632,8 @@ def power_spectrum(
     dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
+    real : str, optional
+        Real Fourier transform will be taken along this dimension.
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
@@ -656,25 +658,24 @@ def power_spectrum(
         {"true_amplitude": True, "true_phase": False}
     )  # true_phase do not matter in power_spectrum
 
-    daft = dft(da, dim=dim, **kwargs)
+    daft = dft(da, dim=dim, real=real, **kwargs)
     updated_dims = [
         d for d in daft.dims if (d not in da.dims and "segment" not in d)
     ]  # Transformed dimensions
     ps = np.abs(daft) ** 2
 
+    if real is not None:
+        real_dim = [d for d in updated_dims if real == d[-len(real) :]][
+            0
+        ]  # find transformed real dimension
+        f = np.full(ps.sizes[real_dim], 2.0)
+        if len(da[real]) % 2 == 0:
+            f[0], f[-1] = 1.0, 1.0
+        else:
+            f[0] = 1.0
+        ps = ps * xr.DataArray(f, dims=real_dim)
+
     for arg in kwargs.keys():
-        if arg == "real" and kwargs[arg] is not None:
-            real_dim = [
-                d for d in updated_dims if kwargs[arg] == d[-len(kwargs[arg]) :]
-            ][
-                0
-            ]  # find transformed real dimension
-            f = np.full(ps.sizes[real_dim], 2.0)
-            if len(da[kwargs[arg]]) % 2 == 0:
-                f[0], f[-1] = 1.0, 1.0
-            else:
-                f[0] = 1.0
-            ps = ps * xr.DataArray(f, dims=real_dim)
         if arg == "window" and boost_amplitude:
             if kwargs[arg] is None:
                 raise ValueError("Windowing needs to be turned on.")
@@ -715,6 +716,8 @@ def cross_spectrum(
     dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
+    real : str, optional
+        Real Fourier transform will be taken along this dimension.
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
@@ -746,8 +749,8 @@ def cross_spectrum(
 
     kwargs.update({"true_amplitude": True})
 
-    daft1 = dft(da1, dim=dim, **kwargs)
-    daft2 = dft(da2, dim=dim, **kwargs)
+    daft1 = dft(da1, dim=dim, real=real, **kwargs)
+    daft2 = dft(da2, dim=dim, real=real, **kwargs)
 
     if daft1.dims != daft2.dims:
         raise ValueError("The two datasets have different dimensions")
@@ -757,19 +760,18 @@ def cross_spectrum(
     ]  # Transformed dimensions
     cs = daft1 * np.conj(daft2)
 
+    if real is not None:
+        real_dim = [d for d in updated_dims if real == d[-len(real) :]][
+            0
+        ]  # find transformed real dimension
+        f = np.full(cs.sizes[real_dim], 2.0)
+        if len(da1[real]) % 2 == 0:
+            f[0], f[-1] = 1.0, 1.0
+        else:
+            f[0] = 1.0
+        cs = cs * xr.DataArray(f, dims=real_dim)
+
     for arg in kwargs.keys():
-        if arg == "real" and kwargs[arg] is not None:
-            real_dim = [
-                d for d in updated_dims if kwargs[arg] == d[-len(kwargs[arg]) :]
-            ][
-                0
-            ]  # find transformed real dimension
-            f = np.full(cs.sizes[real_dim], 2.0)
-            if len(da1[kwargs[arg]]) % 2 == 0:
-                f[0], f[-1] = 1.0, 1.0
-            else:
-                f[0] = 1.0
-            cs = cs * xr.DataArray(f, dims=real_dim)
         if arg == "window" and boost_amplitude:
             if kwargs[arg] is None:
                 raise ValueError("Windowing needs to be turned on.")
