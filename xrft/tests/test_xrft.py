@@ -368,22 +368,32 @@ class TestSpectrum(object):
         ps = xrft.xrft.power_spectrum(da, dim="x", real="x", detrend="constant")
         npt.assert_almost_equal(ps.values, p_scipy)
 
-        # if dask:
-        #     n_segment = 8
-        #     f_scipy, p_scipy = sps.welch(da.values,
-        #                                   window='hann',
-        #                                   nperseg=n_segment,
-        #                                   noverlap=0,
-        #                                   return_onesided=False
-        #                                   )
-        #     ps = xrft.xrft.power_spectrum(da.chunk({'x': n_segment}),
-        #                               dim='x',
-        #                               detrend='constant',
-        #                               window=True,
-        #                               chunks_to_segments=True
-        #                               ).mean('x_segment')
-        # ps_corrected = ps / np.mean(sps.windows.hann(n_segment)**2)
-        # npt.assert_almost_equal(ps_corrected.values, p_scipy)
+        if dask:
+            N = 1000
+            da = xr.DataArray(
+                np.random.rand(N),
+                dims=["x"],
+                coords={
+                    "x": range(N),
+                },
+            )
+            n_segment = 100
+            f_scipy, p_scipy = sps.welch(
+                da.values,
+                window="hann",
+                nperseg=n_segment,
+                noverlap=0,
+                return_onesided=False,
+            )
+            ps = xrft.xrft.power_spectrum(
+                da.chunk({"x": n_segment}),
+                dim="x",
+                detrend="constant",
+                window="hann",
+                chunks_to_segments=True,
+            ).mean("x_segment")
+            ps_corrected = ps / np.mean(sps.windows.hann(n_segment) ** 2)
+            npt.assert_allclose(ps_corrected.values, np.fft.fftshift(p_scipy), atol=1e-2)
 
         da = xr.DataArray(
             np.random.rand(2, N, N),
@@ -591,6 +601,7 @@ class TestCrossPhase(object):
         fx = np.random.choice(np.fft.fftfreq(len(x), dx))
         fy = np.random.choice(np.fft.fftfreq(len(y), dy))
         da1 = np.cos(2 * np.pi * fx * x + 2 * np.pi * fy * y)
+        np.random.seed(0)
         lagx = np.random.rand() * x.max().data
         lagy = np.random.rand() * y.max().data
         da2 = da1.assign_coords(x=da1["x"] + lagx, y=da1["y"] + lagy)

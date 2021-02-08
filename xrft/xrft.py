@@ -67,7 +67,7 @@ def _apply_window(da, dims, window_type="hann"):
         "general_gaussian",
         "general_hamming",
         "triang",
-        "nuttall"
+        "nuttall",
     ]:
         raise NotImplementedError(
             "Please adhere to scipy.signal.windows' naming convention."
@@ -462,15 +462,6 @@ def idft(
         Real Fourier transform will be taken along this dimension.
     shift : bool, default
         Whether to shift the fft output. Default is `True`.
-    detrend : str, optional
-        If `constant`, the mean across the transform dimensions will be
-        subtracted before calculating the Fourier transform (FT).
-        If `linear`, the linear least-square fit will be subtracted before
-        the FT.
-    window : bool, optional
-        Whether to apply a Hann window to the data before the Fourier
-        transform is taken. A window will be applied to all the dimensions in
-        dim.
     chunks_to_segments : bool, optional
         Whether the data is chunked along the axis to take FFT.
     prefix : str
@@ -644,7 +635,9 @@ def power_spectrum(da, dim=None, scaling="density", boost_amplitude=False, **kwa
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
     boost_amplitude : boolean
-        If True, it will correct for the amplitude change by the windowing
+        If True, it will correct for the amplitude change by the windowing.
+        Note that the Parseval's identity is strictly only satisfied for non-corrected
+        spectrum and the windowed data if windowing is applied.
     kwargs : dict : see xrft.dft for argument list
     """
 
@@ -670,9 +663,10 @@ def power_spectrum(da, dim=None, scaling="density", boost_amplitude=False, **kwa
 
     for arg in kwargs.keys():
         if arg == "real" and kwargs[arg] is not None:
-            f = np.full(ps.sizes["freq_" + kwargs[arg]], 2.0)
+            real_dim = [d for d in updated_dims if kwargs[arg]==d[-len(kwargs[arg]):]][0] # find transformed real dimension
+            f = np.full(ps.sizes[real_dim], 2.0)
             f[0], f[-1] = 1.0, 1.0
-            ps = ps * xr.DataArray(f, dims="freq_" + kwargs[arg])
+            ps = ps * xr.DataArray(f, dims=real_dim)
         if arg == "window" and boost_amplitude:
             if kwargs[arg] is None:
                 raise ValueError("Windowing needs to be turned on.")
@@ -717,7 +711,9 @@ def cross_spectrum(
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
     boost_amplitude : boolean
-        If True, it will correct for the amplitude change by the windowing
+        If True, it will correct for the amplitude change by the windowing.
+        Note that the Parseval's identity is strictly only satisfied for non-corrected
+        spectrum and the windowed data if windowing is applied.
     kwargs : dict : see xrft.dft for argument list
     """
 
@@ -755,9 +751,10 @@ def cross_spectrum(
 
     for arg in kwargs.keys():
         if arg == "real" and kwargs[arg] is not None:
-            f = np.full(cs.sizes["freq_" + kwargs[arg]], 2.0)
+            real_dim = [d for d in updated_dims if kwargs[arg]==d[-len(kwargs[arg]):]][0] # find transformed real dimension
+            f = np.full(cs.sizes[real_dim], 2.0)
             f[0], f[-1] = 1.0, 1.0
-            cs = cs * xr.DataArray(f, dims="freq_" + kwargs[arg])
+            cs = cs * xr.DataArray(f, dims=real_dim)
         if arg == "window" and boost_amplitude:
             if kwargs[arg] is None:
                 raise ValueError("Windowing needs to be turned on.")
@@ -975,8 +972,8 @@ def isotropic_power_spectrum(
     density : list, optional
         If true, it will normalize the spectrum to spectral density
     window : bool, optional
-        Whether to apply a Hann window to the data before the Fourier
-        transform is taken
+        Whether to apply a window to the data before the Fourier
+        transform is taken. Please adhere to scipy.signal.windows' naming convention.
     nfactor : int, optional
         Ratio of number of bins to take the azimuthal averaging with the
         data size. Default is 4.
@@ -1064,8 +1061,8 @@ def isotropic_cross_spectrum(
     density : list (optional)
         If true, it will normalize the spectrum to spectral density
     window : bool (optional)
-        Whether to apply a Hann window to the data before the Fourier
-        transform is taken
+        Whether to apply a window to the data before the Fourier
+        transform is taken. Please adhere to scipy.signal.windows' naming convention.
     nfactor : int (optional)
         Ratio of number of bins to take the azimuthal averaging with the
         data size. Default is 4.
