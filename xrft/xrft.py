@@ -67,6 +67,7 @@ def _apply_window(da, dims, window_type="hann"):
         "general_gaussian",
         "general_hamming",
         "triang",
+        "nuttall"
     ]:
         raise NotImplementedError(
             "Please adhere to scipy.signal.windows' naming convention."
