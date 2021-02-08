@@ -121,9 +121,10 @@ class TestFFTImag(object):
         ft = xrft.fft(da, shift=False)
         npt.assert_almost_equal(ft.values, np.fft.fftn(da.values))
 
-        ft = xrft.fft(da, shift=False, window=True, detrend="constant")
+        ft = xrft.fft(da, shift=False, window="hann", detrend="constant")
         dim = da.dims
-        window = np.hanning(N) * np.hanning(N)[:, np.newaxis]
+        # window = np.hanning(N) * np.hanning(N)[:, np.newaxis]
+        window = sps.windows.hann(N) * sps.windows.hann(N)[:, np.newaxis]
         da_prime = (da - da.mean(dim=dim)).values
         npt.assert_almost_equal(ft.values, np.fft.fftn(da_prime * window))
 
@@ -342,9 +343,9 @@ def test_window_single_dim():
         dims=["time", "lat", "lon"],
         coords={"time": range(20), "lat": range(30), "lon": range(100)},
     )
-    ps = xrft.power_spectrum(data, dim=["time"], window=True)
+    ps = xrft.power_spectrum(data, dim=["time"], window="hann")
     # make sure it works with dask data
-    ps = xrft.power_spectrum(data.chunk(), dim=["time"], window=True)
+    ps = xrft.power_spectrum(data.chunk(), dim=["time"], window="hann")
     ps.load()
 
 
@@ -366,6 +367,24 @@ class TestSpectrum(object):
         )
         ps = xrft.xrft.power_spectrum(da, dim="x", real="x", detrend="constant")
         npt.assert_almost_equal(ps.values, p_scipy)
+
+        # if dask:
+        #     n_segment = 8
+        #     f_scipy, p_scipy = sps.welch(da.values,
+        #                                   window='hann',
+        #                                   nperseg=n_segment,
+        #                                   noverlap=0,
+        #                                   return_onesided=False
+        #                                   )
+        #     ps = xrft.xrft.power_spectrum(da.chunk({'x': n_segment}),
+        #                               dim='x',
+        #                               detrend='constant',
+        #                               window=True,
+        #                               chunks_to_segments=True
+        #                               ).mean('x_segment')
+        # ps_corrected = ps / np.mean(sps.windows.hann(n_segment)**2)
+        # npt.assert_almost_equal(ps_corrected.values, p_scipy)
+
         da = xr.DataArray(
             np.random.rand(2, N, N),
             dims=["time", "y", "x"],
@@ -378,16 +397,16 @@ class TestSpectrum(object):
         if dask:
             da = da.chunk({"time": 1})
         ps = xrft.power_spectrum(
-            da, dim=["y", "x"], window=True, density=False, detrend="constant"
+            da, dim=["y", "x"], window="hann", density=False, detrend="constant"
         )
-        daft = xrft.fft(da, dim=["y", "x"], detrend="constant", window=True)
+        daft = xrft.fft(da, dim=["y", "x"], detrend="constant", window="hann")
         npt.assert_almost_equal(ps.values, np.real(daft * np.conj(daft)))
         npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.0)
 
         ps = xrft.power_spectrum(
-            da, dim=["y"], real="x", window=True, density=False, detrend="constant"
+            da, dim=["y"], real="x", window="hann", density=False, detrend="constant"
         )
-        daft = xrft.fft(da, dim=["y"], real="x", detrend="constant", window=True)
+        daft = xrft.fft(da, dim=["y"], real="x", detrend="constant", window="hann")
         ps_test = np.real(daft * np.conj(daft))
         f = np.full(ps_test.sizes["freq_x"], 2.0)
         f[0], f[-1] = 1.0, 1.0
@@ -395,8 +414,8 @@ class TestSpectrum(object):
         npt.assert_almost_equal(ps.values, ps_test.values)
 
         ### Normalized
-        ps = xrft.power_spectrum(da, dim=["y", "x"], window=True, detrend="constant")
-        daft = xrft.fft(da, dim=["y", "x"], window=True, detrend="constant")
+        ps = xrft.power_spectrum(da, dim=["y", "x"], window="hann", detrend="constant")
+        daft = xrft.fft(da, dim=["y", "x"], window="hann", detrend="constant")
         test = np.real(daft * np.conj(daft)) / N ** 4
         dk = np.diff(np.fft.fftfreq(N, 1.0))[0]
         test /= dk ** 2
@@ -405,14 +424,14 @@ class TestSpectrum(object):
 
         ### Remove least-square fit
         ps = xrft.power_spectrum(
-            da, dim=["y", "x"], window=True, density=False, detrend="linear"
+            da, dim=["y", "x"], window="hann", density=False, detrend="linear"
         )
-        daft = xrft.fft(da, dim=["y", "x"], window=True, detrend="linear")
+        daft = xrft.fft(da, dim=["y", "x"], window="hann", detrend="linear")
         npt.assert_almost_equal(ps.values, np.real(daft * np.conj(daft)))
         npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.0)
 
         with pytest.raises(ValueError):
-            xrft.power_spectrum(da, dim=["y", "x"], window=False, boost_amplitude=True)
+            xrft.power_spectrum(da, dim=["y", "x"], window=None, boost_amplitude=True)
 
     @pytest.mark.parametrize("dask", [False, True])
     def test_cross_spectrum(self, dask):
@@ -441,16 +460,16 @@ class TestSpectrum(object):
             da = da.chunk({"time": 1})
             da2 = da2.chunk({"time": 1})
 
-        daft = xrft.fft(da, dim=dim, shift=True, detrend="constant", window=True)
-        daft2 = xrft.fft(da2, dim=dim, shift=True, detrend="constant", window=True)
+        daft = xrft.fft(da, dim=dim, shift=True, detrend="constant", window="hann")
+        daft2 = xrft.fft(da2, dim=dim, shift=True, detrend="constant", window="hann")
         cs = xrft.cross_spectrum(
-            da, da2, dim=dim, window=True, density=False, detrend="constant"
+            da, da2, dim=dim, window="hann", density=False, detrend="constant"
         )
         npt.assert_almost_equal(cs.values, daft * np.conj(daft2))
         npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.0)
 
         cs = xrft.cross_spectrum(
-            da, da2, dim=dim, shift=True, window=True, detrend="constant"
+            da, da2, dim=dim, shift=True, window="hann", detrend="constant"
         )
         test = (daft * np.conj(daft2)).values / N ** 4
 
@@ -460,7 +479,7 @@ class TestSpectrum(object):
         npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.0)
 
         with pytest.raises(ValueError):
-            xrft.cross_spectrum(da, da2, dim=dim, window=False, boost_amplitude=True)
+            xrft.cross_spectrum(da, da2, dim=dim, window=None, boost_amplitude=True)
 
     def test_spectrum_dim(self):
         N = 16
@@ -474,11 +493,13 @@ class TestSpectrum(object):
             },
         )
 
-        ps = xrft.power_spectrum(da, dim="y", real="x", window=True, detrend="constant")
+        ps = xrft.power_spectrum(
+            da, dim="y", real="x", window="hann", detrend="constant"
+        )
         npt.assert_array_equal(
             ps.values,
             xrft.power_spectrum(
-                da, dim=["y"], real="x", window=True, detrend="constant"
+                da, dim=["y"], real="x", window="hann", detrend="constant"
             ).values,
         )
         assert ps.dims == ("time", "freq_y", "freq_x")
@@ -493,11 +514,11 @@ class TestSpectrum(object):
             },
         )
         cs = xrft.cross_spectrum(
-            da, da2, dim="y", shift=True, window=True, detrend="constant"
+            da, da2, dim="y", shift=True, window="hann", detrend="constant"
         )
         npt.assert_array_equal(
             xrft.cross_spectrum(
-                da, da2, dim=["y"], shift=True, window=True, detrend="constant"
+                da, da2, dim=["y"], shift=True, window="hann", detrend="constant"
             ).values,
             cs.values,
         )
@@ -636,7 +657,7 @@ def test_parseval(chunks_to_segments):
     # Note that applying a window weighting reduces the energy in a signal and we have to account
     # for this reduction when testing Parseval's theorem.
     ps = xrft.power_spectrum(
-        da, window=True, detrend="constant", chunks_to_segments=chunks_to_segments
+        da, window="hann", detrend="constant", chunks_to_segments=chunks_to_segments
     )
     # If n_segments > 1, use xrft._stack_chunks() to stack each segment along a new dimension
     da_seg = xrft.xrft._stack_chunks(da, dim).squeeze() if chunks_to_segments else da
@@ -644,7 +665,9 @@ def test_parseval(chunks_to_segments):
     # Generate the window weightings for each segment
     window = xr.DataArray(
         np.tile(
-            np.hanning(N / n_segments) * np.hanning(N / n_segments)[:, np.newaxis],
+            # np.hanning(N / n_segments) * np.hanning(N / n_segments)[:, np.newaxis],
+            sps.windows.hann(int(N / n_segments))
+            * sps.windows.hann(int(N / n_segments))[:, np.newaxis],
             (n_segments, n_segments),
         ),
         dims=dim,
@@ -671,7 +694,11 @@ def test_parseval(chunks_to_segments):
 
     ### Test Parseval's theorem for cross_spectrum with `window=True` and detrend='constant'
     cs = xrft.cross_spectrum(
-        da, da2, window=True, detrend="constant", chunks_to_segments=chunks_to_segments
+        da,
+        da2,
+        window="hann",
+        detrend="constant",
+        chunks_to_segments=chunks_to_segments,
     )
     # If n_segments > 1, use xrft._stack_chunks() to stack each segment along a new dimension
     da2_seg = xrft.xrft._stack_chunks(da2, dim).squeeze() if chunks_to_segments else da2
@@ -691,7 +718,7 @@ def test_parseval(chunks_to_segments):
             coords={"time": range(N), "y": range(N), "x": range(N)},
         ).chunk({"time": 1})
         dim = ["x", "y"]
-        ps = xrft.power_spectrum(d3d, dim=dim, window=True, detrend="linear")
+        ps = xrft.power_spectrum(d3d, dim=dim, window="hann", detrend="linear")
         npt.assert_almost_equal(
             (1 / delta_xy) * ps[0].values.mean(),
             (
@@ -959,7 +986,7 @@ def test_isotropic_cs(chunk):
         np.random.rand(N, N), dims=["y", "x"], coords={"y": range(N), "x": range(N)}
     )
 
-    iso_cs = xrft.isotropic_cross_spectrum(da, da2, window=True)
+    iso_cs = xrft.isotropic_cross_spectrum(da, da2, window="hann")
     npt.assert_equal(np.ma.masked_invalid(iso_cs).mask.sum(), 0.0)
 
     da2 = xr.DataArray(
@@ -1000,7 +1027,7 @@ def test_isotropic_cs(chunk):
         da = da.chunk({"time": 1})
         da2 = da2.chunk({"time": 1})
 
-    iso_cs = xrft.isotropic_cross_spectrum(da, da2, dim=["y", "x"], window=True)
+    iso_cs = xrft.isotropic_cross_spectrum(da, da2, dim=["y", "x"], window="hann")
     npt.assert_equal(np.ma.masked_invalid(iso_cs).mask.sum(), 0.0)
 
 

@@ -41,22 +41,23 @@ def _fft_module(da):
         return np.fft
 
 
-def _apply_window(da, dims, window_type="hanning"):
+def _apply_window(da, dims, window_type="hann"):
     """Creating windows in dimensions dims."""
 
-    if window_type not in ["hanning"]:
-        raise NotImplementedError("Only hanning window is supported for now.")
+    # if window_type not in ["hann"]:
+    #     raise NotImplementedError("Only hann window is supported for now.")
 
-    numpy_win_func = getattr(np, window_type)
+    # numpy_win_func = getattr(np, window_type)
+    scipy_win_func = getattr(sps.windows, window_type)
 
     if da.chunks:
 
         def dask_win_func(n):
-            return dsar.from_delayed(delayed(numpy_win_func, pure=True)(n), (n,), float)
+            return dsar.from_delayed(delayed(scipy_win_func, pure=True)(n), (n,), float)
 
         win_func = dask_win_func
     else:
-        win_func = numpy_win_func
+        win_func = scipy_win_func
 
     windows = [
         xr.DataArray(win_func(len(da[d])), dims=da[d].dims, coords=da[d].coords)
@@ -238,7 +239,7 @@ def dft(
     real=None,
     shift=True,
     detrend=None,
-    window=False,
+    window=None,
     true_phase=False,
     true_amplitude=False,
     chunks_to_segments=False,
@@ -272,10 +273,10 @@ def dft(
         subtracted before calculating the Fourier transform (FT).
         If `linear`, the linear least-square fit will be subtracted before
         the FT. For `linear`, only dims of length 1 and 2 are supported.
-    window : bool, optional
-        Whether to apply a Hann window to the data before the Fourier
+    window : str, optional
+        Whether to apply a window to the data before the Fourier
         transform is taken. A window will be applied to all the dimensions in
-        dim.
+        dim. Please follow `scipy.signal.windows`' naming convention.
     true_phase : bool, optional
         If set to False, standard fft algorithm is applied on signal without consideration of coordinates.
         If set to True, coordinates location are correctly taken into account to evaluate Fourier Tranforrm phase and
@@ -362,8 +363,8 @@ def dft(
     if detrend:
         da = _detrend(da, dim, detrend_type=detrend)
 
-    if window:
-        _, da = _apply_window(da, dim)
+    if window is not None:
+        _, da = _apply_window(da, dim, window_type=window)
 
     if true_phase:
         f = fft_fn(fft.ifftshift(da.data, axes=axis_num), axes=axis_num)
@@ -647,10 +648,10 @@ def power_spectrum(da, dim=None, scaling="density", boost_amplitude=False, **kwa
             f[0], f[-1] = 1.0, 1.0
             ps = ps * xr.DataArray(f, dims="freq_" + kwargs[arg])
         if arg == "window" and boost_amplitude:
-            if kwargs[arg] is not True:
+            if kwargs[arg] is None:
                 raise ValueError("Windowing needs to be turned on.")
             else:
-                windows, _ = _apply_window(da, dim)
+                windows, _ = _apply_window(da, dim, window_type=window)
                 ps = ps / (windows ** 2).mean()
 
     if scaling == "density":
@@ -732,10 +733,10 @@ def cross_spectrum(
             f[0], f[-1] = 1.0, 1.0
             cs = cs * xr.DataArray(f, dims="freq_" + kwargs[arg])
         if arg == "window" and boost_amplitude:
-            if kwargs[arg] is not True:
+            if kwargs[arg] is None:
                 raise ValueError("Windowing needs to be turned on.")
             else:
-                windows, _ = _apply_window(da, dim)
+                windows, _ = _apply_window(da, dim, window_type=window)
                 cs = cs / (windows ** 2).mean()
 
     if scaling == "density":
@@ -913,7 +914,7 @@ def isotropic_power_spectrum(
     shift=True,
     detrend=None,
     density=True,
-    window=False,
+    window=None,
     nfactor=4,
 ):
     """
@@ -1000,7 +1001,7 @@ def isotropic_cross_spectrum(
     shift=True,
     detrend=None,
     density=True,
-    window=False,
+    window=None,
     nfactor=4,
 ):
     """
