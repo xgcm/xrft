@@ -16,8 +16,8 @@ It is:
 - **Fast**: It uses the `dask API of FFT`_ and `map_blocks`_ to allow parallelization of DFT.
 
 .. _numpy FFT: https://docs.scipy.org/doc/numpy/reference/routines.fft.html
-.. _dask API of FFT: http://docs.dask.org/en/latest/array-api.html?highlight=fft#fast-fourier-transforms
-.. _map_blocks: http://docs.dask.org/en/latest/array-api.html?highlight=map_blocks#dask.array.core.map_blocks
+.. _dask API of FFT: http://docs.dask.org/en/stable/array-api.html?highlight=fft#fast-fourier-transforms
+.. _map_blocks: http://docs.dask.org/en/stable/array-api.html?highlight=map_blocks#dask.array.core.map_blocks
 
 Get in touch
 ------------
