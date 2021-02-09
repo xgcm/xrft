@@ -615,7 +615,7 @@ def idft(
 
 
 def power_spectrum(
-    da, dim=None, real=None, scaling="density", boost_amplitude=False, **kwargs
+    da, dim=None, real=None, scaling="density", boost_windowed_amplitude=False, **kwargs
 ):
     """
     Calculates the power spectrum of da.
@@ -637,7 +637,7 @@ def power_spectrum(
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
-    boost_amplitude : boolean
+    boost_windowed_amplitude : boolean
         If True, it will correct for the amplitude change by the windowing.
         Note that the Parseval's identity is strictly only satisfied for non-corrected
         spectrum and the windowed data if windowing is applied.
@@ -676,7 +676,7 @@ def power_spectrum(
         ps = ps * xr.DataArray(f, dims=real_dim)
 
     for arg in kwargs.keys():
-        if arg == "window" and boost_amplitude:
+        if arg == "window" and boost_windowed_amplitude:
             if kwargs[arg] is None:
                 raise ValueError("Windowing needs to be turned on.")
             else:
@@ -697,7 +697,7 @@ def power_spectrum(
 
 
 def cross_spectrum(
-    da1, da2, dim=None, real=None, scaling="density", boost_amplitude=False, **kwargs
+    da1, da2, dim=None, real=None, scaling="density", boost_windowed_amplitude=False, **kwargs
 ):
     """
     Calculates the cross spectra of da1 and da2.
@@ -721,7 +721,7 @@ def cross_spectrum(
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
-    boost_amplitude : boolean
+    boost_windowed_amplitude : boolean
         If True, it will correct for the amplitude change by the windowing.
         Note that the Parseval's identity is strictly only satisfied for non-corrected
         spectrum and the windowed data if windowing is applied.
@@ -772,7 +772,7 @@ def cross_spectrum(
         cs = cs * xr.DataArray(f, dims=real_dim)
 
     for arg in kwargs.keys():
-        if arg == "window" and boost_amplitude:
+        if arg == "window" and boost_windowed_amplitude:
             if kwargs[arg] is None:
                 raise ValueError("Windowing needs to be turned on.")
             else:
