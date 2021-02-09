@@ -697,7 +697,13 @@ def power_spectrum(
 
 
 def cross_spectrum(
-    da1, da2, dim=None, real=None, scaling="density", boost_windowed_amplitude=False, **kwargs
+    da1,
+    da2,
+    dim=None,
+    real=None,
+    scaling="density",
+    boost_windowed_amplitude=False,
+    **kwargs,
 ):
     """
     Calculates the cross spectra of da1 and da2.
