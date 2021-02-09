@@ -383,15 +383,15 @@ class TestSpectrum(object):
 
             x_da = xr.DataArray(x, coords=[tt], dims=["t"]).chunk({"t": n_segments})
             ps = xrft.xrft.power_spectrum(
-                x_da, dim=["t"], window=window_type, chunks_to_segments=True
+                x_da,
+                dim=["t"],
+                window=window_type,
+                chunks_to_segments=True,
+                boost_windowed_amplitude=True,
             ).mean("t_segment")
 
-            corr = 1 / np.mean(
-                getattr(sps.windows, window_type)(n_segments, sym=False) ** 2
-            )
-
             npt.assert_allclose(
-                np.sqrt(np.trapz(corr * ps.values, ps.freq_t.values)),
+                np.sqrt(np.trapz(ps.values, ps.freq_t.values)),
                 A * np.sqrt(2) / 2,
                 rtol=1e-3,
             )
