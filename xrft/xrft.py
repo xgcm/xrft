@@ -77,15 +77,19 @@ def _apply_window(da, dims, window_type="hann"):
 
     if da.chunks:
 
-        def dask_win_func(n):
-            return dsar.from_delayed(delayed(scipy_win_func, pure=True)(n), (n,), float)
+        def dask_win_func(n, sym=False):
+            return dsar.from_delayed(
+                delayed(scipy_win_func, pure=True)(n, sym=sym), (n,), float
+            )
 
         win_func = dask_win_func
     else:
         win_func = scipy_win_func
 
     windows = [
-        xr.DataArray(win_func(len(da[d])), dims=da[d].dims, coords=da[d].coords)
+        xr.DataArray(
+            win_func(len(da[d]), sym=False), dims=da[d].dims, coords=da[d].coords
+        )
         for d in dims
     ]
 

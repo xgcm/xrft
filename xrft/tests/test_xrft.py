@@ -123,7 +123,10 @@ class TestFFTImag(object):
 
         ft = xrft.fft(da, shift=False, window="hann", detrend="constant")
         dim = da.dims
-        window = sps.windows.hann(N) * sps.windows.hann(N)[:, np.newaxis]
+        window = (
+            sps.windows.hann(N, sym=False)
+            * sps.windows.hann(N, sym=False)[:, np.newaxis]
+        )
         da_prime = (da - da.mean(dim=dim)).values
         npt.assert_almost_equal(ft.values, np.fft.fftn(da_prime * window))
 
@@ -367,33 +370,39 @@ class TestSpectrum(object):
         ps = xrft.xrft.power_spectrum(da, dim="x", real="x", detrend="constant")
         npt.assert_almost_equal(ps.values, p_scipy)
 
-        if dask:
-            N = 1000
-            da = xr.DataArray(
-                np.random.rand(N),
-                dims=["x"],
-                coords={
-                    "x": range(N),
-                },
-            )
-            n_segment = 100
-            f_scipy, p_scipy = sps.welch(
-                da.values,
-                window="hann",
-                nperseg=n_segment,
+        A = 20
+        fs = 1e4
+        n_segments = int(fs // 10)
+        fsig = 300
+        ii = int(fsig * n_segments // fs)  # Freq index of fsig
+
+        tt = np.arange(fs) / fs
+        x = A * np.sin(2 * np.pi * fsig * tt)
+        for window_type in ["hann", "bartlett", "flattop"]:
+            # see https://github.com/scipy/scipy/blob/master/scipy/signal/tests/test_spectral.py#L485
+            freq, p_scipy = sps.welch(
+                x,
+                fs=fs,
+                nperseg=n_segments,
+                window=window_type,
                 noverlap=0,
                 return_onesided=False,
+                scaling="density",
             )
+
+            x_da = xr.DataArray(x, coords=[tt], dims=["t"]).chunk({"t": n_segments})
             ps = xrft.xrft.power_spectrum(
-                da.chunk({"x": n_segment}),
-                dim="x",
-                detrend="constant",
-                window="hann",
-                chunks_to_segments=True,
-            ).mean("x_segment")
-            ps_corrected = ps / np.mean(sps.windows.hann(n_segment) ** 2)
+                x_da, dim=["t"], window=window_type, chunks_to_segments=True
+            ).mean("t_segment")
+
+            corr = 1 / np.mean(
+                getattr(sps.windows, window_type)(n_segments, sym=False) ** 2
+            )
+
             npt.assert_allclose(
-                ps_corrected.values, np.fft.fftshift(p_scipy), atol=1e-2
+                np.sqrt(np.trapz(corr * ps.values, ps.freq_t.values)),
+                A * np.sqrt(2) / 2,
+                rtol=1e-3,
             )
 
         da = xr.DataArray(
@@ -682,8 +691,8 @@ def test_parseval(chunks_to_segments):
     window = xr.DataArray(
         np.tile(
             # np.hanning(N / n_segments) * np.hanning(N / n_segments)[:, np.newaxis],
-            sps.windows.hann(int(N / n_segments))
-            * sps.windows.hann(int(N / n_segments))[:, np.newaxis],
+            sps.windows.hann(int(N / n_segments), sym=False)
+            * sps.windows.hann(int(N / n_segments), sym=False)[:, np.newaxis],
             (n_segments, n_segments),
         ),
         dims=dim,
