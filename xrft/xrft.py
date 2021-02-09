@@ -684,7 +684,7 @@ def power_spectrum(
             if kwargs[arg] is None:
                 raise ValueError("Windowing needs to be turned on.")
             else:
-                windows, _ = _apply_window(da, dim, window_type=window)
+                windows, _ = _apply_window(da, dim, window_type=kwargs[arg])
                 ps = ps / (windows ** 2).mean()
 
     if scaling == "density":
@@ -786,7 +786,7 @@ def cross_spectrum(
             if kwargs[arg] is None:
                 raise ValueError("Windowing needs to be turned on.")
             else:
-                windows, _ = _apply_window(da, dim, window_type=window)
+                windows, _ = _apply_window(da, dim, window_type=kwargs[arg])
                 cs = cs / (windows ** 2).mean()
 
     if scaling == "density":
