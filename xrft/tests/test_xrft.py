@@ -378,17 +378,8 @@ class TestSpectrum(object):
 
         tt = np.arange(fs) / fs
         x = A * np.sin(2 * np.pi * fsig * tt)
-        for window_type in ["hann", "bartlett", "flattop"]:
+        for window_type in ["hann", "bartlett", "tukey", "flattop"]:
             # see https://github.com/scipy/scipy/blob/master/scipy/signal/tests/test_spectral.py#L485
-            freq, p_scipy = sps.welch(
-                x,
-                fs=fs,
-                nperseg=n_segments,
-                window=window_type,
-                noverlap=0,
-                return_onesided=False,
-                scaling="density",
-            )
 
             x_da = xr.DataArray(x, coords=[tt], dims=["t"]).chunk({"t": n_segments})
             ps = xrft.xrft.power_spectrum(
