@@ -619,7 +619,7 @@ def idft(
 
 
 def power_spectrum(
-    da, dim=None, real=None, scaling="density", boost_windowed_amplitude=False, **kwargs
+    da, dim=None, real=None, scaling="density", window_correction=False, **kwargs
 ):
     """
     Calculates the power spectrum of da.
@@ -641,10 +641,11 @@ def power_spectrum(
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
-    boost_windowed_amplitude : boolean
-        If True, it will correct for the amplitude change by the windowing.
-        Note that the Parseval's identity is strictly only satisfied for non-corrected
-        spectrum and the windowed data if windowing is applied.
+    window_correction : boolean
+        If True, it will correct for the energy reduction resulting from applying a non-uniform window.
+        This is the default behaviour of many tools for computing power spectrum (e.g scipy.signal.welch and scipy.signal.periodogram).
+        If False, the spectrum gives a representation of the power in the windowed signal.
+        Note that when True, Parseval's theorem may only be approximately satisfied.
     kwargs : dict : see xrft.dft for argument list
     """
 
@@ -679,13 +680,19 @@ def power_spectrum(
             f[0] = 1.0
         ps = ps * xr.DataArray(f, dims=real_dim)
 
-    for arg in kwargs.keys():
-        if arg == "window" and boost_windowed_amplitude:
-            if kwargs[arg] is None:
-                raise ValueError("Windowing needs to be turned on.")
-            else:
-                windows, _ = _apply_window(da, dim, window_type=kwargs[arg])
-                ps = ps / (windows ** 2).mean()
+    if window_correction:
+        for arg in kwargs.keys():
+            if arg == "window":
+                if kwargs[arg] is None:
+                    raise ValueError("Windowing needs to be turned on.")
+                else:
+                    if scaling == "density":
+                        msg = "Energy correction is applied where the integral of the spectral density (approximately) matches the square of the RMS of the input signal."
+                        warnings.warn(msg, Warning)
+                        windows, _ = _apply_window(da, dim, window_type=kwargs[arg])
+                        ps = ps / (windows ** 2).mean()
+                    elif scaling == "spectrum":
+                        pass
 
     if scaling == "density":
         fs = np.prod([float(ps[d].spacing) for d in updated_dims])
@@ -706,7 +713,7 @@ def cross_spectrum(
     dim=None,
     real=None,
     scaling="density",
-    boost_windowed_amplitude=False,
+    window_correction=False,
     **kwargs,
 ):
     """
@@ -731,10 +738,11 @@ def cross_spectrum(
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
-    boost_windowed_amplitude : boolean
-        If True, it will correct for the amplitude change by the windowing.
-        Note that the Parseval's identity is strictly only satisfied for non-corrected
-        spectrum and the windowed data if windowing is applied.
+    window_correction : boolean
+        If True, it will correct for the energy reduction resulting from applying a non-uniform window.
+        This is the default behaviour of many tools for computing power spectrum (e.g scipy.signal.welch and scipy.signal.periodogram).
+        If False, the spectrum gives a representation of the power in the windowed signal.
+        Note that when True, Parseval's theorem may only be approximately satisfied.
     kwargs : dict : see xrft.dft for argument list
     """
 
@@ -781,13 +789,19 @@ def cross_spectrum(
             f[0] = 1.0
         cs = cs * xr.DataArray(f, dims=real_dim)
 
-    for arg in kwargs.keys():
-        if arg == "window" and boost_windowed_amplitude:
-            if kwargs[arg] is None:
-                raise ValueError("Windowing needs to be turned on.")
-            else:
-                windows, _ = _apply_window(da, dim, window_type=kwargs[arg])
-                cs = cs / (windows ** 2).mean()
+    if window_correction:
+        for arg in kwargs.keys():
+            if arg == "window":
+                if kwargs[arg] is None:
+                    raise ValueError("Windowing needs to be turned on.")
+                else:
+                    if scaling == "density":
+                        msg = "Energy correction is applied where the integral of the spectral density (approximately) matches the square of the RMS of the input signal."
+                        warnings.warn(msg, Warning)
+                        windows, _ = _apply_window(da, dim, window_type=kwargs[arg])
+                        cs = cs / (windows ** 2).mean()
+                    elif scaling == "spectrum":
+                        pass
 
     if scaling == "density":
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])

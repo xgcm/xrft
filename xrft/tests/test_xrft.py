@@ -387,7 +387,7 @@ class TestSpectrum(object):
                 dim=["t"],
                 window=window_type,
                 chunks_to_segments=True,
-                boost_windowed_amplitude=True,
+                window_correction=True,
             ).mean("t_segment")
 
             npt.assert_allclose(
@@ -442,9 +442,7 @@ class TestSpectrum(object):
         npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.0)
 
         with pytest.raises(ValueError):
-            xrft.power_spectrum(
-                da, dim=["y", "x"], window=None, boost_windowed_amplitude=True
-            )
+            xrft.power_spectrum(da, dim=["y", "x"], window=None, window_correction=True)
 
     @pytest.mark.parametrize("dask", [False, True])
     def test_cross_spectrum(self, dask):
@@ -492,9 +490,7 @@ class TestSpectrum(object):
         npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.0)
 
         with pytest.raises(ValueError):
-            xrft.cross_spectrum(
-                da, da2, dim=dim, window=None, boost_windowed_amplitude=True
-            )
+            xrft.cross_spectrum(da, da2, dim=dim, window=None, window_correction=True)
 
     def test_spectrum_dim(self):
         N = 16
