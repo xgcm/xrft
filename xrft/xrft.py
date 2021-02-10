@@ -680,24 +680,30 @@ def power_spectrum(
             f[0] = 1.0
         ps = ps * xr.DataArray(f, dims=real_dim)
 
-    if window_correction:
-        for arg in kwargs.keys():
-            if arg == "window":
-                if kwargs[arg] is None:
-                    raise ValueError("Windowing needs to be turned on.")
-                else:
-                    if scaling == "density":
+    if scaling == "density":
+        if window_correction:
+            for arg in kwargs.keys():
+                if arg == "window":
+                    if kwargs[arg] is None:
+                        raise ValueError("Windowing needs to be turned on.")
+                    else:
                         msg = "Energy correction is applied where the integral of the spectral density (approximately) matches the square of the RMS of the input signal."
                         warnings.warn(msg, Warning)
                         windows, _ = _apply_window(da, dim, window_type=kwargs[arg])
                         ps = ps / (windows ** 2).mean()
-                    elif scaling == "spectrum":
-                        pass
-
-    if scaling == "density":
         fs = np.prod([float(ps[d].spacing) for d in updated_dims])
         ps *= fs
     elif scaling == "spectrum":
+        if window_correction:
+            for arg in kwargs.keys():
+                if arg == "window":
+                    if kwargs[arg] is None:
+                        raise ValueError("Windowing needs to be turned on.")
+                    else:
+                        msg = "Amplitude correction is applied which corrects the amplitude of peaks in the spectrum."
+                        warnings.warn(msg, Warning)
+                        windows, _ = _apply_window(da, dim, window_type=kwargs[arg])
+                        ps = ps / windows.mean() ** 2
         fs = np.prod([float(ps[d].spacing) for d in updated_dims])
         ps *= fs ** 2
     elif scaling == "false_density":  # Corresponds to density=False
@@ -789,24 +795,30 @@ def cross_spectrum(
             f[0] = 1.0
         cs = cs * xr.DataArray(f, dims=real_dim)
 
-    if window_correction:
-        for arg in kwargs.keys():
-            if arg == "window":
-                if kwargs[arg] is None:
-                    raise ValueError("Windowing needs to be turned on.")
-                else:
-                    if scaling == "density":
+    if scaling == "density":
+        if window_correction:
+            for arg in kwargs.keys():
+                if arg == "window":
+                    if kwargs[arg] is None:
+                        raise ValueError("Windowing needs to be turned on.")
+                    else:
                         msg = "Energy correction is applied where the integral of the spectral density (approximately) matches the square of the RMS of the input signal."
                         warnings.warn(msg, Warning)
                         windows, _ = _apply_window(da, dim, window_type=kwargs[arg])
                         cs = cs / (windows ** 2).mean()
-                    elif scaling == "spectrum":
-                        pass
-
-    if scaling == "density":
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
         cs *= fs
     elif scaling == "spectrum":
+        if window_correction:
+            for arg in kwargs.keys():
+                if arg == "window":
+                    if kwargs[arg] is None:
+                        raise ValueError("Windowing needs to be turned on.")
+                    else:
+                        msg = "Amplitude correction is applied which corrects the amplitude of peaks in the spectrum."
+                        warnings.warn(msg, Warning)
+                        windows, _ = _apply_window(da, dim, window_type=kwargs[arg])
+                        cs = cs / windows.mean() ** 2
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
         cs *= fs ** 2
     elif scaling == "false_density":  # Corresponds to density=False
