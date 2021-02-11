@@ -367,7 +367,7 @@ class TestSpectrum(object):
         f_scipy, p_scipy = sps.periodogram(
             da.values, window="rectangular", return_onesided=True
         )
-        ps = xrft.xrft.power_spectrum(da, dim="x", real="x", detrend="constant")
+        ps = xrft.power_spectrum(da, dim="x", real="x", detrend="constant")
         npt.assert_almost_equal(ps.values, p_scipy)
 
         A = 20
@@ -382,7 +382,7 @@ class TestSpectrum(object):
             # see https://github.com/scipy/scipy/blob/master/scipy/signal/tests/test_spectral.py#L485
 
             x_da = xr.DataArray(x, coords=[tt], dims=["t"]).chunk({"t": n_segments})
-            ps = xrft.xrft.power_spectrum(
+            ps = xrft.power_spectrum(
                 x_da,
                 dim="t",
                 window=window_type,
@@ -396,7 +396,7 @@ class TestSpectrum(object):
                 rtol=1e-3,
             )
 
-            ps = xrft.xrft.power_spectrum(
+            ps = xrft.power_spectrum(
                 x_da,
                 dim="t",
                 window=window_type,
