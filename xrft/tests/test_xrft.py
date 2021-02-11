@@ -384,17 +384,29 @@ class TestSpectrum(object):
             x_da = xr.DataArray(x, coords=[tt], dims=["t"]).chunk({"t": n_segments})
             ps = xrft.xrft.power_spectrum(
                 x_da,
-                dim=["t"],
+                dim="t",
                 window=window_type,
                 chunks_to_segments=True,
                 window_correction=True,
             ).mean("t_segment")
-
+            # Check the energy correction
             npt.assert_allclose(
                 np.sqrt(np.trapz(ps.values, ps.freq_t.values)),
                 A * np.sqrt(2) / 2,
                 rtol=1e-3,
             )
+
+            ps = xrft.xrft.power_spectrum(
+                x_da,
+                dim="t",
+                window=window_type,
+                chunks_to_segments=True,
+                scaling="spectrum",
+                window_correction=True,
+            ).mean("t_segment")
+            # Check the amplitude correction
+            # The factor of 0.5 is there because we're checking the two-sided spectrum
+            npt.assert_allclose(ps.sel(freq_t=fsig), 0.5 * A ** 2 / 2.0)
 
         da = xr.DataArray(
             np.random.rand(2, N, N),
