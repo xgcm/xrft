@@ -644,6 +644,8 @@ def power_spectrum(
     window_correction : boolean
         If True, it will correct for the energy reduction resulting from applying a non-uniform window.
         This is the default behaviour of many tools for computing power spectrum (e.g scipy.signal.welch and scipy.signal.periodogram).
+        If scaling = 'spectrum', correct the amplitude of peaks in the spectrum. This ensures, for example, that the peak in the one-sided power spectrum of a 10 Hz sine wave with RMS**2 = 10 has a magnitude of 10.
+        If scaling = 'density', correct for the energy (integral) of the spectrum. This ensures, for example, that the power spectral density integrates to the square of the RMS of the signal (ie that Parseval's theorem is satisfied). Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction as it assumes that the signal being windowed is independent of the window. The correction becomes more accurate as the width of the window gets large in comparison with any noticeable period in the signal.
         If False, the spectrum gives a representation of the power in the windowed signal.
         Note that when True, Parseval's theorem may only be approximately satisfied.
     kwargs : dict : see xrft.dft for argument list
@@ -685,7 +687,9 @@ def power_spectrum(
             for arg in kwargs.keys():
                 if arg == "window":
                     if kwargs[arg] is None:
-                        raise ValueError("Windowing needs to be turned on.")
+                        raise ValueError(
+                            "window_correction can only be applied when windowing is turned on."
+                        )
                     else:
                         msg = "Energy correction is applied where the integral of the spectral density (approximately) matches the square of the RMS of the input signal."
                         warnings.warn(msg, Warning)
@@ -698,7 +702,9 @@ def power_spectrum(
             for arg in kwargs.keys():
                 if arg == "window":
                     if kwargs[arg] is None:
-                        raise ValueError("Windowing needs to be turned on.")
+                        raise ValueError(
+                            "window_correction can only be applied when windowing is turned on."
+                        )
                     else:
                         msg = "Amplitude correction is applied which corrects the amplitude of peaks in the spectrum."
                         warnings.warn(msg, Warning)
@@ -747,6 +753,8 @@ def cross_spectrum(
     window_correction : boolean
         If True, it will correct for the energy reduction resulting from applying a non-uniform window.
         This is the default behaviour of many tools for computing power spectrum (e.g scipy.signal.welch and scipy.signal.periodogram).
+        If scaling = 'spectrum', correct the amplitude of peaks in the spectrum. This ensures, for example, that the peak in the one-sided power spectrum of a 10 Hz sine wave with RMS**2 = 10 has a magnitude of 10.
+        If scaling = 'density', correct for the energy (integral) of the spectrum. This ensures, for example, that the power spectral density integrates to the square of the RMS of the signal (ie that Parseval's theorem is satisfied). Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction as it assumes that the signal being windowed is independent of the window. The correction becomes more accurate as the width of the window gets large in comparison with any noticeable period in the signal.
         If False, the spectrum gives a representation of the power in the windowed signal.
         Note that when True, Parseval's theorem may only be approximately satisfied.
     kwargs : dict : see xrft.dft for argument list
@@ -800,7 +808,9 @@ def cross_spectrum(
             for arg in kwargs.keys():
                 if arg == "window":
                     if kwargs[arg] is None:
-                        raise ValueError("Windowing needs to be turned on.")
+                        raise ValueError(
+                            "window_correction can only be applied when windowing is turned on."
+                        )
                     else:
                         msg = "Energy correction is applied where the integral of the spectral density (approximately) matches the square of the RMS of the input signal."
                         warnings.warn(msg, Warning)
@@ -813,7 +823,9 @@ def cross_spectrum(
             for arg in kwargs.keys():
                 if arg == "window":
                     if kwargs[arg] is None:
-                        raise ValueError("Windowing needs to be turned on.")
+                        raise ValueError(
+                            "window_correction can only be applied when windowing is turned on."
+                        )
                     else:
                         msg = "Amplitude correction is applied which corrects the amplitude of peaks in the spectrum."
                         warnings.warn(msg, Warning)
