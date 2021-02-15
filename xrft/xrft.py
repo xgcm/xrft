@@ -265,7 +265,7 @@ def dft(
     da,
     spacing_tol=1e-3,
     dim=None,
-    real=None,
+    real_dim=None,
     shift=True,
     detrend=None,
     window=None,
@@ -292,10 +292,10 @@ def dft(
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed. If the inputs are dask arrays, the
         arrays must not be chunked along these dimensions.
-    real : str, optional
+    real_dim : str, optional
         Real Fourier transform will be taken along this dimension.
     shift : bool, default
-        Whether to shift the fft output. Default is `True`, unless `real=True`,
+        Whether to shift the fft output. Default is `True`, unless `real_dim is not None`,
         in which case shift will be set to False always.
     detrend : {None, 'constant', 'linear'}
         If `constant`, the mean across the transform dimensions will be
@@ -334,14 +334,14 @@ def dft(
         if isinstance(dim, str):
             dim = [dim]
 
-    if real is not None:
-        if real not in da.dims:
+    if real_dim is not None:
+        if real_dim not in da.dims:
             raise ValueError(
                 "The dimension along which real FT is taken must be one of the existing dimensions."
             )
         else:
-            dim = [d for d in dim if d != real] + [
-                real
+            dim = [d for d in dim if d != real_dim] + [
+                real_dim
             ]  # real dim has to be moved or added at the end !
 
     if chunks_to_segments:
@@ -349,14 +349,14 @@ def dft(
 
     rawdims = da.dims  # take care of segmented dimesions, if any
 
-    if real is not None:
+    if real_dim is not None:
         da = da.transpose(
-            *[d for d in da.dims if d not in [real]] + [real]
+            *[d for d in da.dims if d not in [real_dim]] + [real_dim]
         )  # dimension for real transformed is moved at the end
 
     fft = _fft_module(da)
 
-    if real is None:
+    if real_dim is None:
         fft_fn = fft.fftn
     else:
         shift = False
@@ -403,7 +403,7 @@ def dft(
     if shift:
         f = fft.fftshift(f, axes=axis_num)
 
-    k = _freq(N, delta_x, real, shift)
+    k = _freq(N, delta_x, real_dim, shift)
 
     newcoords, swap_dims = _new_dims_and_coords(da, dim, k, prefix)
     daft = xr.DataArray(
@@ -436,7 +436,7 @@ def idft(
     daft,
     spacing_tol=1e-3,
     dim=None,
-    real=None,
+    real_dim=None,
     shift=True,
     true_phase=False,
     true_amplitude=False,
@@ -461,7 +461,7 @@ def idft(
     dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    real : str, optional
+    real_dim : str, optional
         Real Fourier transform will be taken along this dimension.
     shift : bool, default
         Whether to shift the fft output. Default is `True`.
@@ -498,14 +498,14 @@ def idft(
         if isinstance(dim, str):
             dim = [dim]
 
-    if real is not None:
-        if real not in daft.dims:
+    if real_dim is not None:
+        if real_dim not in daft.dims:
             raise ValueError(
                 "The dimension along which real IFT is taken must be one of the existing dimensions."
             )
         else:
-            dim = [d for d in dim if d != real] + [
-                real
+            dim = [d for d in dim if d != real_dim] + [
+                real_dim
             ]  # real dim has to be moved or added at the end !
 
     if lag is not None:
@@ -525,14 +525,14 @@ def idft(
 
     rawdims = daft.dims  # take care of segmented dimesions, if any
 
-    if real is not None:
+    if real_dim is not None:
         daft = daft.transpose(
-            *[d for d in daft.dims if d not in [real]] + [real]
+            *[d for d in daft.dims if d not in [real_dim]] + [real_dim]
         )  # dimension for real transformed is moved at the end
 
     fftm = _fft_module(daft)
 
-    if real is None:
+    if real_dim is None:
         fft_fn = fftm.ifftn
     else:
         fft_fn = fftm.irfftn
@@ -547,7 +547,7 @@ def idft(
     for d in dim:
         diff = _diff_coord(daft[d])
         delta = np.abs(diff[0])
-        l = _lag_coord(daft[d]) if d is not real else daft[d][0].data
+        l = _lag_coord(daft[d]) if d is not real_dim else daft[d][0].data
         if not np.allclose(
             diff, diff[0], rtol=spacing_tol
         ):  # means that input is not on regular increasing grid
@@ -577,7 +577,7 @@ def idft(
         delta_x.append(delta)
 
     axis_shift = [
-        daft.get_axis_num(d) for d in dim if d is not real
+        daft.get_axis_num(d) for d in dim if d is not real_dim
     ]  # remove real dim of the list
 
     f = fftm.ifftshift(
@@ -591,7 +591,7 @@ def idft(
     if shift:
         f = fftm.fftshift(f, axes=axis_num)
 
-    k = _ifreq(N, delta_x, real, shift)
+    k = _ifreq(N, delta_x, real_dim, shift)
 
     newcoords, swap_dims = _new_dims_and_coords(daft, dim, k, prefix)
     da = xr.DataArray(
@@ -619,7 +619,7 @@ def idft(
 
 
 def power_spectrum(
-    da, dim=None, real=None, scaling="density", window_correction=False, **kwargs
+    da, dim=None, real_dim=None, scaling="density", window_correction=False, **kwargs
 ):
     """
     Calculates the power spectrum of da.
@@ -636,7 +636,7 @@ def power_spectrum(
     dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    real : str, optional
+    real_dim : str, optional
         Real Fourier transform will be taken along this dimension.
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
@@ -665,22 +665,22 @@ def power_spectrum(
         {"true_amplitude": True, "true_phase": False}
     )  # true_phase do not matter in power_spectrum
 
-    daft = dft(da, dim=dim, real=real, **kwargs)
+    daft = dft(da, dim=dim, real_dim=real_dim, **kwargs)
     updated_dims = [
         d for d in daft.dims if (d not in da.dims and "segment" not in d)
     ]  # Transformed dimensions
     ps = np.abs(daft) ** 2
 
-    if real is not None:
-        real_dim = [d for d in updated_dims if real == d[-len(real) :]][
+    if real_dim is not None:
+        real = [d for d in updated_dims if real_dim == d[-len(real_dim) :]][
             0
         ]  # find transformed real dimension
-        f = np.full(ps.sizes[real_dim], 2.0)
-        if len(da[real]) % 2 == 0:
+        f = np.full(ps.sizes[real], 2.0)
+        if len(da[real_dim]) % 2 == 0:
             f[0], f[-1] = 1.0, 1.0
         else:
             f[0] = 1.0
-        ps = ps * xr.DataArray(f, dims=real_dim)
+        ps = ps * xr.DataArray(f, dims=real)
 
     if scaling == "density":
         if window_correction:
@@ -715,7 +715,7 @@ def cross_spectrum(
     da1,
     da2,
     dim=None,
-    real=None,
+    real_dim=None,
     scaling="density",
     window_correction=False,
     **kwargs,
@@ -737,7 +737,7 @@ def cross_spectrum(
     dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    real : str, optional
+    real_dim : str, optional
         Real Fourier transform will be taken along this dimension.
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
@@ -773,8 +773,8 @@ def cross_spectrum(
 
     kwargs.update({"true_amplitude": True})
 
-    daft1 = dft(da1, dim=dim, real=real, **kwargs)
-    daft2 = dft(da2, dim=dim, real=real, **kwargs)
+    daft1 = dft(da1, dim=dim, real_dim=real_dim, **kwargs)
+    daft2 = dft(da2, dim=dim, real_dim=real_dim, **kwargs)
 
     if daft1.dims != daft2.dims:
         raise ValueError("The two datasets have different dimensions")
@@ -784,16 +784,16 @@ def cross_spectrum(
     ]  # Transformed dimensions
     cs = daft1 * np.conj(daft2)
 
-    if real is not None:
-        real_dim = [d for d in updated_dims if real == d[-len(real) :]][
+    if real_dim is not None:
+        real = [d for d in updated_dims if real_dim == d[-len(real_dim) :]][
             0
         ]  # find transformed real dimension
-        f = np.full(cs.sizes[real_dim], 2.0)
-        if len(da1[real]) % 2 == 0:
+        f = np.full(cs.sizes[real], 2.0)
+        if len(da1[real_dim]) % 2 == 0:
             f[0], f[-1] = 1.0, 1.0
         else:
             f[0] = 1.0
-        cs = cs * xr.DataArray(f, dims=real_dim)
+        cs = cs * xr.DataArray(f, dims=real)
 
     if scaling == "density":
         if window_correction:
