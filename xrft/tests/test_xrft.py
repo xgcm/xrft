@@ -212,7 +212,7 @@ class TestfftReal(object):
         dx = float(da.x[1] - da.x[0]) if "x" in da.dims else 1
 
         # defaults with no keyword args
-        ft = xrft.fft(da, real="x", detrend="constant")
+        ft = xrft.fft(da, real_dim="x", detrend="constant")
         # check that the frequency dimension was created properly
         assert ft.dims == ("freq_x",)
         # check that the coords are correct
@@ -230,7 +230,7 @@ class TestfftReal(object):
         npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
 
         with pytest.raises(ValueError):
-            xrft.fft(da, real="y", detrend="constant")
+            xrft.fft(da, real_dim="y", detrend="constant")
 
     def test_fft_real_2d(self):
         """
@@ -247,11 +247,11 @@ class TestfftReal(object):
         dx = float(da.x[1] - da.x[0])
         dy = float(da.y[1] - da.y[0])
 
-        daft = xrft.fft(da, real="x")
+        daft = xrft.fft(da, real_dim="x")
         npt.assert_almost_equal(
             daft.values, np.fft.rfftn(da.transpose("y", "x")).transpose()
         )
-        npt.assert_almost_equal(daft.values, xrft.fft(da, dim=["y"], real="x"))
+        npt.assert_almost_equal(daft.values, xrft.fft(da, dim=["y"], real_dim="x"))
 
         actual_freq_x = daft.coords["freq_x"].values
         expected_freq_x = np.fft.rfftfreq(Nx, dx)
@@ -367,7 +367,7 @@ class TestSpectrum(object):
         f_scipy, p_scipy = sps.periodogram(
             da.values, window="rectangular", return_onesided=True
         )
-        ps = xrft.power_spectrum(da, dim="x", real="x", detrend="constant")
+        ps = xrft.power_spectrum(da, dim="x", real_dim="x", detrend="constant")
         npt.assert_almost_equal(ps.values, p_scipy)
 
         A = 20
@@ -427,9 +427,14 @@ class TestSpectrum(object):
         npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.0)
 
         ps = xrft.power_spectrum(
-            da, dim=["y"], real="x", window="hann", density=False, detrend="constant"
+            da,
+            dim=["y"],
+            real_dim="x",
+            window="hann",
+            density=False,
+            detrend="constant",
         )
-        daft = xrft.fft(da, dim=["y"], real="x", detrend="constant", window="hann")
+        daft = xrft.fft(da, dim=["y"], real_dim="x", detrend="constant", window="hann")
         ps_test = np.real(daft * np.conj(daft))
         f = np.full(ps_test.sizes["freq_x"], 2.0)
         f[0], f[-1] = 1.0, 1.0
@@ -517,12 +522,12 @@ class TestSpectrum(object):
         )
 
         ps = xrft.power_spectrum(
-            da, dim="y", real="x", window="hann", detrend="constant"
+            da, dim="y", real_dim="x", window="hann", detrend="constant"
         )
         npt.assert_array_equal(
             ps.values,
             xrft.power_spectrum(
-                da, dim=["y"], real="x", window="hann", detrend="constant"
+                da, dim=["y"], real_dim="x", window="hann", detrend="constant"
             ).values,
         )
         assert ps.dims == ("time", "freq_y", "freq_x")
@@ -1177,7 +1182,7 @@ def test_real_dft_true_phase():
         },
     )
     s1 = xrft.dft(s, dim="x", true_phase=True, shift=True)
-    s2 = xrft.dft(s, real="x", true_phase=True, shift=True)
+    s2 = xrft.dft(s, real_dim="x", true_phase=True, shift=True)
     s1 = np.conj(s1[{"freq_x": slice(None, s1.sizes["freq_x"] // 2 + 1)}])
     s1 = s1.assign_coords(freq_x=-s1["freq_x"]).sortby("freq_x")
     xrt.assert_allclose(s1, s2)
