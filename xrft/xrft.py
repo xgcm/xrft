@@ -70,7 +70,7 @@ def _apply_window(da, dims, window_type="hann"):
         "nuttall",
     ]:
         raise NotImplementedError(
-            "Please adhere to scipy.signal.windows for naming convention."
+            "Window type {window_type} not supported. Please adhere to scipy.signal.windows for naming convention."
         )
 
     scipy_win_func = getattr(sps.windows, window_type)
