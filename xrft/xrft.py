@@ -680,7 +680,7 @@ def power_spectrum(
             f[0], f[-1] = 1.0, 1.0
         else:
             f[0] = 1.0
-        ps = ps * xr.DataArray(f, dims=real)
+        ps = ps * xr.DataArray(f, dims=real, coords=ps[real].coords)
 
     if scaling == "density":
         if window_correction:
@@ -793,7 +793,7 @@ def cross_spectrum(
             f[0], f[-1] = 1.0, 1.0
         else:
             f[0] = 1.0
-        cs = cs * xr.DataArray(f, dims=real)
+        cs = cs * xr.DataArray(f, dims=real, coords=cs[real].coords)
 
     if scaling == "density":
         if window_correction:
