@@ -44,7 +44,12 @@ def _fft_module(da):
 def _apply_window(da, dims, window_type="hann"):
     """Creating windows in dimensions dims."""
 
-    if window_type not in [
+    if window_type == True:
+        window_type = "hann"
+        warnings.warn(
+            "Please provide the name of window adhering to scipy.signal.windows. The boolean option will be deprecated in future releases."
+        )
+    elif window_type not in [
         "hann",
         "hamming",
         "kaiser",
