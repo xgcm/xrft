@@ -684,32 +684,24 @@ def power_spectrum(
 
     if scaling == "density":
         if window_correction:
-            for arg in kwargs.keys():
-                if arg == "window":
-                    if kwargs[arg] is None:
-                        raise ValueError(
-                            "window_correction can only be applied when windowing is turned on."
-                        )
-                    else:
-                        msg = "Energy correction is applied where the integral of the spectral density (approximately) matches the square of the RMS of the input signal."
-                        warnings.warn(msg, Warning)
-                        windows, _ = _apply_window(da, dim, window_type=kwargs[arg])
-                        ps = ps / (windows ** 2).mean()
+            if kwargs.get("window") == None:
+                raise ValueError(
+                    "window_correction can only be applied when windowing is turned on."
+                )
+            else:
+                windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
+                ps = ps / (windows ** 2).mean()
         fs = np.prod([float(ps[d].spacing) for d in updated_dims])
         ps *= fs
     elif scaling == "spectrum":
         if window_correction:
-            for arg in kwargs.keys():
-                if arg == "window":
-                    if kwargs[arg] is None:
-                        raise ValueError(
-                            "window_correction can only be applied when windowing is turned on."
-                        )
-                    else:
-                        msg = "Amplitude correction is applied which corrects the amplitude of peaks in the spectrum."
-                        warnings.warn(msg, Warning)
-                        windows, _ = _apply_window(da, dim, window_type=kwargs[arg])
-                        ps = ps / windows.mean() ** 2
+            if kwargs.get("window") == None:
+                raise ValueError(
+                    "window_correction can only be applied when windowing is turned on."
+                )
+            else:
+                windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
+                ps = ps / windows.mean() ** 2
         fs = np.prod([float(ps[d].spacing) for d in updated_dims])
         ps *= fs ** 2
     elif scaling == "false_density":  # Corresponds to density=False
@@ -805,32 +797,24 @@ def cross_spectrum(
 
     if scaling == "density":
         if window_correction:
-            for arg in kwargs.keys():
-                if arg == "window":
-                    if kwargs[arg] is None:
-                        raise ValueError(
-                            "window_correction can only be applied when windowing is turned on."
-                        )
-                    else:
-                        msg = "Energy correction is applied where the integral of the spectral density (approximately) matches the square of the RMS of the input signal."
-                        warnings.warn(msg, Warning)
-                        windows, _ = _apply_window(da, dim, window_type=kwargs[arg])
-                        cs = cs / (windows ** 2).mean()
+            if kwargs.get("window") == None:
+                raise ValueError(
+                    "window_correction can only be applied when windowing is turned on."
+                )
+            else:
+                windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
+                cs = cs / (windows ** 2).mean()
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
         cs *= fs
     elif scaling == "spectrum":
         if window_correction:
-            for arg in kwargs.keys():
-                if arg == "window":
-                    if kwargs[arg] is None:
-                        raise ValueError(
-                            "window_correction can only be applied when windowing is turned on."
-                        )
-                    else:
-                        msg = "Amplitude correction is applied which corrects the amplitude of peaks in the spectrum."
-                        warnings.warn(msg, Warning)
-                        windows, _ = _apply_window(da, dim, window_type=kwargs[arg])
-                        cs = cs / windows.mean() ** 2
+            if kwargs.get("window") == None:
+                raise ValueError(
+                    "window_correction can only be applied when windowing is turned on."
+                )
+            else:
+                windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
+                cs = cs / windows.mean() ** 2
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
         cs *= fs ** 2
     elif scaling == "false_density":  # Corresponds to density=False
@@ -1036,7 +1020,7 @@ def isotropic_power_spectrum(
         the FT.
     density : list, optional
         If true, it will normalize the spectrum to spectral density
-    window : bool, optional
+    window : str, optional
         Whether to apply a window to the data before the Fourier
         transform is taken. Please adhere to scipy.signal.windows for naming convention.
     nfactor : int, optional
@@ -1125,7 +1109,7 @@ def isotropic_cross_spectrum(
         the FT.
     density : list (optional)
         If true, it will normalize the spectrum to spectral density
-    window : bool (optional)
+    window : str (optional)
         Whether to apply a window to the data before the Fourier
         transform is taken. Please adhere to scipy.signal.windows for naming convention.
     nfactor : int (optional)
