@@ -41,29 +41,64 @@ def _fft_module(da):
         return np.fft
 
 
-def _apply_window(da, dims, window_type="hanning"):
+def _apply_window(da, dims, window_type="hann"):
     """Creating windows in dimensions dims."""
 
-    if window_type not in ["hanning"]:
-        raise NotImplementedError("Only hanning window is supported for now.")
+    if window_type == True:
+        window_type = "hann"
+        warnings.warn(
+            "Please provide the name of window adhering to scipy.signal.windows. The boolean option will be deprecated in future releases."
+        )
+    elif window_type not in [
+        "hann",
+        "hamming",
+        "kaiser",
+        "tukey",
+        "parzen",
+        "taylor",
+        "boxcar",
+        "barthann",
+        "bartlett",
+        "blackman",
+        "blackmanharris",
+        "bohman",
+        "chebwin",
+        "cosine",
+        "dpss",
+        "exponential",
+        "flattop",
+        "gaussian",
+        "general_cosine",
+        "general_gaussian",
+        "general_hamming",
+        "triang",
+        "nuttall",
+    ]:
+        raise NotImplementedError(
+            "Window type {window_type} not supported. Please adhere to scipy.signal.windows for naming convention."
+        )
 
-    numpy_win_func = getattr(np, window_type)
+    scipy_win_func = getattr(sps.windows, window_type)
 
     if da.chunks:
 
-        def dask_win_func(n):
-            return dsar.from_delayed(delayed(numpy_win_func, pure=True)(n), (n,), float)
+        def dask_win_func(n, sym=False):
+            return dsar.from_delayed(
+                delayed(scipy_win_func, pure=True)(n, sym=sym), (n,), float
+            )
 
         win_func = dask_win_func
     else:
-        win_func = numpy_win_func
+        win_func = scipy_win_func
 
     windows = [
-        xr.DataArray(win_func(len(da[d])), dims=da[d].dims, coords=da[d].coords)
+        xr.DataArray(
+            win_func(len(da[d]), sym=False), dims=da[d].dims, coords=da[d].coords
+        )
         for d in dims
     ]
 
-    return da * reduce(operator.mul, windows[::-1])
+    return reduce(operator.mul, windows[::-1]), da * reduce(operator.mul, windows[::-1])
 
 
 def _stack_chunks(da, dim, suffix="_segment"):
@@ -235,10 +270,10 @@ def dft(
     da,
     spacing_tol=1e-3,
     dim=None,
-    real=None,
+    real_dim=None,
     shift=True,
     detrend=None,
-    window=False,
+    window=None,
     true_phase=False,
     true_amplitude=False,
     chunks_to_segments=False,
@@ -262,20 +297,20 @@ def dft(
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed. If the inputs are dask arrays, the
         arrays must not be chunked along these dimensions.
-    real : str, optional
+    real_dim : str, optional
         Real Fourier transform will be taken along this dimension.
     shift : bool, default
-        Whether to shift the fft output. Default is `True`, unless `real=True`,
+        Whether to shift the fft output. Default is `True`, unless `real_dim is not None`,
         in which case shift will be set to False always.
     detrend : {None, 'constant', 'linear'}
         If `constant`, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
         If `linear`, the linear least-square fit will be subtracted before
         the FT. For `linear`, only dims of length 1 and 2 are supported.
-    window : bool, optional
-        Whether to apply a Hann window to the data before the Fourier
+    window : str, optional
+        Whether to apply a window to the data before the Fourier
         transform is taken. A window will be applied to all the dimensions in
-        dim.
+        dim. Please follow `scipy.signal.windows`' naming convention.
     true_phase : bool, optional
         If set to False, standard fft algorithm is applied on signal without consideration of coordinates.
         If set to True, coordinates location are correctly taken into account to evaluate Fourier Tranforrm phase and
@@ -304,14 +339,14 @@ def dft(
         if isinstance(dim, str):
             dim = [dim]
 
-    if real is not None:
-        if real not in da.dims:
+    if real_dim is not None:
+        if real_dim not in da.dims:
             raise ValueError(
                 "The dimension along which real FT is taken must be one of the existing dimensions."
             )
         else:
-            dim = [d for d in dim if d != real] + [
-                real
+            dim = [d for d in dim if d != real_dim] + [
+                real_dim
             ]  # real dim has to be moved or added at the end !
 
     if chunks_to_segments:
@@ -319,14 +354,14 @@ def dft(
 
     rawdims = da.dims  # take care of segmented dimesions, if any
 
-    if real is not None:
+    if real_dim is not None:
         da = da.transpose(
-            *[d for d in da.dims if d not in [real]] + [real]
+            *[d for d in da.dims if d not in [real_dim]] + [real_dim]
         )  # dimension for real transformed is moved at the end
 
     fft = _fft_module(da)
 
-    if real is None:
+    if real_dim is None:
         fft_fn = fft.fftn
     else:
         shift = False
@@ -362,8 +397,8 @@ def dft(
     if detrend:
         da = _detrend(da, dim, detrend_type=detrend)
 
-    if window:
-        da = _apply_window(da, dim)
+    if window is not None:
+        _, da = _apply_window(da, dim, window_type=window)
 
     if true_phase:
         f = fft_fn(fft.ifftshift(da.data, axes=axis_num), axes=axis_num)
@@ -373,7 +408,7 @@ def dft(
     if shift:
         f = fft.fftshift(f, axes=axis_num)
 
-    k = _freq(N, delta_x, real, shift)
+    k = _freq(N, delta_x, real_dim, shift)
 
     newcoords, swap_dims = _new_dims_and_coords(da, dim, k, prefix)
     daft = xr.DataArray(
@@ -406,12 +441,10 @@ def idft(
     daft,
     spacing_tol=1e-3,
     dim=None,
-    real=None,
+    real_dim=None,
     shift=True,
-    detrend=None,
     true_phase=False,
     true_amplitude=False,
-    window=False,
     chunks_to_segments=False,
     prefix="freq_",
     lag=None,
@@ -433,19 +466,10 @@ def idft(
     dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
-    real : str, optional
+    real_dim : str, optional
         Real Fourier transform will be taken along this dimension.
     shift : bool, default
         Whether to shift the fft output. Default is `True`.
-    detrend : str, optional
-        If `constant`, the mean across the transform dimensions will be
-        subtracted before calculating the Fourier transform (FT).
-        If `linear`, the linear least-square fit will be subtracted before
-        the FT.
-    window : bool, optional
-        Whether to apply a Hann window to the data before the Fourier
-        transform is taken. A window will be applied to all the dimensions in
-        dim.
     chunks_to_segments : bool, optional
         Whether the data is chunked along the axis to take FFT.
     prefix : str
@@ -479,14 +503,14 @@ def idft(
         if isinstance(dim, str):
             dim = [dim]
 
-    if real is not None:
-        if real not in daft.dims:
+    if real_dim is not None:
+        if real_dim not in daft.dims:
             raise ValueError(
                 "The dimension along which real IFT is taken must be one of the existing dimensions."
             )
         else:
-            dim = [d for d in dim if d != real] + [
-                real
+            dim = [d for d in dim if d != real_dim] + [
+                real_dim
             ]  # real dim has to be moved or added at the end !
 
     if lag is not None:
@@ -506,14 +530,14 @@ def idft(
 
     rawdims = daft.dims  # take care of segmented dimesions, if any
 
-    if real is not None:
+    if real_dim is not None:
         daft = daft.transpose(
-            *[d for d in daft.dims if d not in [real]] + [real]
+            *[d for d in daft.dims if d not in [real_dim]] + [real_dim]
         )  # dimension for real transformed is moved at the end
 
     fftm = _fft_module(daft)
 
-    if real is None:
+    if real_dim is None:
         fft_fn = fftm.ifftn
     else:
         fft_fn = fftm.irfftn
@@ -528,7 +552,7 @@ def idft(
     for d in dim:
         diff = _diff_coord(daft[d])
         delta = np.abs(diff[0])
-        l = _lag_coord(daft[d]) if d is not real else daft[d][0].data
+        l = _lag_coord(daft[d]) if d is not real_dim else daft[d][0].data
         if not np.allclose(
             diff, diff[0], rtol=spacing_tol
         ):  # means that input is not on regular increasing grid
@@ -557,14 +581,8 @@ def idft(
             )
         delta_x.append(delta)
 
-    if detrend:
-        daft = _apply_detrend(daft, dim, axis_num, detrend)
-
-    if window:
-        daft = _apply_window(daft, dim)
-
     axis_shift = [
-        daft.get_axis_num(d) for d in dim if d is not real
+        daft.get_axis_num(d) for d in dim if d is not real_dim
     ]  # remove real dim of the list
 
     f = fftm.ifftshift(
@@ -578,7 +596,7 @@ def idft(
     if shift:
         f = fftm.fftshift(f, axes=axis_num)
 
-    k = _ifreq(N, delta_x, real, shift)
+    k = _ifreq(N, delta_x, real_dim, shift)
 
     newcoords, swap_dims = _new_dims_and_coords(daft, dim, k, prefix)
     da = xr.DataArray(
@@ -605,7 +623,9 @@ def idft(
     )  # Do nothing if daft was not transposed
 
 
-def power_spectrum(da, dim=None, scaling="density", **kwargs):
+def power_spectrum(
+    da, dim=None, real_dim=None, scaling="density", window_correction=False, **kwargs
+):
     """
     Calculates the power spectrum of da.
 
@@ -621,9 +641,18 @@ def power_spectrum(da, dim=None, scaling="density", **kwargs):
     dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
+    real_dim : str, optional
+        Real Fourier transform will be taken along this dimension.
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
+    window_correction : boolean
+        If True, it will correct for the energy reduction resulting from applying a non-uniform window.
+        This is the default behaviour of many tools for computing power spectrum (e.g scipy.signal.welch and scipy.signal.periodogram).
+        If scaling = 'spectrum', correct the amplitude of peaks in the spectrum. This ensures, for example, that the peak in the one-sided power spectrum of a 10 Hz sine wave with RMS**2 = 10 has a magnitude of 10.
+        If scaling = 'density', correct for the energy (integral) of the spectrum. This ensures, for example, that the power spectral density integrates to the square of the RMS of the signal (ie that Parseval's theorem is satisfied). Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction as it assumes that the signal being windowed is independent of the window. The correction becomes more accurate as the width of the window gets large in comparison with any noticeable period in the signal.
+        If False, the spectrum gives a representation of the power in the windowed signal.
+        Note that when True, Parseval's theorem may only be approximately satisfied.
     kwargs : dict : see xrft.dft for argument list
     """
 
@@ -641,30 +670,61 @@ def power_spectrum(da, dim=None, scaling="density", **kwargs):
         {"true_amplitude": True, "true_phase": False}
     )  # true_phase do not matter in power_spectrum
 
-    daft = dft(da, dim=dim, **kwargs)
+    daft = dft(da, dim=dim, real_dim=real_dim, **kwargs)
     updated_dims = [
         d for d in daft.dims if (d not in da.dims and "segment" not in d)
     ]  # Transformed dimensions
     ps = np.abs(daft) ** 2
 
+    if real_dim is not None:
+        real = [d for d in updated_dims if real_dim == d[-len(real_dim) :]][
+            0
+        ]  # find transformed real dimension
+        f = np.full(ps.sizes[real], 2.0)
+        if len(da[real_dim]) % 2 == 0:
+            f[0], f[-1] = 1.0, 1.0
+        else:
+            f[0] = 1.0
+        ps = ps * xr.DataArray(f, dims=real, coords=ps[real].coords)
+
     if scaling == "density":
+        if window_correction:
+            if kwargs.get("window") == None:
+                raise ValueError(
+                    "window_correction can only be applied when windowing is turned on."
+                )
+            else:
+                windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
+                ps = ps / (windows ** 2).mean()
         fs = np.prod([float(ps[d].spacing) for d in updated_dims])
         ps *= fs
     elif scaling == "spectrum":
+        if window_correction:
+            if kwargs.get("window") == None:
+                raise ValueError(
+                    "window_correction can only be applied when windowing is turned on."
+                )
+            else:
+                windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
+                ps = ps / windows.mean() ** 2
         fs = np.prod([float(ps[d].spacing) for d in updated_dims])
         ps *= fs ** 2
     elif scaling == "false_density":  # Corresponds to density=False
-        s = np.prod([float(ps.sizes[d] * ps[d].spacing) for d in updated_dims])
-        real = kwargs.get("real", None)
-        if real is not None:
-            s *= da.sizes[real] / (da.sizes[real] // 2 + 1)
-        ps *= s ** 2
+        pass
     else:
         raise ValueError("Unknown {} scaling flag".format(scaling))
     return ps
 
 
-def cross_spectrum(da1, da2, dim=None, scaling="density", **kwargs):
+def cross_spectrum(
+    da1,
+    da2,
+    dim=None,
+    real_dim=None,
+    scaling="density",
+    window_correction=False,
+    **kwargs,
+):
     """
     Calculates the cross spectra of da1 and da2.
 
@@ -682,9 +742,18 @@ def cross_spectrum(da1, da2, dim=None, scaling="density", **kwargs):
     dim : str or sequence of str, optional
         The dimensions along which to take the transformation. If `None`, all
         dimensions will be transformed.
+    real_dim : str, optional
+        Real Fourier transform will be taken along this dimension.
     scaling : str, optional
         If 'density', it will normalize the output to power spectral density
         If 'spectrum', it will normalize the output to power spectrum
+    window_correction : boolean
+        If True, it will correct for the energy reduction resulting from applying a non-uniform window.
+        This is the default behaviour of many tools for computing power spectrum (e.g scipy.signal.welch and scipy.signal.periodogram).
+        If scaling = 'spectrum', correct the amplitude of peaks in the spectrum. This ensures, for example, that the peak in the one-sided power spectrum of a 10 Hz sine wave with RMS**2 = 10 has a magnitude of 10.
+        If scaling = 'density', correct for the energy (integral) of the spectrum. This ensures, for example, that the power spectral density integrates to the square of the RMS of the signal (ie that Parseval's theorem is satisfied). Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction as it assumes that the signal being windowed is independent of the window. The correction becomes more accurate as the width of the window gets large in comparison with any noticeable period in the signal.
+        If False, the spectrum gives a representation of the power in the windowed signal.
+        Note that when True, Parseval's theorem may only be approximately satisfied.
     kwargs : dict : see xrft.dft for argument list
     """
 
@@ -709,8 +778,8 @@ def cross_spectrum(da1, da2, dim=None, scaling="density", **kwargs):
 
     kwargs.update({"true_amplitude": True})
 
-    daft1 = dft(da1, dim=dim, **kwargs)
-    daft2 = dft(da2, dim=dim, **kwargs)
+    daft1 = dft(da1, dim=dim, real_dim=real_dim, **kwargs)
+    daft2 = dft(da2, dim=dim, real_dim=real_dim, **kwargs)
 
     if daft1.dims != daft2.dims:
         raise ValueError("The two datasets have different dimensions")
@@ -719,18 +788,42 @@ def cross_spectrum(da1, da2, dim=None, scaling="density", **kwargs):
         d for d in daft1.dims if (d not in da1.dims and "segment" not in d)
     ]  # Transformed dimensions
     cs = daft1 * np.conj(daft2)
+
+    if real_dim is not None:
+        real = [d for d in updated_dims if real_dim == d[-len(real_dim) :]][
+            0
+        ]  # find transformed real dimension
+        f = np.full(cs.sizes[real], 2.0)
+        if len(da1[real_dim]) % 2 == 0:
+            f[0], f[-1] = 1.0, 1.0
+        else:
+            f[0] = 1.0
+        cs = cs * xr.DataArray(f, dims=real, coords=cs[real].coords)
+
     if scaling == "density":
+        if window_correction:
+            if kwargs.get("window") == None:
+                raise ValueError(
+                    "window_correction can only be applied when windowing is turned on."
+                )
+            else:
+                windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
+                cs = cs / (windows ** 2).mean()
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
         cs *= fs
     elif scaling == "spectrum":
+        if window_correction:
+            if kwargs.get("window") == None:
+                raise ValueError(
+                    "window_correction can only be applied when windowing is turned on."
+                )
+            else:
+                windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
+                cs = cs / windows.mean() ** 2
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
         cs *= fs ** 2
     elif scaling == "false_density":  # Corresponds to density=False
-        s = np.prod([float(cs.sizes[d] * cs[d].spacing) for d in updated_dims])
-        real = kwargs.get("real", None)
-        if real is not None:
-            s *= da.sizes[real] / (da.sizes[real] // 2 + 1)
-        cs *= s ** 2
+        pass
     else:
         raise ValueError("Unknown {} scaling flag".format(scaling))
     return cs
@@ -898,7 +991,7 @@ def isotropic_power_spectrum(
     shift=True,
     detrend=None,
     density=True,
-    window=False,
+    window=None,
     nfactor=4,
 ):
     """
@@ -932,9 +1025,9 @@ def isotropic_power_spectrum(
         the FT.
     density : list, optional
         If true, it will normalize the spectrum to spectral density
-    window : bool, optional
-        Whether to apply a Hann window to the data before the Fourier
-        transform is taken
+    window : str, optional
+        Whether to apply a window to the data before the Fourier
+        transform is taken. Please adhere to scipy.signal.windows for naming convention.
     nfactor : int, optional
         Ratio of number of bins to take the azimuthal averaging with the
         data size. Default is 4.
@@ -985,7 +1078,7 @@ def isotropic_cross_spectrum(
     shift=True,
     detrend=None,
     density=True,
-    window=False,
+    window=None,
     nfactor=4,
 ):
     """
@@ -1021,9 +1114,9 @@ def isotropic_cross_spectrum(
         the FT.
     density : list (optional)
         If true, it will normalize the spectrum to spectral density
-    window : bool (optional)
-        Whether to apply a Hann window to the data before the Fourier
-        transform is taken
+    window : str (optional)
+        Whether to apply a window to the data before the Fourier
+        transform is taken. Please adhere to scipy.signal.windows for naming convention.
     nfactor : int (optional)
         Ratio of number of bins to take the azimuthal averaging with the
         data size. Default is 4.
