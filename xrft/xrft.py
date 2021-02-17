@@ -677,7 +677,8 @@ def power_spectrum(
         )
         warnings.warn(msg, FutureWarning)
         scaling = "density" if density else "false_density"
-    elif "real" in kwargs:
+
+    if "real" in kwargs:
         real_dim = kwargs.get("real")
         msg = "`real` flag will be deprecated in future version of xrft.power_spectrum and replaced by `real_dim` flag."
         warnings.warn(msg, FutureWarning)
@@ -780,7 +781,8 @@ def cross_spectrum(
             + "with numpy-like behavior where the coordinates are disregarded."
         )
         warnings.warn(msg, FutureWarning)
-    elif "real" in kwargs:
+
+    if "real" in kwargs:
         real_dim = kwargs.get("real")
         msg = "`real` flag will be deprecated in future version of xrft.cross_spectrum and replaced by `real_dim` flag."
         warnings.warn(msg, FutureWarning)
