@@ -343,7 +343,7 @@ def dft(
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
-        msg = "`real` flag will be deprecated in future version of xrft.power_spectrum and replaced by `real_dim` flag."
+        msg = "`real` flag will be deprecated in future version of xrft.dft and replaced by `real_dim` flag."
         warnings.warn(msg, FutureWarning)
 
     if real_dim is not None:
@@ -513,7 +513,7 @@ def idft(
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
-        msg = "`real` flag will be deprecated in future version of xrft.power_spectrum and replaced by `real_dim` flag."
+        msg = "`real` flag will be deprecated in future version of xrft.idft and replaced by `real_dim` flag."
         warnings.warn(msg, FutureWarning)
     if real_dim is not None:
         if real_dim not in daft.dims:
@@ -782,7 +782,7 @@ def cross_spectrum(
         warnings.warn(msg, FutureWarning)
     elif "real" in kwargs:
         real_dim = kwargs.get("real")
-        msg = "`real` flag will be deprecated in future version of xrft.power_spectrum and replaced by `real_dim` flag."
+        msg = "`real` flag will be deprecated in future version of xrft.cross_spectrum and replaced by `real_dim` flag."
         warnings.warn(msg, FutureWarning)
 
     if "density" in kwargs:
