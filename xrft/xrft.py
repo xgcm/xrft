@@ -47,7 +47,8 @@ def _apply_window(da, dims, window_type="hann"):
     if window_type == True:
         window_type = "hann"
         warnings.warn(
-            "Please provide the name of window adhering to scipy.signal.windows. The boolean option will be deprecated in future releases."
+            "Please provide the name of window adhering to scipy.signal.windows. The boolean option will be deprecated in future releases.",
+            FutureWarning,
         )
     elif window_type not in [
         "hann",
@@ -278,6 +279,7 @@ def dft(
     true_amplitude=False,
     chunks_to_segments=False,
     prefix="freq_",
+    **kwargs,
 ):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
@@ -338,6 +340,11 @@ def dft(
     else:
         if isinstance(dim, str):
             dim = [dim]
+
+    if "real" in kwargs:
+        real_dim = kwargs.get("real")
+        msg = "`real` flag will be deprecated in future version of xrft.dft and replaced by `real_dim` flag."
+        warnings.warn(msg, FutureWarning)
 
     if real_dim is not None:
         if real_dim not in da.dims:
@@ -448,6 +455,7 @@ def idft(
     chunks_to_segments=False,
     prefix="freq_",
     lag=None,
+    **kwargs,
 ):
     """
     Perform inverse discrete Fourier transform of xarray data-array `daft` along the
@@ -503,6 +511,10 @@ def idft(
         if isinstance(dim, str):
             dim = [dim]
 
+    if "real" in kwargs:
+        real_dim = kwargs.get("real")
+        msg = "`real` flag will be deprecated in future version of xrft.idft and replaced by `real_dim` flag."
+        warnings.warn(msg, FutureWarning)
     if real_dim is not None:
         if real_dim not in daft.dims:
             raise ValueError(
@@ -666,6 +678,11 @@ def power_spectrum(
         warnings.warn(msg, FutureWarning)
         scaling = "density" if density else "false_density"
 
+    if "real" in kwargs:
+        real_dim = kwargs.get("real")
+        msg = "`real` flag will be deprecated in future version of xrft.power_spectrum and replaced by `real_dim` flag."
+        warnings.warn(msg, FutureWarning)
+
     kwargs.update(
         {"true_amplitude": True, "true_phase": False}
     )  # true_phase do not matter in power_spectrum
@@ -763,6 +780,11 @@ def cross_spectrum(
             + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
             + "with numpy-like behavior where the coordinates are disregarded."
         )
+        warnings.warn(msg, FutureWarning)
+
+    if "real" in kwargs:
+        real_dim = kwargs.get("real")
+        msg = "`real` flag will be deprecated in future version of xrft.cross_spectrum and replaced by `real_dim` flag."
         warnings.warn(msg, FutureWarning)
 
     if "density" in kwargs:
