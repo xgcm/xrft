@@ -3,6 +3,21 @@
 What's New
 ==========
 
+.. _whats-new.0.2.3:
+
+v0.3.0 (18 February 2021)
+----------------------
+
+Enhancements
+~~~~~~~~~~~~
+
+- Implemented the inverse discrete Fourier transform ``idft``. By `Frederic Nouguier <https://github.com/lanougue>`_
+
+- Allowed windowing other than the Hann function. By `Takaya Uchida <https://github.com/roxyboy>`_
+
+- Allowed parallelization of isotropizing the spectrum.
+  By `Takaya Uchida <https://github.com/roxyboy>`_
+
 .. _whats-new.0.2.0:
 
 v0.2.0 (10 April 2019)
