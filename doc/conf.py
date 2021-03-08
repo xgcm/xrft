@@ -44,7 +44,7 @@ extensions = [
     "sphinxcontrib.apidoc",
     "numpydoc",
     "nbsphinx",
-    "IPython.sphinxext.ipython_directive",
+#    "IPython.sphinxext.ipython_directive",
     "IPython.sphinxext.ipython_console_highlighting",
 ]
 
