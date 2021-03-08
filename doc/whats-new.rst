@@ -3,7 +3,7 @@
 What's New
 ==========
 
-.. _whats-new.0.2.3:
+.. _whats-new.0.3.0:
 
 v0.3.0 (18 February 2021)
 ----------------------
@@ -15,8 +15,10 @@ Enhancements
 
 - Allowed windowing other than the Hann function. By `Takaya Uchida <https://github.com/roxyboy>`_
 
-- Allowed parallelization of isotropizing the spectrum.
+- Allowed parallelization of isotropizing the spectrum via ``numpy_groupies``.
   By `Takaya Uchida <https://github.com/roxyboy>`_
+
+- Implemented proper amplitude correction for real Fourier transform and windowed data. By `Dougie Squire <https://github.com/dougiesquire>`_
 
 .. _whats-new.0.2.0:
 
@@ -38,8 +40,7 @@ Enhancements
 
 .. warning::
 
-  This is the last xrft release that will support Python 2.7. Future releases
-  will be Python 3 only. For the more details, see:
+  Python 2.7 is no longer supported in ``xrft``. For the more details, see:
 
   - `Python 3 Statement <http://www.python3statement.org/>`__
   - `Tips on porting to Python 3 <https://docs.python.org/3/howto/pyporting.html>`__
