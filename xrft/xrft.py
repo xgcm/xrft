@@ -1016,7 +1016,7 @@ def isotropic_power_spectrum(
     window_correction=False,
     window=None,
     nfactor=4,
-    **kwargs
+    **kwargs,
 ):
     """
     Calculates the isotropic spectrum from the
@@ -1115,7 +1115,7 @@ def isotropic_cross_spectrum(
     window_correction=False,
     window=None,
     nfactor=4,
-    **kwargs
+    **kwargs,
 ):
     """
     Calculates the isotropic spectrum from the
