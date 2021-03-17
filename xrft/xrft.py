@@ -1012,9 +1012,11 @@ def isotropic_power_spectrum(
     dim=None,
     shift=True,
     detrend=None,
-    density=True,
+    scaling="density",
+    window_correction=False,
     window=None,
     nfactor=4,
+    **kwargs
 ):
     """
     Calculates the isotropic spectrum from the
@@ -1059,6 +1061,15 @@ def isotropic_power_spectrum(
     iso_ps : `xarray.DataArray`
         Isotropic power spectrum
     """
+    if "density" in kwargs:
+        density = kwargs.pop("density")
+        msg = (
+            "density flag will be deprecated in future version of xrft.power_spectrum and replaced by scaling flag. "
+            + 'density=True should be replaced by scaling="density" and '
+            + "density=False will not be maintained.\nscaling flag is ignored !"
+        )
+        warnings.warn(msg, FutureWarning)
+        scaling = "density" if density else "false_density"
 
     if dim is None:
         dim = da.dims
@@ -1071,7 +1082,8 @@ def isotropic_power_spectrum(
         dim=dim,
         shift=shift,
         detrend=detrend,
-        density=density,
+        scaling=scaling,
+        window_correction=window_correction,
         window=window,
     )
 
@@ -1099,9 +1111,11 @@ def isotropic_cross_spectrum(
     dim=None,
     shift=True,
     detrend=None,
-    density=True,
+    scaling="density",
+    window_correction=False,
     window=None,
     nfactor=4,
+    **kwargs
 ):
     """
     Calculates the isotropic spectrum from the
@@ -1148,6 +1162,15 @@ def isotropic_cross_spectrum(
     iso_cs : `xarray.DataArray`
         Isotropic cross spectrum
     """
+    if "density" in kwargs:
+        density = kwargs.pop("density")
+        msg = (
+            "density flag will be deprecated in future version of xrft.power_spectrum and replaced by scaling flag. "
+            + 'density=True should be replaced by scaling="density" and '
+            + "density=False will not be maintained.\nscaling flag is ignored !"
+        )
+        warnings.warn(msg, FutureWarning)
+        scaling = "density" if density else "false_density"
 
     if dim is None:
         dim = da1.dims
@@ -1164,7 +1187,8 @@ def isotropic_cross_spectrum(
         dim=dim,
         shift=shift,
         detrend=detrend,
-        density=density,
+        scaling=scaling,
+        window_correction=window_correction,
         window=window,
     )
 
