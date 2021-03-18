@@ -84,7 +84,7 @@ def _apply_window(da, dims, window_type="hann"):
     else:
         if isinstance(dims, str):
             dims = [dims]
-    
+
     scipy_win_func = getattr(sps.windows, window_type)
 
     if da.chunks:
