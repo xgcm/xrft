@@ -352,7 +352,9 @@ def test_window_single_dim():
 
 class TestSpectrum(object):
     @pytest.mark.parametrize("dask", [False, True])
-    @pytest.mark.parametrize("dim_name", ["t", "time"]) # test single- and multi-character str
+    @pytest.mark.parametrize(
+        "dim_name", ["t", "time"]
+    ) # test single- and multi-character str
     def test_power_spectrum(self, dask, dim_name):
         """Test the power spectrum function"""
 
@@ -367,7 +369,9 @@ class TestSpectrum(object):
         f_scipy, p_scipy = sps.periodogram(
             da.values, window="rectangular", return_onesided=True
         )
-        ps = xrft.power_spectrum(da, dim=dim_name, real_dim=dim_name, detrend="constant")
+        ps = xrft.power_spectrum(
+            da, dim=dim_name, real_dim=dim_name, detrend="constant"
+        )
         npt.assert_almost_equal(ps.values, p_scipy)
 
         A = 20
@@ -381,7 +385,9 @@ class TestSpectrum(object):
         for window_type in ["hann", "bartlett", "tukey", "flattop"]:
             # see https://github.com/scipy/scipy/blob/master/scipy/signal/tests/test_spectral.py#L485
 
-            x_da = xr.DataArray(x, coords=[tt], dims=[dim_name]).chunk({dim_name: n_segments})
+            x_da = xr.DataArray(x, coords=[tt], dims=[dim_name]).chunk(
+                {dim_name: n_segments}
+            )
             ps = xrft.power_spectrum(
                 x_da,
                 dim=dim_name,
