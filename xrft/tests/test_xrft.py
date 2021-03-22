@@ -354,7 +354,7 @@ class TestSpectrum(object):
     @pytest.mark.parametrize("dask", [False, True])
     @pytest.mark.parametrize(
         "dim_name", ["t", "time"]
-    ) # test single- and multi-character str
+    )  # test single- and multi-character str
     def test_power_spectrum(self, dask, dim_name):
         """Test the power spectrum function"""
 
