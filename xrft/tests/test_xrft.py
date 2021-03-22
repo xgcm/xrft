@@ -350,6 +350,7 @@ def test_window_single_dim():
     ps = xrft.power_spectrum(data.chunk(), dim=["time"], window="hann")
     ps.load()
 
+
 class TestSpectrum(object):
     @pytest.mark.parametrize("dask", [False, True])
     @pytest.mark.parametrize(
@@ -397,7 +398,7 @@ class TestSpectrum(object):
             ).mean(f"{dim_name}_segment")
             # Check the energy correction
             npt.assert_allclose(
-                np.sqrt(np.trapz(ps.values, ps.freq_t.values)),
+                np.sqrt(np.trapz(ps.values, ps[f"freq_{dim_name}"].values)),
                 A * np.sqrt(2) / 2,
                 rtol=1e-3,
             )
@@ -412,7 +413,7 @@ class TestSpectrum(object):
             ).mean(f"{dim_name}_segment")
             # Check the amplitude correction
             # The factor of 0.5 is there because we're checking the two-sided spectrum
-            npt.assert_allclose(ps.sel(freq_t=fsig), 0.5 * A ** 2 / 2.0)
+            npt.assert_allclose(ps.sel({f"freq_{dim_name}": fsig}), 0.5 * A ** 2 / 2.0)
 
         da = xr.DataArray(
             np.random.rand(2, N, N),
