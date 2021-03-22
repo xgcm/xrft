@@ -350,24 +350,24 @@ def test_window_single_dim():
     ps = xrft.power_spectrum(data.chunk(), dim=["time"], window="hann")
     ps.load()
 
-
 class TestSpectrum(object):
-    @pytest.mark.parametrize("dask", [False, True])
-    def test_power_spectrum(self, dask):
+    @pytest.mark.parametrize("dask", [False, True],
+    @pytest.mark.parametrize("dim_name", ["t", "time"]) # test single- and multi-character str
+    def test_power_spectrum(self, dask, dim_name):
         """Test the power spectrum function"""
 
         N = 16
         da = xr.DataArray(
             np.random.rand(N),
-            dims=["x"],
+            dims=[dim_name],
             coords={
-                "x": range(N),
+                dim_name: range(N),
             },
         )
         f_scipy, p_scipy = sps.periodogram(
             da.values, window="rectangular", return_onesided=True
         )
-        ps = xrft.power_spectrum(da, dim="x", real_dim="x", detrend="constant")
+        ps = xrft.power_spectrum(da, dim=dim_name, real_dim=dim_name, detrend="constant")
         npt.assert_almost_equal(ps.values, p_scipy)
 
         A = 20
@@ -381,14 +381,14 @@ class TestSpectrum(object):
         for window_type in ["hann", "bartlett", "tukey", "flattop"]:
             # see https://github.com/scipy/scipy/blob/master/scipy/signal/tests/test_spectral.py#L485
 
-            x_da = xr.DataArray(x, coords=[tt], dims=["t"]).chunk({"t": n_segments})
+            x_da = xr.DataArray(x, coords=[tt], dims=[dim_name]).chunk({dim_name: n_segments})
             ps = xrft.power_spectrum(
                 x_da,
-                dim="t",
+                dim=dim_name,
                 window=window_type,
                 chunks_to_segments=True,
                 window_correction=True,
-            ).mean("t_segment")
+            ).mean(f"{dim_name}_segment")
             # Check the energy correction
             npt.assert_allclose(
                 np.sqrt(np.trapz(ps.values, ps.freq_t.values)),
@@ -398,27 +398,27 @@ class TestSpectrum(object):
 
             ps = xrft.power_spectrum(
                 x_da,
-                dim="t",
+                dim=dim_name,
                 window=window_type,
                 chunks_to_segments=True,
                 scaling="spectrum",
                 window_correction=True,
-            ).mean("t_segment")
+            ).mean(f"{dim_name}_segment")
             # Check the amplitude correction
             # The factor of 0.5 is there because we're checking the two-sided spectrum
             npt.assert_allclose(ps.sel(freq_t=fsig), 0.5 * A ** 2 / 2.0)
 
         da = xr.DataArray(
             np.random.rand(2, N, N),
-            dims=["time", "y", "x"],
+            dims=[dim_name, "y", "x"],
             coords={
-                "time": np.array(["2019-04-18", "2019-04-19"], dtype="datetime64"),
+                dim_name: np.array(["2019-04-18", "2019-04-19"], dtype="datetime64"),
                 "y": range(N),
                 "x": range(N),
             },
         )
         if dask:
-            da = da.chunk({"time": 1})
+            da = da.chunk({dim_name: 1})
         ps = xrft.power_spectrum(
             da, dim=["y", "x"], window="hann", density=False, detrend="constant"
         )
