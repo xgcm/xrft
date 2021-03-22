@@ -352,7 +352,7 @@ def test_window_single_dim():
 
 class TestSpectrum(object):
     @pytest.mark.parametrize("dask", [False, True],
-    @pytest.mark.parametrize("dim_name", ["t", "time"]) # test single- and multi-character str
+    @pytest.mark.parametrize("dim_name", ["t", "time"])
     def test_power_spectrum(self, dask, dim_name):
         """Test the power spectrum function"""
 
