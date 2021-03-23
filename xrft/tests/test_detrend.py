@@ -24,6 +24,19 @@ def noise(dims, shape):
     return da
 
 
+@pytest.mark.parametrize("dim", ["t", "time"])
+@pytest.mark.parametrize("detrend_type", ["constant", "linear"])
+def test_dim_format(dim, detrend_type):
+    """ Check that detrend can deal with dim in various formats"""
+    data = xr.DataArray(
+        np.random.random([10]),
+        dims=[dim],
+        coords={dim: range(10)},
+    )
+    dt = detrend(data, dim=dim, detrend_type=detrend_type)
+    dt = detrend(data, dim=[dim], detrend_type=detrend_type)
+
+
 @pytest.mark.parametrize(
     "array_dims, array_shape, detrend_dim, chunks, linear_error",
     (
