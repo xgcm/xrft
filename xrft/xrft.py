@@ -1063,12 +1063,6 @@ def isotropic_power_spectrum(
     """
     if "density" in kwargs:
         density = kwargs.pop("density")
-        msg = (
-            "density flag will be deprecated in future version of xrft.isotropic_power_spectrum and replaced by scaling flag. "
-            + "density=True should be replaced by scaling='density' and "
-            + "density=False will not be maintained.\nscaling flag is ignored !"
-        )
-        warnings.warn(msg, FutureWarning)
         scaling = "density" if density else "false_density"
 
     if dim is None:
@@ -1164,12 +1158,6 @@ def isotropic_cross_spectrum(
     """
     if "density" in kwargs:
         density = kwargs.pop("density")
-        msg = (
-            "density flag will be deprecated in future version of xrft.isotropic_cross_spectrum and replaced by scaling flag. "
-            + "density=True should be replaced by scaling='density' and "
-            + "density=False will not be maintained.\nscaling flag is ignored !"
-        )
-        warnings.warn(msg, FutureWarning)
         scaling = "density" if density else "false_density"
 
     if dim is None:
