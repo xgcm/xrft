@@ -19,6 +19,9 @@ It is:
 .. _dask API of FFT: http://docs.dask.org/en/latest/array-api.html?highlight=fft#fast-fourier-transforms
 .. _map_blocks: http://docs.dask.org/en/latest/array-api.html?highlight=map_blocks#dask.array.core.map_blocks
 
+Please cite the `doi <https://doi.org/10.5281/zenodo.1402635>`_ if you find this
+package useful in order to support its continuous development.
+
 Get in touch
 ------------
 
