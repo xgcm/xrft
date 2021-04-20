@@ -565,12 +565,6 @@ def idft(
     # the axes along which to take ffts
     axis_num = [daft.get_axis_num(d) for d in dim]
 
-    for d in dim:  # handling decreasing coordinates
-        if daft[d][-1] < daft[d][0]:
-            raise ValueError(
-                "idft do not handle decreasing frequency coordinates. Sort coordinates before applying idft."
-            )
-
     N = [daft.shape[n] for n in axis_num]
 
     # verify even spacing of input coordinates (It handle fftshifted grids)
@@ -580,7 +574,7 @@ def idft(
         delta = np.abs(diff[0])
         l = _lag_coord(daft[d]) if d is not real_dim else daft[d][0].data
         if not np.allclose(
-            diff, diff[0], rtol=spacing_tol
+            diff, delta, rtol=spacing_tol
         ):  # means that input is not on regular increasing grid
             reordered_coord = daft[d].copy()
             reordered_coord = reordered_coord.sortby(d)
