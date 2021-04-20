@@ -415,8 +415,7 @@ def dft(
             da.get_axis_num(d) for d in dim if da[d][-1] < da[d][0]
         ]  # handling decreasing coordinates
         f = fft_fn(
-            fft.ifftshift(np.flip(da.data, axis=reversed_axis), axes=axis_num),
-            axes=axis_num,
+            fft.ifftshift(np.flip(da, axis=reversed_axis), axes=axis_num), axes=axis_num
         )
     else:
         f = fft_fn(da.data, axes=axis_num)
