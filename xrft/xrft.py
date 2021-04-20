@@ -214,7 +214,10 @@ def _lag_coord(coord):
 
     v0 = coord.values[0]
     calendar = getattr(v0, "calendar", None)
-    lag = coord[(len(coord.data)) // 2]
+    reverse_coord = (
+        [] if (coord[-1] > coord[0]) else [-1]
+    )  # taking care of reverse coordinate (CAUTION : []  diff None)
+    lag = np.flip(coord.data, axis=reverse_coord)[(len(coord.data)) // 2]
     if calendar:
         import cftime
 
@@ -408,7 +411,13 @@ def dft(
         _, da = _apply_window(da, dim, window_type=window)
 
     if true_phase:
-        f = fft_fn(fft.ifftshift(da.data, axes=axis_num), axes=axis_num)
+        reversed_axis = [
+            da.get_axis_num(d) for d in dim if da[d][-1] < da[d][0]
+        ]  # handling decreasing coordinates
+        f = fft_fn(
+            fft.ifftshift(np.flip(da.data, axis=reversed_axis), axes=axis_num),
+            axes=axis_num,
+        )
     else:
         f = fft_fn(da.data, axes=axis_num)
 
@@ -556,6 +565,12 @@ def idft(
 
     # the axes along which to take ffts
     axis_num = [daft.get_axis_num(d) for d in dim]
+
+    for d in dim:  # handling decreasing coordinates
+        if daft[d][-1] < daft[d][0]:
+            raise ValueError(
+                "idft do not handle decreasing frequency coordinates. Sort coordinates before applying idft."
+            )
 
     N = [daft.shape[n] for n in axis_num]
 
