@@ -214,10 +214,11 @@ def _lag_coord(coord):
 
     v0 = coord.values[0]
     calendar = getattr(v0, "calendar", None)
-    reverse_coord = (
-        [] if (coord[-1] > coord[0]) else [-1]
-    )  # taking care of reverse coordinate (CAUTION : []  diff None)
-    lag = np.flip(coord.data, axis=reverse_coord)[(len(coord.data)) // 2]
+    if coord[-1] > coord[0]:
+        coord_data = coord.data
+    else:
+        coord_data = np.flip(coord.data, axis=-1)
+    lag = coord_data[len(coord.data) // 2]
     if calendar:
         import cftime
 
