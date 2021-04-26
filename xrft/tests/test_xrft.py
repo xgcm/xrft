@@ -1285,3 +1285,17 @@ def test_constant_coordinates():
 
         with pytest.raises(ValueError):
             xrft.idft(s)
+
+
+def test_reversed_coordinates():
+    """Reversed coordinates should not impact dft with true_phase = True"""
+    N = 20
+    s = xr.DataArray(
+        np.random.rand(N) + 1j * np.random.rand(N),
+        dims="x",
+        coords={"x": np.arange(N // 2, -N // 2, -1) + 2},
+    )
+    s2 = s.sortby("x")
+    xrt.assert_allclose(
+        xrft.dft(s, dim="x", true_phase=True), xrft.dft(s2, dim="x", true_phase=True)
+    )

@@ -220,7 +220,11 @@ def _lag_coord(coord):
 
     v0 = coord.values[0]
     calendar = getattr(v0, "calendar", None)
-    lag = coord[(len(coord.data)) // 2]
+    if coord[-1] > coord[0]:
+        coord_data = coord.data
+    else:
+        coord_data = np.flip(coord.data, axis=-1)
+    lag = coord_data[len(coord.data) // 2]
     if calendar:
         import cftime
 
@@ -414,7 +418,12 @@ def dft(
         _, da = _apply_window(da, dim, window_type=window)
 
     if true_phase:
-        f = fft_fn(fft.ifftshift(da.data, axes=axis_num), axes=axis_num)
+        reversed_axis = [
+            da.get_axis_num(d) for d in dim if da[d][-1] < da[d][0]
+        ]  # handling decreasing coordinates
+        f = fft_fn(
+            fft.ifftshift(np.flip(da, axis=reversed_axis), axes=axis_num), axes=axis_num
+        )
     else:
         f = fft_fn(da.data, axes=axis_num)
 
@@ -572,7 +581,7 @@ def idft(
         delta = np.abs(diff[0])
         l = _lag_coord(daft[d]) if d is not real_dim else daft[d][0].data
         if not np.allclose(
-            diff, diff[0], rtol=spacing_tol
+            diff, delta, rtol=spacing_tol
         ):  # means that input is not on regular increasing grid
             reordered_coord = daft[d].copy()
             reordered_coord = reordered_coord.sortby(d)
