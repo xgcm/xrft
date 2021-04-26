@@ -993,6 +993,14 @@ def test_isotropic_ps_slope(chunk, N=512, dL=1.0, amp=1e1, s=-3.0):
         )
     npt.assert_almost_equal(iso_ps.values, iso_ps_sequal.mean(axis=0))
 
+    iso_ps = xrft.isotropic_power_spectrum(
+        theta, dim=["y", "x"], detrend="constant", scaling="density"
+    ).mean("d0")
+    npt.assert_almost_equal(np.ma.masked_invalid(iso_ps).mask.sum(), 0.0)
+    y_fit, a, b = xrft.fit_loglog(iso_ps.freq_r.values[4:], iso_ps.values[4:])
+    npt.assert_allclose(a, s, atol=0.1)
+    npt.assert_almost_equal(iso_ps.values, iso_ps_sequal.mean(axis=0))
+
 
 @pytest.mark.parametrize("chunk", [False, True])
 def test_isotropic_ps(chunk):
