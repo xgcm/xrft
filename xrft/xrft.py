@@ -79,6 +79,12 @@ def _apply_window(da, dims, window_type="hann"):
             "Window type {window_type} not supported. Please adhere to scipy.signal.windows for naming convention."
         )
 
+    if dims is None:
+        dims = list(da.dims)
+    else:
+        if isinstance(dims, str):
+            dims = [dims]
+
     scipy_win_func = getattr(sps.windows, window_type)
 
     if da.chunks:

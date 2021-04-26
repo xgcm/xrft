@@ -352,6 +352,31 @@ def test_window_single_dim():
 
 
 class TestSpectrum(object):
+    @pytest.mark.parametrize("dim", ["t", "time"])
+    @pytest.mark.parametrize("window_correction", [True, False])
+    @pytest.mark.parametrize("detrend", ["constant", "linear"])
+    def test_dim_format(self, dim, window_correction, detrend):
+        """ Check that can deal with dim in various formats"""
+        data = xr.DataArray(
+            np.random.random([10]),
+            dims=[dim],
+            coords={dim: range(10)},
+        )
+        ps = xrft.power_spectrum(
+            data,
+            dim=dim,
+            window="hann",
+            window_correction=window_correction,
+            detrend=detrend,
+        )
+        ps = xrft.power_spectrum(
+            data,
+            dim=[dim],
+            window="hann",
+            window_correction=window_correction,
+            detrend=detrend,
+        )
+
     @pytest.mark.parametrize("dask", [False, True])
     def test_power_spectrum(self, dask):
         """Test the power spectrum function"""
