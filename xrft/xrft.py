@@ -971,7 +971,7 @@ def _groupby_bins_agg(
     return result
 
 
-def isotropize(ps, fftdim, nfactor=4):
+def isotropize(ps, fftdim, nfactor=4, **kwargs):
     """
     Isotropize a 2D power spectrum or cross spectrum
     by taking an azimuthal average.
@@ -995,10 +995,26 @@ def isotropize(ps, fftdim, nfactor=4):
     # compute radial wavenumber bins
     k = ps[fftdim[1]]
     l = ps[fftdim[0]]
+
     N = [k.size, l.size]
     nbins = int(min(N) / nfactor)
     freq_r = np.sqrt(k ** 2 + l ** 2).rename("freq_r")
     kr = _groupby_bins_agg(freq_r, freq_r, bins=nbins, func="mean")
+
+    if "truncate" in kwargs:
+        if truncate:
+            if k.max() > l.max():
+                kmax = l.max()
+            else:
+                kmax = k.max()
+            kr = kr.where(kr <= kmax)
+        else:
+            msg = (
+                "The flag `truncate` will be set to True by default in future version "
+                + "in order to truncate the isotropic wavenumber larger than the "
+                + "Nyquist wavenumber."
+            )
+            warnings.warn(msg, FutureWarning)
 
     iso_ps = (
         _groupby_bins_agg(ps, freq_r, bins=nbins, func="mean")
@@ -1006,7 +1022,11 @@ def isotropize(ps, fftdim, nfactor=4):
         .drop_vars("freq_r")
     )
     iso_ps.coords["freq_r"] = kr.data
-    return iso_ps * iso_ps.freq_r
+    if "truncate" in kwargs:
+        if truncate:
+            return (iso_ps * iso_ps.freq_r).dropna("freq_r")
+    else:
+        return iso_ps * iso_ps.freq_r
 
 
 def isotropic_powerspectrum(*args, **kwargs):  # pragma: no cover
@@ -1031,6 +1051,7 @@ def isotropic_power_spectrum(
     window_correction=False,
     window=None,
     nfactor=4,
+    truncate=False,
     **kwargs,
 ):
     """
@@ -1098,7 +1119,7 @@ def isotropic_power_spectrum(
 
     fftdim = ["freq_" + d for d in dim]
 
-    return isotropize(ps, fftdim, nfactor=nfactor)
+    return isotropize(ps, fftdim, nfactor=nfactor, kwargs={"truncate": truncate})
 
 
 def isotropic_crossspectrum(*args, **kwargs):  # pragma: no cover
@@ -1124,6 +1145,7 @@ def isotropic_cross_spectrum(
     window_correction=False,
     window=None,
     nfactor=4,
+    truncate=False,
     **kwargs,
 ):
     """
@@ -1197,7 +1219,7 @@ def isotropic_cross_spectrum(
 
     fftdim = ["freq_" + d for d in dim]
 
-    return isotropize(cs, fftdim, nfactor=nfactor)
+    return isotropize(cs, fftdim, nfactor=nfactor, kwargs={"truncate": truncate})
 
 
 def fit_loglog(x, y):
