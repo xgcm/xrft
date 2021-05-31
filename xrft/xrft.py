@@ -1091,6 +1091,9 @@ def isotropic_power_spectrum(
     nfactor : int, optional
         Ratio of number of bins to take the azimuthal averaging with the
         data size. Default is 4.
+    truncate : bool, optional
+        If True, the spectrum will be truncated for wavenumbers larger than
+        the Nyquist wavenumber.
 
     Returns
     -------
@@ -1187,6 +1190,9 @@ def isotropic_cross_spectrum(
     nfactor : int (optional)
         Ratio of number of bins to take the azimuthal averaging with the
         data size. Default is 4.
+    truncate : bool, optional
+        If True, the spectrum will be truncated for wavenumbers larger than
+        the Nyquist wavenumber.
 
     Returns
     -------
