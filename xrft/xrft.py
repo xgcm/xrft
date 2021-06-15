@@ -957,6 +957,7 @@ def _groupby_bins_agg(
         output_core_dims=[[new_dim_name]],
         output_dtypes=[array.dtype],
         dask_gufunc_kwargs=dict(
+            allow_rechunk=True,
             output_sizes={new_dim_name: binned.categories.size},
         ),
         kwargs={
