@@ -356,7 +356,7 @@ class TestSpectrum(object):
     @pytest.mark.parametrize("window_correction", [True, False])
     @pytest.mark.parametrize("detrend", ["constant", "linear"])
     def test_dim_format(self, dim, window_correction, detrend):
-        """ Check that can deal with dim in various formats"""
+        """Check that can deal with dim in various formats"""
         data = xr.DataArray(
             np.random.random([10]),
             dims=[dim],
