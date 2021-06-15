@@ -786,7 +786,7 @@ def test_parseval(chunks_to_segments):
             )
         },
     )
-    FTs = xrft.dft(s, dim="x", true_phase=True, true_amplitude=True)
+    FTs = xrft.fft(s, dim="x", true_phase=True, true_amplitude=True)
     npt.assert_almost_equal(
         (np.abs(s) ** 2).sum() * dx, (np.abs(FTs) ** 2).sum() * FTs["freq_x"].spacing
     )
@@ -810,7 +810,7 @@ def test_parseval(chunks_to_segments):
             ),
         },
     )
-    FTs = xrft.dft(s, dim=("x", "y"), true_phase=True, true_amplitude=True)
+    FTs = xrft.fft(s, dim=("x", "y"), true_phase=True, true_amplitude=True)
     npt.assert_almost_equal(
         (np.abs(s) ** 2).sum() * dx * dy,
         (np.abs(FTs) ** 2).sum() * FTs["freq_x"].spacing * FTs["freq_y"].spacing,
@@ -1135,7 +1135,7 @@ def test_true_phase_preservation(chunk):
     if chunk:
         s1 = s1.chunk()
 
-    S1 = xrft.dft(s1, dim="x", true_phase=True)
+    S1 = xrft.fft(s1, dim="x", true_phase=True)
     assert s1.chunks == S1.chunks
 
     N3 = N1
@@ -1153,7 +1153,7 @@ def test_true_phase_preservation(chunk):
     if chunk:
         s2 = s2.chunk()
 
-    S2 = xrft.dft(s2, dim="x", true_phase=True)
+    S2 = xrft.fft(s2, dim="x", true_phase=True)
     assert s2.chunks == S2.chunks
 
     xrt.assert_allclose(S1, S2)
@@ -1172,7 +1172,7 @@ def test_true_phase():
     f = np.fft.fftfreq(len(x), dx)
     expected = np.fft.fft(np.fft.ifftshift(y)) * np.exp(-1j * 2.0 * np.pi * f * lag)
     expected = xr.DataArray(expected, dims="freq_x", coords={"freq_x": f})
-    output = xrft.dft(
+    output = xrft.fft(
         s, dim="x", true_phase=True, true_amplitude=False, shift=False, prefix="freq_"
     )
     xrt.assert_allclose(expected, output)
@@ -1187,7 +1187,7 @@ def test_theoretical_matching(rtol=1e-8, atol=1e-3):
     y = np.cos(2.0 * np.pi * f0 * x)
     y[np.abs(x) >= (T / 2.0)] = 0.0
     s = xr.DataArray(y, dims=("x",), coords={"x": x})
-    S = xrft.dft(
+    S = xrft.fft(
         s, dim="x", true_phase=True, true_amplitude=True
     )  # Fast Fourier Transform of original signal
     f = S.freq_x  # Frequency axis
@@ -1214,8 +1214,8 @@ def test_real_dft_true_phase():
             )
         },
     )
-    s1 = xrft.dft(s, dim="x", true_phase=True, shift=True)
-    s2 = xrft.dft(s, real_dim="x", true_phase=True, shift=True)
+    s1 = xrft.fft(s, dim="x", true_phase=True, shift=True)
+    s2 = xrft.fft(s, real_dim="x", true_phase=True, shift=True)
     s1 = np.conj(s1[{"freq_x": slice(None, s1.sizes["freq_x"] // 2 + 1)}])
     s1 = s1.assign_coords(freq_x=-s1["freq_x"]).sortby("freq_x")
     xrt.assert_allclose(s1, s2)
@@ -1250,11 +1250,11 @@ def test_idft_dft():
             * (np.arange(-N // 2, -N // 2 + N) + np.random.randint(-N // 2, N // 2))
         },
     )
-    FTs = xrft.dft(s, true_phase=True, true_amplitude=True)
+    FTs = xrft.fft(s, true_phase=True, true_amplitude=True)
     mean_lag = float(
         s["x"][{"x": s.sizes["x"] // 2}]
     )  # lag ensure IFTs to be on the same coordinate range than s
-    IFTs = xrft.idft(
+    IFTs = xrft.ifft(
         FTs, shift=True, true_phase=True, true_amplitude=True, lag=mean_lag
     )
     xrt.assert_allclose(s, IFTs)
@@ -1297,5 +1297,5 @@ def test_reversed_coordinates():
     )
     s2 = s.sortby("x")
     xrt.assert_allclose(
-        xrft.dft(s, dim="x", true_phase=True), xrft.dft(s2, dim="x", true_phase=True)
+        xrft.fft(s, dim="x", true_phase=True), xrft.fft(s2, dim="x", true_phase=True)
     )
