@@ -352,6 +352,31 @@ def test_window_single_dim():
 
 
 class TestSpectrum(object):
+    @pytest.mark.parametrize("dim", ["t", "time"])
+    @pytest.mark.parametrize("window_correction", [True, False])
+    @pytest.mark.parametrize("detrend", ["constant", "linear"])
+    def test_dim_format(self, dim, window_correction, detrend):
+        """ Check that can deal with dim in various formats"""
+        data = xr.DataArray(
+            np.random.random([10]),
+            dims=[dim],
+            coords={dim: range(10)},
+        )
+        ps = xrft.power_spectrum(
+            data,
+            dim=dim,
+            window="hann",
+            window_correction=window_correction,
+            detrend=detrend,
+        )
+        ps = xrft.power_spectrum(
+            data,
+            dim=[dim],
+            window="hann",
+            window_correction=window_correction,
+            detrend=detrend,
+        )
+
     @pytest.mark.parametrize("dask", [False, True])
     def test_power_spectrum(self, dask):
         """Test the power spectrum function"""
@@ -968,6 +993,14 @@ def test_isotropic_ps_slope(chunk, N=512, dL=1.0, amp=1e1, s=-3.0):
         )
     npt.assert_almost_equal(iso_ps.values, iso_ps_sequal.mean(axis=0))
 
+    iso_ps = xrft.isotropic_power_spectrum(
+        theta, dim=["y", "x"], detrend="constant", scaling="density"
+    ).mean("d0")
+    npt.assert_almost_equal(np.ma.masked_invalid(iso_ps).mask.sum(), 0.0)
+    y_fit, a, b = xrft.fit_loglog(iso_ps.freq_r.values[4:], iso_ps.values[4:])
+    npt.assert_allclose(a, s, atol=0.1)
+    npt.assert_almost_equal(iso_ps.values, iso_ps_sequal.mean(axis=0))
+
 
 @pytest.mark.parametrize("chunk", [False, True])
 def test_isotropic_ps(chunk):
@@ -1252,3 +1285,17 @@ def test_constant_coordinates():
 
         with pytest.raises(ValueError):
             xrft.idft(s)
+
+
+def test_reversed_coordinates():
+    """Reversed coordinates should not impact dft with true_phase = True"""
+    N = 20
+    s = xr.DataArray(
+        np.random.rand(N) + 1j * np.random.rand(N),
+        dims="x",
+        coords={"x": np.arange(N // 2, -N // 2, -1) + 2},
+    )
+    s2 = s.sortby("x")
+    xrt.assert_allclose(
+        xrft.dft(s, dim="x", true_phase=True), xrft.dft(s2, dim="x", true_phase=True)
+    )

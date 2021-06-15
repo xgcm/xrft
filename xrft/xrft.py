@@ -79,6 +79,12 @@ def _apply_window(da, dims, window_type="hann"):
             "Window type {window_type} not supported. Please adhere to scipy.signal.windows for naming convention."
         )
 
+    if dims is None:
+        dims = list(da.dims)
+    else:
+        if isinstance(dims, str):
+            dims = [dims]
+
     scipy_win_func = getattr(sps.windows, window_type)
 
     if da.chunks:
@@ -214,7 +220,11 @@ def _lag_coord(coord):
 
     v0 = coord.values[0]
     calendar = getattr(v0, "calendar", None)
-    lag = coord[(len(coord.data)) // 2]
+    if coord[-1] > coord[0]:
+        coord_data = coord.data
+    else:
+        coord_data = np.flip(coord.data, axis=-1)
+    lag = coord_data[len(coord.data) // 2]
     if calendar:
         import cftime
 
@@ -408,7 +418,12 @@ def dft(
         _, da = _apply_window(da, dim, window_type=window)
 
     if true_phase:
-        f = fft_fn(fft.ifftshift(da.data, axes=axis_num), axes=axis_num)
+        reversed_axis = [
+            da.get_axis_num(d) for d in dim if da[d][-1] < da[d][0]
+        ]  # handling decreasing coordinates
+        f = fft_fn(
+            fft.ifftshift(np.flip(da, axis=reversed_axis), axes=axis_num), axes=axis_num
+        )
     else:
         f = fft_fn(da.data, axes=axis_num)
 
@@ -566,7 +581,7 @@ def idft(
         delta = np.abs(diff[0])
         l = _lag_coord(daft[d]) if d is not real_dim else daft[d][0].data
         if not np.allclose(
-            diff, diff[0], rtol=spacing_tol
+            diff, delta, rtol=spacing_tol
         ):  # means that input is not on regular increasing grid
             reordered_coord = daft[d].copy()
             reordered_coord = reordered_coord.sortby(d)
@@ -1012,9 +1027,11 @@ def isotropic_power_spectrum(
     dim=None,
     shift=True,
     detrend=None,
-    density=True,
+    scaling="density",
+    window_correction=False,
     window=None,
     nfactor=4,
+    **kwargs,
 ):
     """
     Calculates the isotropic spectrum from the
@@ -1059,6 +1076,9 @@ def isotropic_power_spectrum(
     iso_ps : `xarray.DataArray`
         Isotropic power spectrum
     """
+    if "density" in kwargs:
+        density = kwargs.pop("density")
+        scaling = "density" if density else "false_density"
 
     if dim is None:
         dim = da.dims
@@ -1071,7 +1091,8 @@ def isotropic_power_spectrum(
         dim=dim,
         shift=shift,
         detrend=detrend,
-        density=density,
+        scaling=scaling,
+        window_correction=window_correction,
         window=window,
     )
 
@@ -1099,9 +1120,11 @@ def isotropic_cross_spectrum(
     dim=None,
     shift=True,
     detrend=None,
-    density=True,
+    scaling="density",
+    window_correction=False,
     window=None,
     nfactor=4,
+    **kwargs,
 ):
     """
     Calculates the isotropic spectrum from the
@@ -1148,6 +1171,9 @@ def isotropic_cross_spectrum(
     iso_cs : `xarray.DataArray`
         Isotropic cross spectrum
     """
+    if "density" in kwargs:
+        density = kwargs.pop("density")
+        scaling = "density" if density else "false_density"
 
     if dim is None:
         dim = da1.dims
@@ -1164,7 +1190,8 @@ def isotropic_cross_spectrum(
         dim=dim,
         shift=shift,
         detrend=detrend,
-        density=density,
+        scaling=scaling,
+        window_correction=window_correction,
         window=window,
     )
 

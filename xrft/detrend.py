@@ -36,6 +36,12 @@ def detrend(da, dim, detrend_type="constant"):
     input.
     """
 
+    if dim is None:
+        dim = list(da.dims)
+    else:
+        if isinstance(dim, str):
+            dim = [dim]
+
     if detrend_type not in ["constant", "linear", None]:
         raise NotImplementedError(
             "%s is not a valid detrending option. Valid "
