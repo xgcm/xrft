@@ -506,9 +506,10 @@ def idft(
         If set to True, output is divided by the spacing of the transformed variables to match theoretical IFT amplitude.
         If set to False, amplitude regularisation by spacing is not applied (as in numpy.ifft)
     lag : float or sequence of float, optional
-        If lag is None or zero, output coordinates are centered on zero.
+        If lag is None (default), 'direct_lag' attribute of each dimensino is used (or set to zero if not found).
         If defined, lag must have same length as dim.
         Output coordinates corresponding to transformed dimensions will be shifted by corresponding lag values.
+        A zero-lag means that corresponding output coordinates are centered on zero.
         Correct signal phasing will be preserved if true_phase is set to True.
 
     Returns
