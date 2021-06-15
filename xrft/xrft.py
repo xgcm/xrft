@@ -236,6 +236,7 @@ def _lag_coord(coord):
     else:
         return lag.data
 
+
 def dft(da, dim=None, **kwargs):  # pragma: no cover
     """
     Deprecated function. See fft doc
@@ -247,6 +248,7 @@ def dft(da, dim=None, **kwargs):  # pragma: no cover
     warnings.warn(msg, Warning)
     return fft(da, dim=dim, true_phase=False, true_amplitude=False, **kwargs)
 
+
 def idft(daft, dim=None, **kwargs):  # pragma: no cover
     """
     Deprecated function. See ifft doc
@@ -257,45 +259,6 @@ def idft(daft, dim=None, **kwargs):  # pragma: no cover
     )
     warnings.warn(msg, Warning)
     return ifft(daft, dim=dim, true_phase=False, true_amplitude=False, **kwargs)
-
-# def fft(da, dim=None, **kwargs):
-#     """
-#     da : `xarray.DataArray`
-#         The data to be transformed
-#     dim : str or sequence of str, optional
-#         The dimensions along which to take the transformation. If `None`, all
-#         dimensions will be transformed. If the inputs are dask arrays, the
-#         arrays must not be chunked along these dimensions.
-#     kwargs: See xrft.dft for argument list
-#     """
-#     if kwargs.pop("true_phase", False):
-#         warnings.warn("true_phase argument is ignored in xrft.fft")
-#     if kwargs.pop("true_amplitude", False):
-#         warnings.warn("true_amplitude argument is ignored in xrft.fft")
-#     with warnings.catch_warnings():
-#         warnings.simplefilter("ignore")
-#         return dft(da, dim=dim, true_phase=False, true_amplitude=False, **kwargs)
-#
-#
-# def ifft(daft, dim=None, **kwargs):
-#     """
-#     daft : `xarray.DataArray`
-#         The data to be transformed
-#     dim : str or sequence of str, optional
-#         The dimensions along which to take the transformation. If `None`, all
-#         dimensions will be transformed. If the inputs are dask arrays, the
-#         arrays must not be chunked along these dimensions.
-#     kwargs: See xrft.idft for argument list
-#     """
-#     if kwargs.pop("true_phase", False):
-#         warnings.warn("true_phase argument is ignored in xrft.ifft")
-#     if kwargs.pop("true_amplitude", False):
-#         warnings.warn("true_amplitude argument is ignored in xrft.ifft")
-#     if kwargs.pop("lag", False):
-#         warnings.warn("lag argument is ignored in xrft.ifft")
-#     with warnings.catch_warnings():
-#         warnings.simplefilter("ignore")
-#         return idft(daft, dim=dim, true_phase=False, true_amplitude=False, **kwargs)
 
 
 def fft(
