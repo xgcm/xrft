@@ -280,7 +280,7 @@ def fft(
     specified dimensions.
 
     .. math::
-        daft = \mathbb{F}(da - \overline{da})
+        daft = \mathbb{F}(da)
 
     Parameters
     ----------
@@ -461,7 +461,7 @@ def ifft(
     specified dimensions.
 
     .. math::
-        da = \mathbb{F}(daft - \overline{daft})
+        da = \mathbb{F}(daft)
 
     Parameters
     ----------
