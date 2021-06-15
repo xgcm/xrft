@@ -237,7 +237,9 @@ def _lag_coord(coord):
         return lag.data
 
 
-def dft(da, dim=None, **kwargs):  # pragma: no cover
+def dft(
+    da, dim=None, true_phase=False, true_amplitude=False, **kwargs
+):  # pragma: no cover
     """
     Deprecated function. See fft doc
     """
@@ -246,10 +248,14 @@ def dft(da, dim=None, **kwargs):  # pragma: no cover
         + " Please use `fft` instead"
     )
     warnings.warn(msg, FutureWarning)
-    return fft(da, dim=dim, true_phase=False, true_amplitude=False, **kwargs)
+    return fft(
+        da, dim=dim, true_phase=true_phase, true_amplitude=true_amplitude, **kwargs
+    )
 
 
-def idft(daft, dim=None, **kwargs):  # pragma: no cover
+def idft(
+    daft, dim=None, true_phase=False, true_amplitude=False, **kwargs
+):  # pragma: no cover
     """
     Deprecated function. See ifft doc
     """
@@ -258,7 +264,9 @@ def idft(daft, dim=None, **kwargs):  # pragma: no cover
         + " Please use `ifft` instead"
     )
     warnings.warn(msg, FutureWarning)
-    return ifft(daft, dim=dim, true_phase=False, true_amplitude=False, **kwargs)
+    return ifft(
+        daft, dim=dim, true_phase=true_phase, true_amplitude=true_amplitude, **kwargs
+    )
 
 
 def fft(
