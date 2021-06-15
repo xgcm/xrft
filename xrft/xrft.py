@@ -245,7 +245,7 @@ def dft(da, dim=None, **kwargs):  # pragma: no cover
         "This function has been renamed and will disappear in the future."
         + " Please use `fft` instead"
     )
-    warnings.warn(msg, Warning)
+    warnings.warn(msg, FutureWarning)
     return fft(da, dim=dim, true_phase=False, true_amplitude=False, **kwargs)
 
 
@@ -257,7 +257,7 @@ def idft(daft, dim=None, **kwargs):  # pragma: no cover
         "This function has been renamed and will disappear in the future."
         + " Please use `ifft` instead"
     )
-    warnings.warn(msg, Warning)
+    warnings.warn(msg, FutureWarning)
     return ifft(daft, dim=dim, true_phase=False, true_amplitude=False, **kwargs)
 
 
@@ -1001,7 +1001,7 @@ def isotropic_powerspectrum(*args, **kwargs):  # pragma: no cover
         "This function has been renamed and will disappear in the future."
         + " Please use isotropic_power_spectrum instead"
     )
-    warnings.warn(msg, Warning)
+    warnings.warn(msg, FutureWarning)
     return isotropic_power_spectrum(*args, **kwargs)
 
 
@@ -1093,7 +1093,7 @@ def isotropic_crossspectrum(*args, **kwargs):  # pragma: no cover
         "This function has been renamed and will disappear in the future."
         + " Please use isotropic_cross_spectrum instead"
     )
-    warnings.warn(msg, Warning)
+    warnings.warn(msg, FutureWarning)
     return isotropic_cross_spectrum(*args, **kwargs)
 
 
