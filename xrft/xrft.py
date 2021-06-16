@@ -509,8 +509,8 @@ def idft(
         If lag is None (default), 'direct_lag' attribute of each dimension is used (or set to zero if not found).
         If defined, lag must have same length as dim.
         Output coordinates corresponding to transformed dimensions will be shifted by corresponding lag values.
-        A zero-lag means that corresponding output coordinates are centered on zero.
-        Correct signal phasing will be preserved if true_phase is set to True.
+        Manually set lag to zero to get output coordinates centered on zero.
+        Correct signal phasing will be preserved if true_phase is set to True
 
     Returns
     -------
