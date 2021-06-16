@@ -544,6 +544,8 @@ def idft(
             ]  # real dim has to be moved or added at the end !
     if lag is None:
         lag = [daft[d].attrs.get("direct_lag", 0.0) for d in dim]
+        msg = "Default idft's behaviour (lag=None) changed! Default value of lag was zero (centered output coordinates) and is now set to transformed coordinate's attribute: 'direct_lag'."
+        warnings.warn(msg, FutureWarning)
     else:
         if isinstance(lag, float) or isinstance(lag, int):
             lag = [lag]
