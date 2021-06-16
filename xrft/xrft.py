@@ -506,11 +506,11 @@ def idft(
         If set to True, output is divided by the spacing of the transformed variables to match theoretical IFT amplitude.
         If set to False, amplitude regularisation by spacing is not applied (as in numpy.ifft)
     lag : float or sequence of float, optional
+        Output coordinates of transformed dimensions will be shifted by corresponding lag values and correct signal phasing will be preserved if true_phase is set to True.
         If lag is None (default), 'direct_lag' attribute of each dimension is used (or set to zero if not found).
         If defined, lag must have same length as dim.
-        Output coordinates corresponding to transformed dimensions will be shifted by corresponding lag values.
         Manually set lag to zero to get output coordinates centered on zero.
-        Correct signal phasing will be preserved if true_phase is set to True
+
 
     Returns
     -------
@@ -637,13 +637,12 @@ def idft(
     da = da.swap_dims(swap_dims).assign_coords(newcoords)
     da = da.drop([d for d in dim if d in da.coords])
 
-    if lag is not None:
-        with xr.set_options(
-            keep_attrs=True
-        ):  # This line ensures keeping spacing attribute in output coordinates
-            for d, l in zip(dim, lag):
-                tfd = swap_dims[d]
-                da = da.assign_coords({tfd: da[tfd] + l})
+    with xr.set_options(
+        keep_attrs=True
+    ):  # This line ensures keeping spacing attribute in output coordinates
+        for d, l in zip(dim, lag):
+            tfd = swap_dims[d]
+            da = da.assign_coords({tfd: da[tfd] + l})
 
     if true_amplitude:
         da = da / np.prod([float(da[up_dim].spacing) for up_dim in swap_dims.values()])

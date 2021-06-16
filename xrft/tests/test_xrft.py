@@ -1261,7 +1261,7 @@ def test_idft_dft():
     )
     xrt.assert_allclose(s, IFTs)
 
-    ## when lag is set automattically
+    ## when lag is set automatically
     IFTs = xrft.idft(FTs, shift=True, true_phase=True, true_amplitude=True)
     xrt.assert_allclose(s, IFTs)
 
