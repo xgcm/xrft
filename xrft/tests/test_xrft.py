@@ -1255,13 +1255,13 @@ def test_idft_dft():
         s["x"][{"x": s.sizes["x"] // 2}]
     )  # lag ensure IFTs to be on the same coordinate range than s
 
-    ## when lag is set manually
+    # lag is set manually
     IFTs = xrft.idft(
         FTs, shift=True, true_phase=True, true_amplitude=True, lag=mean_lag
     )
     xrt.assert_allclose(s, IFTs)
 
-    ## when lag is set automatically
+    # lag is set automatically
     IFTs = xrft.idft(FTs, shift=True, true_phase=True, true_amplitude=True)
     xrt.assert_allclose(s, IFTs)
 

@@ -505,10 +505,11 @@ def idft(
     true_amplitude : bool, optional
         If set to True, output is divided by the spacing of the transformed variables to match theoretical IFT amplitude.
         If set to False, amplitude regularisation by spacing is not applied (as in numpy.ifft)
-    lag : float or sequence of float, optional
+    lag : None, float or sequence of float and/or None, optional
         Output coordinates of transformed dimensions will be shifted by corresponding lag values and correct signal phasing will be preserved if true_phase is set to True.
-        If lag is None (default), 'direct_lag' attribute of each dimension is used (or set to zero if not found).
+        If lag is None (default), 'direct_lag' attributes of each dimension is used (or set to zero if not found).
         If defined, lag must have same length as dim.
+        If lag is a sequence, a None element means that 'direct_lag' attribute will be used for the corresponding dimension
         Manually set lag to zero to get output coordinates centered on zero.
 
 
@@ -551,9 +552,14 @@ def idft(
         if not true_phase:
             msg = "Setting lag with true_phase=False does not guarantee accurate idft."
             warnings.warn(msg, Warning)
+        lag = [
+            daft[d].attrs.get("direct_lag") if l is None else l
+            for d, l in zip(dim, lag)
+        ]  # enable lag of the form [3.2, None, 7]
 
-    for d, l in zip(dim, lag):
-        daft = daft * np.exp(1j * 2.0 * np.pi * daft[d] * l)
+    if true_phase:
+        for d, l in zip(dim, lag):
+            daft = daft * np.exp(1j * 2.0 * np.pi * daft[d] * l)
 
     if chunks_to_segments:
         daft = _stack_chunks(daft, dim)
