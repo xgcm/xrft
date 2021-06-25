@@ -5,3 +5,4 @@ del get_versions
 
 from .xrft import *  # noqa
 from .detrend import detrend
+from .padding import pad
