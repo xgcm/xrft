@@ -4,7 +4,7 @@ Functions to pad and unpad a N-dimensional regular grid
 import numpy as np
 from xarray.core.utils import either_dict_or_kwargs
 
-from .xrft import _diff_coord
+from .utils import get_spacing
 
 
 def pad(
@@ -145,28 +145,15 @@ def pad_coordinates(coords, pad_width):
     # Start padding the coordinates that appear in pad_width
     for dim in pad_width:
         # Get the spacing of the selected coordinate
-        spacing = _get_spacing(padded_coords[dim])
+        spacing = get_spacing(padded_coords[dim])
         # Pad the coordinates using numpy.pad with the _pad_coordinates callback
         padded_coords[dim] = np.pad(
             padded_coords[dim],
             pad_width=pad_width[dim],
             mode=_pad_coordinates,
-            spacing=spacing,
+            spacing=spacing,  # spacing is passed as a kwarg to the callback
         )
     return padded_coords
-
-
-def _get_spacing(coord):
-    """
-    Return the spacing of evenly spaced coordinates array
-    """
-    diff = _diff_coord(coord)
-    if not np.allclose(diff, diff[0]):
-        raise ValueError(
-            f"Found unevenly spaced coordinates '{coord.name}'. "
-            "These coordinates should be evenly spaced."
-        )
-    return diff[0]
 
 
 def _pad_coordinates(vector, iaxis_pad_width, iaxis, kwargs):
