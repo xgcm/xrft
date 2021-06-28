@@ -10,20 +10,6 @@ from ..padding import pad, pad_coordinates
 
 
 @pytest.fixture
-def coords():
-    """
-    Define a dictionary with sample coordinates
-    """
-    x = np.linspace(-4, 5, 10)
-    y = np.linspace(-1, 4, 11)
-    coords = {
-        "x": xr.DataArray(x, coords={"x": x}, dims=("x",)),
-        "y": xr.DataArray(y, coords={"y": y}, dims=("y",)),
-    }
-    return coords
-
-
-@pytest.fixture
 def sample_da_2d():
     """
     Defines a 2D sample xarray.DataArray
@@ -34,36 +20,38 @@ def sample_da_2d():
     return xr.DataArray(z, coords={"x": x, "y": y}, dims=("y", "x"))
 
 
-def test_pad_coordinates(coords):
+def test_pad_coordinates(sample_da_2d):
     """
     Test pad_coordinates function
     """
+    coords = sample_da_2d.coords
     # Pad a single coordinate
     padded_coords = pad_coordinates(coords, {"x": 3})
-    npt.assert_allclose(padded_coords["x"], np.linspace(-7, 8, 16))
+    npt.assert_allclose(padded_coords["x"], np.linspace(-3, 13, 17))
     npt.assert_allclose(padded_coords["y"], coords["y"])
     # Pad two coordinates
     padded_coords = pad_coordinates(coords, {"x": 2, "y": 3})
-    npt.assert_allclose(padded_coords["x"], np.linspace(-6, 7, 14))
-    npt.assert_allclose(padded_coords["y"], np.linspace(-2.5, 5.5, 17))
+    npt.assert_allclose(padded_coords["x"], np.linspace(-2, 12, 15))
+    npt.assert_allclose(padded_coords["y"], np.linspace(-5.5, 5.5, 23))
     # Pad a single coordinate asymmetrically
     padded_coords = pad_coordinates(coords, {"x": (3, 2)})
-    npt.assert_allclose(padded_coords["x"], np.linspace(-7, 7, 15))
+    npt.assert_allclose(padded_coords["x"], np.linspace(-3, 12, 16))
     npt.assert_allclose(padded_coords["y"], coords["y"])
     # Pad two coordinates assymetrically
     padded_coords = pad_coordinates(coords, {"x": (2, 1), "y": (3, 4)})
-    npt.assert_allclose(padded_coords["x"], np.linspace(-6, 6, 13))
-    npt.assert_allclose(padded_coords["y"], np.linspace(-2.5, 6, 18))
+    npt.assert_allclose(padded_coords["x"], np.linspace(-2, 11, 14))
+    npt.assert_allclose(padded_coords["y"], np.linspace(-5.5, 6, 24))
 
 
-def test_pad_coordinates_invalid(coords):
+def test_pad_coordinates_invalid(sample_da_2d):
     """
     Test if pad_coordinates raises error after unevenly spaced coords
     """
-    x = coords["x"]
+    x = sample_da_2d.coords["x"].values
     x[3] += 0.1
+    sample_da_2d = sample_da_2d.assign_coords({"x": x})
     with pytest.raises(ValueError):
-        pad_coordinates(coords, pad_width={"x": 2})
+        pad_coordinates(sample_da_2d.coords, pad_width={"x": 2})
 
 
 def test_pad_with_kwargs(sample_da_2d):
