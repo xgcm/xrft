@@ -139,12 +139,51 @@ def pad(
 def pad_coordinates(coords, pad_width):
     """
     Pad coordinates arrays according to the passed pad_width
+
+    Parameters
+    ----------
+    coords : dict-like object
+        Dictionary with coordinates as :class:`xarray.DataArray`.
+        Only the coordinates specified through ``pad_width`` will be padded.
+        Every coordinate that will be padded should be evenly spaced.
+    pad_width : dict-like object
+        Dictionary with the same keys as ``coords``. The coordinates specified
+        through ``pad_width`` are returned as padded.
+
+    Returns
+    -------
+    padded_coords : dict-like object
+        Dictionary with 1d-arrays corresponding to the padded coordinates.
+
+    Examples
+    --------
+
+    >>> import numpy as np
+    >>> import xarray as xr
+    >>> x = np.linspace(-4, -1, 4)
+    >>> y = np.linspace(-1, 4, 6)
+    >>> coords = {
+    ... "x": xr.DataArray(x, coords={"x": x}, dims=("x",)),
+    ... "y": xr.DataArray(y, coords={"y": y}, dims=("y",)),
+    ... }
+    >>> pad_width = {"x": 2}
+    >>> padded_coords = pad_coordinates(coords, pad_width)
+    >>> padded_coords["x"]
+    array([-6., -5., -4., -3., -2., -1.,  0.,  1.])
+    >>> padded_coords["y"]
+    <xarray.DataArray (y: 6)>
+    array([-1.,  0.,  1.,  2.,  3.,  4.])
+    Coordinates:
+      * y        (y) float64 -1.0 0.0 1.0 2.0 3.0 4.0
+
+
     """
     # Generate a dictionary with the original coordinates
     padded_coords = {dim: coords[dim] for dim in coords}
     # Start padding the coordinates that appear in pad_width
     for dim in pad_width:
         # Get the spacing of the selected coordinate
+        # (raises an error if not evenly spaced)
         spacing = get_spacing(padded_coords[dim])
         # Pad the coordinates using numpy.pad with the _pad_coordinates callback
         padded_coords[dim] = np.pad(
