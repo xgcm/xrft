@@ -411,8 +411,10 @@ def dft(
         delta_x.append(delta)
         lag_x.append(lag)
 
-    if detrend:
+    if detrend is not None:
         da = _detrend(da, dim, detrend_type=detrend)
+        # Update the axis_num upon detrending
+        axis_num = [da.get_axis_num(d) for d in dim]
 
     if window is not None:
         _, da = _apply_window(da, dim, window_type=window)
