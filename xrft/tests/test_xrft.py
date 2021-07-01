@@ -356,7 +356,7 @@ class TestSpectrum(object):
     @pytest.mark.parametrize("window_correction", [True, False])
     @pytest.mark.parametrize("detrend", ["constant", "linear"])
     def test_dim_format(self, dim, window_correction, detrend):
-        """ Check that can deal with dim in various formats"""
+        """Check that can deal with dim in various formats"""
         data = xr.DataArray(
             np.random.random([10]),
             dims=[dim],
@@ -915,7 +915,8 @@ def synthetic_field_xr(
     return theta
 
 
-def test_isotropize(N=512):
+@pytest.mark.parametrize("truncate", [False, True])
+def test_isotropize(truncate, N=512):
     """Test the isotropization of a power spectrum."""
 
     # generate synthetic 2D spectrum, isotropize and check values
@@ -928,7 +929,7 @@ def test_isotropize(N=512):
     def _test_iso(theta):
         ps = xrft.power_spectrum(theta, spacing_tol=spacing_tol, dim=dims)
         ps = np.sqrt(ps.freq_x ** 2 + ps.freq_y ** 2)
-        ps_iso = xrft.isotropize(ps, fftdim, nfactor=nfactor)
+        ps_iso = xrft.isotropize(ps, fftdim, nfactor=nfactor, truncate=truncate)
         assert len(ps_iso.dims) == 1
         assert ps_iso.dims[0] == "freq_r"
         npt.assert_allclose(ps_iso, ps_iso.freq_r ** 2, atol=0.02)

@@ -957,6 +957,7 @@ def _groupby_bins_agg(
         output_core_dims=[[new_dim_name]],
         output_dtypes=[array.dtype],
         dask_gufunc_kwargs=dict(
+            allow_rechunk=True,
             output_sizes={new_dim_name: binned.categories.size},
         ),
         kwargs={
@@ -971,7 +972,7 @@ def _groupby_bins_agg(
     return result
 
 
-def isotropize(ps, fftdim, nfactor=4):
+def isotropize(ps, fftdim, nfactor=4, truncate=False):
     """
     Isotropize a 2D power spectrum or cross spectrum
     by taking an azimuthal average.
@@ -990,15 +991,33 @@ def isotropize(ps, fftdim, nfactor=4):
     nfactor : int, optional
         Ratio of number of bins to take the azimuthal averaging with the
         data size. Default is 4.
+    truncate : bool, optional
+        If True, the spectrum will be truncated for wavenumbers larger than
+        the Nyquist wavenumber.
     """
 
     # compute radial wavenumber bins
     k = ps[fftdim[1]]
     l = ps[fftdim[0]]
+
     N = [k.size, l.size]
     nbins = int(min(N) / nfactor)
     freq_r = np.sqrt(k ** 2 + l ** 2).rename("freq_r")
     kr = _groupby_bins_agg(freq_r, freq_r, bins=nbins, func="mean")
+
+    if truncate:
+        if k.max() > l.max():
+            kmax = l.max()
+        else:
+            kmax = k.max()
+        kr = kr.where(kr <= kmax)
+    else:
+        msg = (
+            "The flag `truncate` will be set to True by default in future version "
+            + "in order to truncate the isotropic wavenumber larger than the "
+            + "Nyquist wavenumber."
+        )
+        warnings.warn(msg, FutureWarning)
 
     iso_ps = (
         _groupby_bins_agg(ps, freq_r, bins=nbins, func="mean")
@@ -1006,7 +1025,10 @@ def isotropize(ps, fftdim, nfactor=4):
         .drop_vars("freq_r")
     )
     iso_ps.coords["freq_r"] = kr.data
-    return iso_ps * iso_ps.freq_r
+    if truncate:
+        return (iso_ps * iso_ps.freq_r).dropna("freq_r")
+    else:
+        return iso_ps * iso_ps.freq_r
 
 
 def isotropic_powerspectrum(*args, **kwargs):  # pragma: no cover
@@ -1028,9 +1050,10 @@ def isotropic_power_spectrum(
     shift=True,
     detrend=None,
     scaling="density",
-    window_correction=False,
     window=None,
+    window_correction=False,
     nfactor=4,
+    truncate=False,
     **kwargs,
 ):
     """
@@ -1070,6 +1093,9 @@ def isotropic_power_spectrum(
     nfactor : int, optional
         Ratio of number of bins to take the azimuthal averaging with the
         data size. Default is 4.
+    truncate : bool, optional
+        If True, the spectrum will be truncated for wavenumbers larger than
+        the Nyquist wavenumber.
 
     Returns
     -------
@@ -1098,7 +1124,7 @@ def isotropic_power_spectrum(
 
     fftdim = ["freq_" + d for d in dim]
 
-    return isotropize(ps, fftdim, nfactor=nfactor)
+    return isotropize(ps, fftdim, nfactor=nfactor, truncate=truncate)
 
 
 def isotropic_crossspectrum(*args, **kwargs):  # pragma: no cover
@@ -1121,9 +1147,10 @@ def isotropic_cross_spectrum(
     shift=True,
     detrend=None,
     scaling="density",
-    window_correction=False,
     window=None,
+    window_correction=False,
     nfactor=4,
+    truncate=False,
     **kwargs,
 ):
     """
@@ -1165,6 +1192,9 @@ def isotropic_cross_spectrum(
     nfactor : int (optional)
         Ratio of number of bins to take the azimuthal averaging with the
         data size. Default is 4.
+    truncate : bool, optional
+        If True, the spectrum will be truncated for wavenumbers larger than
+        the Nyquist wavenumber.
 
     Returns
     -------
@@ -1197,7 +1227,7 @@ def isotropic_cross_spectrum(
 
     fftdim = ["freq_" + d for d in dim]
 
-    return isotropize(cs, fftdim, nfactor=nfactor)
+    return isotropize(cs, fftdim, nfactor=nfactor, truncate=truncate)
 
 
 def fit_loglog(x, y):
