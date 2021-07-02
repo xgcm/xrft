@@ -237,47 +237,39 @@ def _lag_coord(coord):
         return lag.data
 
 
-def fft(da, dim=None, **kwargs):
-    """
-    da : `xarray.DataArray`
-        The data to be transformed
-    dim : str or sequence of str, optional
-        The dimensions along which to take the transformation. If `None`, all
-        dimensions will be transformed. If the inputs are dask arrays, the
-        arrays must not be chunked along these dimensions.
-    kwargs: See xrft.dft for argument list
-    """
-    if kwargs.pop("true_phase", False):
-        warnings.warn("true_phase argument is ignored in xrft.fft")
-    if kwargs.pop("true_amplitude", False):
-        warnings.warn("true_amplitude argument is ignored in xrft.fft")
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        return dft(da, dim=dim, true_phase=False, true_amplitude=False, **kwargs)
-
-
-def ifft(daft, dim=None, **kwargs):
-    """
-    daft : `xarray.DataArray`
-        The data to be transformed
-    dim : str or sequence of str, optional
-        The dimensions along which to take the transformation. If `None`, all
-        dimensions will be transformed. If the inputs are dask arrays, the
-        arrays must not be chunked along these dimensions.
-    kwargs: See xrft.idft for argument list
-    """
-    if kwargs.pop("true_phase", False):
-        warnings.warn("true_phase argument is ignored in xrft.ifft")
-    if kwargs.pop("true_amplitude", False):
-        warnings.warn("true_amplitude argument is ignored in xrft.ifft")
-    if kwargs.pop("lag", False):
-        warnings.warn("lag argument is ignored in xrft.ifft")
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        return idft(daft, dim=dim, true_phase=False, true_amplitude=False, **kwargs)
-
-
 def dft(
+    da, dim=None, true_phase=False, true_amplitude=False, **kwargs
+):  # pragma: no cover
+    """
+    Deprecated function. See fft doc
+    """
+    msg = (
+        "This function has been renamed and will disappear in the future."
+        + " Please use `fft` instead"
+    )
+    warnings.warn(msg, FutureWarning)
+    return fft(
+        da, dim=dim, true_phase=true_phase, true_amplitude=true_amplitude, **kwargs
+    )
+
+
+def idft(
+    daft, dim=None, true_phase=False, true_amplitude=False, **kwargs
+):  # pragma: no cover
+    """
+    Deprecated function. See ifft doc
+    """
+    msg = (
+        "This function has been renamed and will disappear in the future."
+        + " Please use `ifft` instead"
+    )
+    warnings.warn(msg, FutureWarning)
+    return ifft(
+        daft, dim=dim, true_phase=true_phase, true_amplitude=true_amplitude, **kwargs
+    )
+
+
+def fft(
     da,
     spacing_tol=1e-3,
     dim=None,
@@ -464,7 +456,7 @@ def dft(
     )  # Do nothing if da was not transposed
 
 
-def idft(
+def ifft(
     daft,
     spacing_tol=1e-3,
     dim=None,
@@ -716,7 +708,7 @@ def power_spectrum(
         {"true_amplitude": True, "true_phase": False}
     )  # true_phase do not matter in power_spectrum
 
-    daft = dft(da, dim=dim, real_dim=real_dim, **kwargs)
+    daft = fft(da, dim=dim, real_dim=real_dim, **kwargs)
     updated_dims = [
         d for d in daft.dims if (d not in da.dims and "segment" not in d)
     ]  # Transformed dimensions
@@ -769,6 +761,7 @@ def cross_spectrum(
     real_dim=None,
     scaling="density",
     window_correction=False,
+    true_phase=False,
     **kwargs,
 ):
     """
@@ -803,7 +796,7 @@ def cross_spectrum(
     kwargs : dict : see xrft.dft for argument list
     """
 
-    if "true_phase" not in kwargs:
+    if not true_phase:
         msg = (
             "true_phase flag will be set to True in future version of xrft.dft possibly impacting cross_spectrum output. "
             + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
@@ -829,8 +822,8 @@ def cross_spectrum(
 
     kwargs.update({"true_amplitude": True})
 
-    daft1 = dft(da1, dim=dim, real_dim=real_dim, **kwargs)
-    daft2 = dft(da2, dim=dim, real_dim=real_dim, **kwargs)
+    daft1 = fft(da1, dim=dim, real_dim=real_dim, true_phase=true_phase, **kwargs)
+    daft2 = fft(da2, dim=dim, real_dim=real_dim, true_phase=true_phase, **kwargs)
 
     if daft1.dims != daft2.dims:
         raise ValueError("The two datasets have different dimensions")
@@ -880,7 +873,7 @@ def cross_spectrum(
     return cs
 
 
-def cross_phase(da1, da2, dim=None, **kwargs):
+def cross_phase(da1, da2, dim=None, true_phase=False, **kwargs):
     """
     Calculates the cross-phase between da1 and da2.
 
@@ -899,7 +892,7 @@ def cross_phase(da1, da2, dim=None, **kwargs):
         The data to be transformed
     kwargs : dict : see xrft.dft for argument list
     """
-    if "true_phase" not in kwargs:
+    if not true_phase:
         msg = (
             "true_phase flag will be set to True in future version of xrft.dft possibly impacting cross_phase output. "
             + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
@@ -907,7 +900,9 @@ def cross_phase(da1, da2, dim=None, **kwargs):
         )
         warnings.warn(msg, FutureWarning)
 
-    cp = xr.ufuncs.angle(cross_spectrum(da1, da2, dim=dim, **kwargs))
+    cp = xr.ufuncs.angle(
+        cross_spectrum(da1, da2, dim=dim, true_phase=true_phase, **kwargs)
+    )
 
     if da1.name and da2.name:
         cp.name = "{}_{}_phase".format(da1.name, da2.name)
@@ -1134,6 +1129,7 @@ def isotropic_power_spectrum(
         scaling=scaling,
         window_correction=window_correction,
         window=window,
+        **kwargs,
     )
 
     fftdim = ["freq_" + d for d in dim]
@@ -1237,6 +1233,7 @@ def isotropic_cross_spectrum(
         scaling=scaling,
         window_correction=window_correction,
         window=window,
+        **kwargs,
     )
 
     fftdim = ["freq_" + d for d in dim]
