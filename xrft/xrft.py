@@ -411,8 +411,12 @@ def dft(
         delta_x.append(delta)
         lag_x.append(lag)
 
-    if detrend:
-        da = _detrend(da, dim, detrend_type=detrend)
+    if detrend is not None:
+        if detrend == "linear":
+            orig_dims = da.dims
+            da = _detrend(da, dim, detrend_type=detrend).transpose(*orig_dims)
+        else:
+            da = _detrend(da, dim, detrend_type=detrend)
 
     if window is not None:
         _, da = _apply_window(da, dim, window_type=window)
@@ -566,7 +570,7 @@ def idft(
     if chunks_to_segments:
         daft = _stack_chunks(daft, dim)
 
-    rawdims = daft.dims  # take care of segmented dimesions, if any
+    rawdims = daft.dims  # take care of segmented dimensions, if any
 
     if real_dim is not None:
         daft = daft.transpose(
