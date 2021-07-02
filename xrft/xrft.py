@@ -412,7 +412,7 @@ def dft(
         lag_x.append(lag)
 
     if detrend is not None:
-        if detrend == 'linear':
+        if detrend == "linear":
             da = _detrend(da, dim, detrend_type=detrend).transpose(*rawdims)
         else:
             da = _detrend(da, dim, detrend_type=detrend)
