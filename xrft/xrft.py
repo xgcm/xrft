@@ -412,9 +412,10 @@ def dft(
         lag_x.append(lag)
 
     if detrend is not None:
-        da = _detrend(da, dim, detrend_type=detrend)
-        # Update the axis_num upon detrending
-        axis_num = [da.get_axis_num(d) for d in dim]
+        if detrend == 'linear':
+            da = _detrend(da, dim, detrend_type=detrend).transpose(*rawdims)
+        else:
+            da = _detrend(da, dim, detrend_type=detrend)
 
     if window is not None:
         _, da = _apply_window(da, dim, window_type=window)
@@ -557,12 +558,12 @@ def idft(
     if chunks_to_segments:
         daft = _stack_chunks(daft, dim)
 
-    rawdims = daft.dims  # take care of segmented dimesions, if any
-
     if real_dim is not None:
         daft = daft.transpose(
             *[d for d in daft.dims if d not in [real_dim]] + [real_dim]
         )  # dimension for real transformed is moved at the end
+
+    rawdims = daft.dims  # take care of segmented dimensions, if any
 
     fftm = _fft_module(daft)
 
