@@ -450,6 +450,7 @@ def dft(
                 dims=up_dim,
                 coords={up_dim: newcoords[up_dim]},
             )  # taking advantage of xarray broadcasting and ordered coordinates
+            daft[up_dim].attrs.update({"direct_lag": lag.obj})
 
     if true_amplitude:
         daft = daft * np.prod(delta_x)
@@ -504,11 +505,13 @@ def idft(
     true_amplitude : bool, optional
         If set to True, output is divided by the spacing of the transformed variables to match theoretical IFT amplitude.
         If set to False, amplitude regularisation by spacing is not applied (as in numpy.ifft)
-    lag : float or sequence of float, optional
-        If lag is None or zero, output coordinates are centered on zero.
+    lag : None, float or sequence of float and/or None, optional
+        Output coordinates of transformed dimensions will be shifted by corresponding lag values and correct signal phasing will be preserved if true_phase is set to True.
+        If lag is None (default), 'direct_lag' attributes of each dimension is used (or set to zero if not found).
         If defined, lag must have same length as dim.
-        Output coordinates corresponding to transformed dimensions will be shifted by corresponding lag values.
-        Correct signal phasing will be preserved if true_phase is set to True.
+        If lag is a sequence, a None element means that 'direct_lag' attribute will be used for the corresponding dimension
+        Manually set lag to zero to get output coordinates centered on zero.
+
 
     Returns
     -------
@@ -539,8 +542,11 @@ def idft(
             dim = [d for d in dim if d != real_dim] + [
                 real_dim
             ]  # real dim has to be moved or added at the end !
-
-    if lag is not None:
+    if lag is None:
+        lag = [daft[d].attrs.get("direct_lag", 0.0) for d in dim]
+        msg = "Default idft's behaviour (lag=None) changed! Default value of lag was zero (centered output coordinates) and is now set to transformed coordinate's attribute: 'direct_lag'."
+        warnings.warn(msg, FutureWarning)
+    else:
         if isinstance(lag, float) or isinstance(lag, int):
             lag = [lag]
         if len(dim) != len(lag):
@@ -548,7 +554,12 @@ def idft(
         if not true_phase:
             msg = "Setting lag with true_phase=False does not guarantee accurate idft."
             warnings.warn(msg, Warning)
+        lag = [
+            daft[d].attrs.get("direct_lag") if l is None else l
+            for d, l in zip(dim, lag)
+        ]  # enable lag of the form [3.2, None, 7]
 
+    if true_phase:
         for d, l in zip(dim, lag):
             daft = daft * np.exp(1j * 2.0 * np.pi * daft[d] * l)
 
@@ -634,13 +645,12 @@ def idft(
     da = da.swap_dims(swap_dims).assign_coords(newcoords)
     da = da.drop([d for d in dim if d in da.coords])
 
-    if lag is not None:
-        with xr.set_options(
-            keep_attrs=True
-        ):  # This line ensures keeping spacing attribute in output coordinates
-            for d, l in zip(dim, lag):
-                tfd = swap_dims[d]
-                da = da.assign_coords({tfd: da[tfd] + l})
+    with xr.set_options(
+        keep_attrs=True
+    ):  # This line ensures keeping spacing attribute in output coordinates
+        for d, l in zip(dim, lag):
+            tfd = swap_dims[d]
+            da = da.assign_coords({tfd: da[tfd] + l})
 
     if true_amplitude:
         da = da / np.prod([float(da[up_dim].spacing) for up_dim in swap_dims.values()])

@@ -1,6 +1,6 @@
 
 repos:
   - repo: https://github.com/python/black
-    rev: stable
+    rev: 21.6b0
     hooks:
     - id: black
