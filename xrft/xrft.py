@@ -413,7 +413,8 @@ def dft(
 
     if detrend is not None:
         if detrend == "linear":
-            da = _detrend(da, dim, detrend_type=detrend).transpose(*rawdims)
+            orig_dims = da.dims
+            da = _detrend(da, dim, detrend_type=detrend).transpose(*orig_dims)
         else:
             da = _detrend(da, dim, detrend_type=detrend)
 
@@ -558,12 +559,12 @@ def idft(
     if chunks_to_segments:
         daft = _stack_chunks(daft, dim)
 
+    rawdims = daft.dims  # take care of segmented dimensions, if any
+
     if real_dim is not None:
         daft = daft.transpose(
             *[d for d in daft.dims if d not in [real_dim]] + [real_dim]
         )  # dimension for real transformed is moved at the end
-
-    rawdims = daft.dims  # take care of segmented dimensions, if any
 
     fftm = _fft_module(daft)
 
