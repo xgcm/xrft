@@ -368,13 +368,13 @@ def fft(
             *[d for d in da.dims if d not in [real_dim]] + [real_dim]
         )  # dimension for real transformed is moved at the end
 
-    fft = _fft_module(da)
+    fftm = _fft_module(da)
 
     if real_dim is None:
-        fft_fn = fft.fftn
+        fft_fn = fftm.fftn
     else:
         shift = False
-        fft_fn = fft.rfftn
+        fft_fn = fftm.rfftn
 
     # the axes along which to take ffts
     axis_num = [
@@ -418,13 +418,13 @@ def fft(
             da.get_axis_num(d) for d in dim if da[d][-1] < da[d][0]
         ]  # handling decreasing coordinates
         f = fft_fn(
-            fft.ifftshift(np.flip(da, axis=reversed_axis), axes=axis_num), axes=axis_num
+            fftm.ifftshift(np.flip(da, axis=reversed_axis), axes=axis_num), axes=axis_num
         )
     else:
         f = fft_fn(da.data, axes=axis_num)
 
     if shift:
-        f = fft.fftshift(f, axes=axis_num)
+        f = fftm.fftshift(f, axes=axis_num)
 
     k = _freq(N, delta_x, real_dim, shift)
 
