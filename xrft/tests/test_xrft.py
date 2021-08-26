@@ -1319,12 +1319,12 @@ def test_nondim_coords():
             "time": np.array(["2019-04-18", "2019-04-19"], dtype="datetime64"),
             "x": range(N),
             "y": range(N),
-            'x_nondim':('x',np.arange(N))
+            "x_nondim":("x",np.arange(N))
         },
     )
     
     with pytest.raises(ValueError):
         xrft.power_spectrum(da)
     
-    xrft.power_spectrum(da,dim=['time','y'])
+    xrft.power_spectrum(da,dim=["time","y"])
 
