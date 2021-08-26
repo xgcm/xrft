@@ -383,6 +383,13 @@ def fft(
 
     N = [da.shape[n] for n in axis_num]
 
+    # raise error if there are multiple coordinates attached to the dimension(s) over which the FFT is taken
+    for d in dim:
+        if not da[d].equals(da[d].reset_coords(drop=True)):
+            raise ValueError(
+                "This function currently does not handle more than one coordinate attached to the dimension(s) over which the FFT is taken."
+                )
+
     # verify even spacing of input coordinates
     delta_x = []
     lag_x = []
