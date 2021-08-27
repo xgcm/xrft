@@ -385,7 +385,9 @@ def fft(
 
     # raise error if there are multiple coordinates attached to the dimension(s) over which the FFT is taken
     for d in dim:
-        bad_coords = [cname for cname in da.coords if cname != dim and dim in da[cname].dims]
+        bad_coords = [
+            cname for cname in da.coords if cname != dim and dim in da[cname].dims
+        ]
         if bad_coords:
             raise ValueError(
                 f"The input array contains coordinate variable(s) ({bad_coords}) whose dims include the transform dimension(s) `{dim}`. "

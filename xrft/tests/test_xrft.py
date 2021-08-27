@@ -351,8 +351,6 @@ def test_window_single_dim():
     ps.load()
 
 
-
-
 class TestSpectrum(object):
     @pytest.mark.parametrize("dim", ["t", "time"])
     @pytest.mark.parametrize("window_correction", [True, False])
@@ -1309,6 +1307,7 @@ def test_reversed_coordinates():
         xrft.dft(s, dim="x", true_phase=True), xrft.dft(s2, dim="x", true_phase=True)
     )
 
+
 def test_nondim_coords():
     """Error should be raised if there are non-dimensional coordinates attached to the dimension(s) over which the FFT is being taken"""
     N = 16
@@ -1319,12 +1318,11 @@ def test_nondim_coords():
             "time": np.array(["2019-04-18", "2019-04-19"], dtype="datetime64"),
             "x": range(N),
             "y": range(N),
-            "x_nondim":("x",np.arange(N))
+            "x_nondim": ("x", np.arange(N)),
         },
     )
-    
+
     with pytest.raises(ValueError):
         xrft.power_spectrum(da)
-    
-    xrft.power_spectrum(da,dim=["time","y"])
 
+    xrft.power_spectrum(da, dim=["time", "y"])
