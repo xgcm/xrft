@@ -385,7 +385,8 @@ def fft(
 
     # raise error if there are multiple coordinates attached to the dimension(s) over which the FFT is taken
     for d in dim:
-        if not da[d].equals(da[d].reset_coords(drop=True)):
+        bad_coords = [cname for cname in da.coords if cname != dim and dim in da[cname].dims]
+        if bad_coords:
             raise ValueError(
                 "This function currently does not handle more than one coordinate attached to the dimension(s) over which the FFT is taken."
             )
