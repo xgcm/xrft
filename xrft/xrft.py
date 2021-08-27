@@ -388,7 +388,8 @@ def fft(
         bad_coords = [cname for cname in da.coords if cname != dim and dim in da[cname].dims]
         if bad_coords:
             raise ValueError(
-                "This function currently does not handle more than one coordinate attached to the dimension(s) over which the FFT is taken."
+                f"The input array contains coordinate variable(s) ({bad_coords}) whose dims include the transform dimension(s) `{dim}`. "
+                f"Please drop these coordinates (`.drop({bad_coords}`) before invoking xrft."
             )
 
     # verify even spacing of input coordinates
