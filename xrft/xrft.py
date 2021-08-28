@@ -383,6 +383,17 @@ def fft(
 
     N = [da.shape[n] for n in axis_num]
 
+    # raise error if there are multiple coordinates attached to the dimension(s) over which the FFT is taken
+    for d in dim:
+        bad_coords = [
+            cname for cname in da.coords if cname != d and d in da[cname].dims
+        ]
+        if bad_coords:
+            raise ValueError(
+                f"The input array contains coordinate variable(s) ({bad_coords}) whose dims include the transform dimension(s) `{d}`. "
+                f"Please drop these coordinates (`.drop({bad_coords}`) before invoking xrft."
+            )
+
     # verify even spacing of input coordinates
     delta_x = []
     lag_x = []
