@@ -7,7 +7,7 @@ PACKAGES = find_packages()
 DISTNAME = "xrft"
 LICENSE = "MIT"
 AUTHOR = "xrft Developers"
-AUTHOR_EMAIL = "takaya@ldeo.columbia.edu"
+AUTHOR_EMAIL = "takaya.uchida@univ-grenoble-alpes.fr"
 URL = "https://github.com/xgcm/xrft"
 CLASSIFIERS = [
     "Development Status :: 4 - Beta",
@@ -24,7 +24,7 @@ CLASSIFIERS = [
 
 INSTALL_REQUIRES = ["xarray", "dask", "numpy", "pandas", "scipy"]
 EXTRAS_REQUIRE = ["cftime", "numpy_groupies"]
-SETUP_REQUIRES = ["pytest-runner"]
+SETUP_REQUIRES = ["pytest-runner", "setuptools_scm"]
 TESTS_REQUIRE = ["pytest >= 2.8", "coverage"]
 
 DESCRIPTION = "Discrete Fourier Transform with xarray"
@@ -46,6 +46,7 @@ setup(
     description=DESCRIPTION,
     long_description=readme(),
     install_requires=INSTALL_REQUIRES,
+    use_scm_version=True,
     setup_requires=SETUP_REQUIRES,
     tests_require=TESTS_REQUIRE,
     url=URL,
