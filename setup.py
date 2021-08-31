@@ -1,5 +1,4 @@
 import os
-import versioneer
 from setuptools import setup, find_packages
 
 PACKAGES = find_packages()
@@ -37,8 +36,6 @@ def readme():
 
 setup(
     name=DISTNAME,
-    version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass(),
     license=LICENSE,
     author=AUTHOR,
     author_email=AUTHOR_EMAIL,
