@@ -1,52 +1,6 @@
-import os
-from setuptools import setup, find_packages
+#!/usr/bin/env python
 
-PACKAGES = find_packages()
-
-DISTNAME = "xrft"
-LICENSE = "MIT"
-AUTHOR = "xrft Developers"
-AUTHOR_EMAIL = "takaya.uchida@univ-grenoble-alpes.fr"
-URL = "https://github.com/xgcm/xrft"
-CLASSIFIERS = [
-    "Development Status :: 4 - Beta",
-    "License :: OSI Approved :: Apache Software License",
-    "Operating System :: OS Independent",
-    "Intended Audience :: Science/Research",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Topic :: Scientific/Engineering",
-]
-
-INSTALL_REQUIRES = ["xarray", "dask", "numpy", "pandas", "scipy"]
-EXTRAS_REQUIRE = ["cftime", "numpy_groupies"]
-SETUP_REQUIRES = ["pytest-runner", "setuptools_scm"]
-TESTS_REQUIRE = ["pytest >= 2.8", "coverage"]
-
-DESCRIPTION = "Discrete Fourier Transform with xarray"
-
-
-def readme():
-    with open("README.rst") as f:
-        return f.read()
-
+import setuptools
 
 if __name__ == "__main__":
-    setup(
-        name=DISTNAME,
-        license=LICENSE,
-        author=AUTHOR,
-        author_email=AUTHOR_EMAIL,
-        classifiers=CLASSIFIERS,
-        description=DESCRIPTION,
-        long_description=readme(),
-        install_requires=INSTALL_REQUIRES,
-        use_scm_version=True,
-        setup_requires=SETUP_REQUIRES,
-        tests_require=TESTS_REQUIRE,
-        url=URL,
-        packages=find_packages(),
-    )
+    setuptools.setup()
