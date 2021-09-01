@@ -23,7 +23,7 @@ CLASSIFIERS = [
 
 INSTALL_REQUIRES = ["xarray", "dask", "numpy", "pandas", "scipy"]
 EXTRAS_REQUIRE = ["cftime", "numpy_groupies"]
-SETUP_REQUIRES = ["pytest-runner"]
+SETUP_REQUIRES = ["pytest-runner", "setuptools_scm"]
 TESTS_REQUIRE = ["pytest >= 2.8", "coverage"]
 
 DESCRIPTION = "Discrete Fourier Transform with xarray"
@@ -34,17 +34,19 @@ def readme():
         return f.read()
 
 
-setup(
-    name=DISTNAME,
-    license=LICENSE,
-    author=AUTHOR,
-    author_email=AUTHOR_EMAIL,
-    classifiers=CLASSIFIERS,
-    description=DESCRIPTION,
-    long_description=readme(),
-    install_requires=INSTALL_REQUIRES,
-    setup_requires=SETUP_REQUIRES,
-    tests_require=TESTS_REQUIRE,
-    url=URL,
-    packages=find_packages(),
-)
+if __name__ == "__main__":
+    setup(
+        name=DISTNAME,
+        license=LICENSE,
+        author=AUTHOR,
+        author_email=AUTHOR_EMAIL,
+        classifiers=CLASSIFIERS,
+        description=DESCRIPTION,
+        long_description=readme(),
+        install_requires=INSTALL_REQUIRES,
+        use_scm_version=True,
+        setup_requires=SETUP_REQUIRES,
+        tests_require=TESTS_REQUIRE,
+        url=URL,
+        packages=find_packages(),
+    )
