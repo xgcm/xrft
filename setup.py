@@ -23,7 +23,7 @@ CLASSIFIERS = [
 
 INSTALL_REQUIRES = ["xarray", "dask", "numpy", "pandas", "scipy"]
 EXTRAS_REQUIRE = ["cftime", "numpy_groupies"]
-SETUP_REQUIRES = ["pytest-runner", "setuptools_scm"]
+SETUP_REQUIRES = ["pytest-runner"]
 TESTS_REQUIRE = ["pytest >= 2.8", "coverage"]
 
 DESCRIPTION = "Discrete Fourier Transform with xarray"
@@ -43,7 +43,6 @@ setup(
     description=DESCRIPTION,
     long_description=readme(),
     install_requires=INSTALL_REQUIRES,
-    use_scm_version=True,
     setup_requires=SETUP_REQUIRES,
     tests_require=TESTS_REQUIRE,
     url=URL,
