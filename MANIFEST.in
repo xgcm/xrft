@@ -1,2 +1,2 @@
 include LICENSE
-exclude xrft/_version.py
+include xrft/_version.py
