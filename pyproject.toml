@@ -11,4 +11,12 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools_scm]
 write_to = "xrft/_version.py"
 
-
+[tool.poetry]
+name = "xrft"
+version = "0.3.2"
+description = "Discrete Fourier Transform with xarray"
+homepage = "https://xrft.readthedocs.io/en/latest/"
+repository = "https://github.com/xgcm/xrft"
+authors = ["xrft Developers <takaya.uchida@univ-grenoble-alpes.fr>"]
+license = "MIT"
+readme = "README.rst"
