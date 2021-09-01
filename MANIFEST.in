@@ -1,2 +1,1 @@
-include versioneer.py
 include xrft/_version.py
