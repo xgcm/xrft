@@ -16,3 +16,4 @@ dependencies:
     - codecov
     - pytest-cov
     - pytest-xdist
+    - setuptools-scm
