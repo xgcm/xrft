@@ -11,3 +11,7 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools_scm]
 write_to = "xrft/_version.py"
 
+[tool.poetry]
+name = "xrft"
+version = "0.3.2"
+
