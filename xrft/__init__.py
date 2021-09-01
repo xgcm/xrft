@@ -8,5 +8,5 @@ except DistributionNotFound:  # noqa: F401
 
 del get_distribution, DistributionNotFound
 
-# from .xrft import *  # noqa
-# from .detrend import detrend
+from .xrft import *  # noqa
+from .detrend import detrend
