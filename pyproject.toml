@@ -1,8 +1,8 @@
 # pyproject.toml
 [build-system]
 requires = [
-    "setuptools>=42", 
-    "setuptools_scm[toml]>=3.4",
+    "setuptools>=45", 
+    "setuptools_scm[toml]>=6.0",
     "setuptools_scm_git_archive",
     "wheel"
 ]
@@ -10,13 +10,5 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
 write_to = "xrft/_version.py"
+write_to_template = "__version__ = '{version}'"
 
-[tool.poetry]
-name = "xrft"
-version = "0.3.2"
-description = "Discrete Fourier Transform with xarray"
-homepage = "https://xrft.readthedocs.io/en/latest/"
-repository = "https://github.com/xgcm/xrft"
-authors = ["xrft Developers <takaya.uchida@univ-grenoble-alpes.fr>"]
-license = "MIT"
-readme = "README.rst"
