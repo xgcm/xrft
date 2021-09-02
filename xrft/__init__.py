@@ -3,5 +3,5 @@ try:
 except ImportError:
     __version__ = "unknown"
 
-from .xrft import *  # noqa
-from .detrend import detrend
+# from .xrft import *  # noqa
+# from .detrend import detrend
