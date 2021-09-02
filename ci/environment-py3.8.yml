@@ -9,11 +9,15 @@ dependencies:
   - numpy
   - numpy_groupies
   - pytest
+  - pytest-cov
+  - pytest-lazy-fixture
   - pip
   - black
   - cftime
+  - setuptools
   - pip:
     - codecov
     - pytest-cov
     - pytest-xdist
     - setuptools-scm
+    - toml
