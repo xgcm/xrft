@@ -1,8 +1,8 @@
-name: Release Python Package
+name: Check and Maybe Release Python Package
 
 on: [push, pull_request]
 jobs:
-  deploy:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
