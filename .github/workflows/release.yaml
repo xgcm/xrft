@@ -1,6 +1,6 @@
 name: Release Python Package
 
-on: push
+on: [push, pull_request]
 jobs:
   deploy:
     runs-on: ubuntu-latest
