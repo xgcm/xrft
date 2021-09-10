@@ -1,4 +1,3 @@
-
 name: Release Python Package
 
 on: push
@@ -17,13 +16,15 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install --upgrade setuptools setuptools-scm wheel twine toml
-      - name: Build and publish
+      - name: Build package
+        run: |
+          python setup.py sdist bdist_wheel
+          python setup.py --version
+          twine check dist/*
+      - name: Publish to pypi
         if: startsWith(github.event.ref, 'refs/tags')
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
-          python setup.py sdist bdist_wheel
-          python setup.py --version
-          twine check dist/*
           twine upload dist/*
