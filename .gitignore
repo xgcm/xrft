@@ -58,3 +58,7 @@ target/
 
 # notebook
 */.ipynb_checkpoints/*
+
+# Pyre type checker
+.pyre/
+_version.py

@@ -17,7 +17,7 @@ coverage:
     
 ignore:
   - "setup.py"
-  - "versioneer.py"
+  - "setup.cfg"
+  - "pyproject.toml"
   - "xrft/test/*"
   - "xrft/__init__.py"
-  - "xrft/_version.py"
