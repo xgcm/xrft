@@ -237,47 +237,39 @@ def _lag_coord(coord):
         return lag.data
 
 
-def fft(da, dim=None, **kwargs):
-    """
-    da : `xarray.DataArray`
-        The data to be transformed
-    dim : str or sequence of str, optional
-        The dimensions along which to take the transformation. If `None`, all
-        dimensions will be transformed. If the inputs are dask arrays, the
-        arrays must not be chunked along these dimensions.
-    kwargs: See xrft.dft for argument list
-    """
-    if kwargs.pop("true_phase", False):
-        warnings.warn("true_phase argument is ignored in xrft.fft")
-    if kwargs.pop("true_amplitude", False):
-        warnings.warn("true_amplitude argument is ignored in xrft.fft")
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        return dft(da, dim=dim, true_phase=False, true_amplitude=False, **kwargs)
-
-
-def ifft(daft, dim=None, **kwargs):
-    """
-    daft : `xarray.DataArray`
-        The data to be transformed
-    dim : str or sequence of str, optional
-        The dimensions along which to take the transformation. If `None`, all
-        dimensions will be transformed. If the inputs are dask arrays, the
-        arrays must not be chunked along these dimensions.
-    kwargs: See xrft.idft for argument list
-    """
-    if kwargs.pop("true_phase", False):
-        warnings.warn("true_phase argument is ignored in xrft.ifft")
-    if kwargs.pop("true_amplitude", False):
-        warnings.warn("true_amplitude argument is ignored in xrft.ifft")
-    if kwargs.pop("lag", False):
-        warnings.warn("lag argument is ignored in xrft.ifft")
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        return idft(daft, dim=dim, true_phase=False, true_amplitude=False, **kwargs)
-
-
 def dft(
+    da, dim=None, true_phase=False, true_amplitude=False, **kwargs
+):  # pragma: no cover
+    """
+    Deprecated function. See fft doc
+    """
+    msg = (
+        "This function has been renamed and will disappear in the future."
+        + " Please use `fft` instead"
+    )
+    warnings.warn(msg, FutureWarning)
+    return fft(
+        da, dim=dim, true_phase=true_phase, true_amplitude=true_amplitude, **kwargs
+    )
+
+
+def idft(
+    daft, dim=None, true_phase=False, true_amplitude=False, **kwargs
+):  # pragma: no cover
+    """
+    Deprecated function. See ifft doc
+    """
+    msg = (
+        "This function has been renamed and will disappear in the future."
+        + " Please use `ifft` instead"
+    )
+    warnings.warn(msg, FutureWarning)
+    return ifft(
+        daft, dim=dim, true_phase=true_phase, true_amplitude=true_amplitude, **kwargs
+    )
+
+
+def fft(
     da,
     spacing_tol=1e-3,
     dim=None,
@@ -376,13 +368,13 @@ def dft(
             *[d for d in da.dims if d not in [real_dim]] + [real_dim]
         )  # dimension for real transformed is moved at the end
 
-    fft = _fft_module(da)
+    fftm = _fft_module(da)
 
     if real_dim is None:
-        fft_fn = fft.fftn
+        fft_fn = fftm.fftn
     else:
         shift = False
-        fft_fn = fft.rfftn
+        fft_fn = fftm.rfftn
 
     # the axes along which to take ffts
     axis_num = [
@@ -390,6 +382,17 @@ def dft(
     ]  # if there is a real dim , it has to be the last one
 
     N = [da.shape[n] for n in axis_num]
+
+    # raise error if there are multiple coordinates attached to the dimension(s) over which the FFT is taken
+    for d in dim:
+        bad_coords = [
+            cname for cname in da.coords if cname != d and d in da[cname].dims
+        ]
+        if bad_coords:
+            raise ValueError(
+                f"The input array contains coordinate variable(s) ({bad_coords}) whose dims include the transform dimension(s) `{d}`. "
+                f"Please drop these coordinates (`.drop({bad_coords}`) before invoking xrft."
+            )
 
     # verify even spacing of input coordinates
     delta_x = []
@@ -411,8 +414,12 @@ def dft(
         delta_x.append(delta)
         lag_x.append(lag)
 
-    if detrend:
-        da = _detrend(da, dim, detrend_type=detrend)
+    if detrend is not None:
+        if detrend == "linear":
+            orig_dims = da.dims
+            da = _detrend(da, dim, detrend_type=detrend).transpose(*orig_dims)
+        else:
+            da = _detrend(da, dim, detrend_type=detrend)
 
     if window is not None:
         _, da = _apply_window(da, dim, window_type=window)
@@ -422,13 +429,14 @@ def dft(
             da.get_axis_num(d) for d in dim if da[d][-1] < da[d][0]
         ]  # handling decreasing coordinates
         f = fft_fn(
-            fft.ifftshift(np.flip(da, axis=reversed_axis), axes=axis_num), axes=axis_num
+            fftm.ifftshift(np.flip(da, axis=reversed_axis), axes=axis_num),
+            axes=axis_num,
         )
     else:
         f = fft_fn(da.data, axes=axis_num)
 
     if shift:
-        f = fft.fftshift(f, axes=axis_num)
+        f = fftm.fftshift(f, axes=axis_num)
 
     k = _freq(N, delta_x, real_dim, shift)
 
@@ -450,6 +458,7 @@ def dft(
                 dims=up_dim,
                 coords={up_dim: newcoords[up_dim]},
             )  # taking advantage of xarray broadcasting and ordered coordinates
+            daft[up_dim].attrs.update({"direct_lag": lag.obj})
 
     if true_amplitude:
         daft = daft * np.prod(delta_x)
@@ -459,7 +468,7 @@ def dft(
     )  # Do nothing if da was not transposed
 
 
-def idft(
+def ifft(
     daft,
     spacing_tol=1e-3,
     dim=None,
@@ -504,11 +513,13 @@ def idft(
     true_amplitude : bool, optional
         If set to True, output is divided by the spacing of the transformed variables to match theoretical IFT amplitude.
         If set to False, amplitude regularisation by spacing is not applied (as in numpy.ifft)
-    lag : float or sequence of float, optional
-        If lag is None or zero, output coordinates are centered on zero.
+    lag : None, float or sequence of float and/or None, optional
+        Output coordinates of transformed dimensions will be shifted by corresponding lag values and correct signal phasing will be preserved if true_phase is set to True.
+        If lag is None (default), 'direct_lag' attributes of each dimension is used (or set to zero if not found).
         If defined, lag must have same length as dim.
-        Output coordinates corresponding to transformed dimensions will be shifted by corresponding lag values.
-        Correct signal phasing will be preserved if true_phase is set to True.
+        If lag is a sequence, a None element means that 'direct_lag' attribute will be used for the corresponding dimension
+        Manually set lag to zero to get output coordinates centered on zero.
+
 
     Returns
     -------
@@ -539,8 +550,11 @@ def idft(
             dim = [d for d in dim if d != real_dim] + [
                 real_dim
             ]  # real dim has to be moved or added at the end !
-
-    if lag is not None:
+    if lag is None:
+        lag = [daft[d].attrs.get("direct_lag", 0.0) for d in dim]
+        msg = "Default idft's behaviour (lag=None) changed! Default value of lag was zero (centered output coordinates) and is now set to transformed coordinate's attribute: 'direct_lag'."
+        warnings.warn(msg, FutureWarning)
+    else:
         if isinstance(lag, float) or isinstance(lag, int):
             lag = [lag]
         if len(dim) != len(lag):
@@ -548,14 +562,19 @@ def idft(
         if not true_phase:
             msg = "Setting lag with true_phase=False does not guarantee accurate idft."
             warnings.warn(msg, Warning)
+        lag = [
+            daft[d].attrs.get("direct_lag") if l is None else l
+            for d, l in zip(dim, lag)
+        ]  # enable lag of the form [3.2, None, 7]
 
+    if true_phase:
         for d, l in zip(dim, lag):
             daft = daft * np.exp(1j * 2.0 * np.pi * daft[d] * l)
 
     if chunks_to_segments:
         daft = _stack_chunks(daft, dim)
 
-    rawdims = daft.dims  # take care of segmented dimesions, if any
+    rawdims = daft.dims  # take care of segmented dimensions, if any
 
     if real_dim is not None:
         daft = daft.transpose(
@@ -634,13 +653,12 @@ def idft(
     da = da.swap_dims(swap_dims).assign_coords(newcoords)
     da = da.drop([d for d in dim if d in da.coords])
 
-    if lag is not None:
-        with xr.set_options(
-            keep_attrs=True
-        ):  # This line ensures keeping spacing attribute in output coordinates
-            for d, l in zip(dim, lag):
-                tfd = swap_dims[d]
-                da = da.assign_coords({tfd: da[tfd] + l})
+    with xr.set_options(
+        keep_attrs=True
+    ):  # This line ensures keeping spacing attribute in output coordinates
+        for d, l in zip(dim, lag):
+            tfd = swap_dims[d]
+            da = da.assign_coords({tfd: da[tfd] + l})
 
     if true_amplitude:
         da = da / np.prod([float(da[up_dim].spacing) for up_dim in swap_dims.values()])
@@ -702,7 +720,7 @@ def power_spectrum(
         {"true_amplitude": True, "true_phase": False}
     )  # true_phase do not matter in power_spectrum
 
-    daft = dft(da, dim=dim, real_dim=real_dim, **kwargs)
+    daft = fft(da, dim=dim, real_dim=real_dim, **kwargs)
     updated_dims = [
         d for d in daft.dims if (d not in da.dims and "segment" not in d)
     ]  # Transformed dimensions
@@ -755,6 +773,7 @@ def cross_spectrum(
     real_dim=None,
     scaling="density",
     window_correction=False,
+    true_phase=False,
     **kwargs,
 ):
     """
@@ -789,7 +808,7 @@ def cross_spectrum(
     kwargs : dict : see xrft.dft for argument list
     """
 
-    if "true_phase" not in kwargs:
+    if not true_phase:
         msg = (
             "true_phase flag will be set to True in future version of xrft.dft possibly impacting cross_spectrum output. "
             + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
@@ -815,8 +834,8 @@ def cross_spectrum(
 
     kwargs.update({"true_amplitude": True})
 
-    daft1 = dft(da1, dim=dim, real_dim=real_dim, **kwargs)
-    daft2 = dft(da2, dim=dim, real_dim=real_dim, **kwargs)
+    daft1 = fft(da1, dim=dim, real_dim=real_dim, true_phase=true_phase, **kwargs)
+    daft2 = fft(da2, dim=dim, real_dim=real_dim, true_phase=true_phase, **kwargs)
 
     if daft1.dims != daft2.dims:
         raise ValueError("The two datasets have different dimensions")
@@ -866,7 +885,7 @@ def cross_spectrum(
     return cs
 
 
-def cross_phase(da1, da2, dim=None, **kwargs):
+def cross_phase(da1, da2, dim=None, true_phase=False, **kwargs):
     """
     Calculates the cross-phase between da1 and da2.
 
@@ -885,7 +904,7 @@ def cross_phase(da1, da2, dim=None, **kwargs):
         The data to be transformed
     kwargs : dict : see xrft.dft for argument list
     """
-    if "true_phase" not in kwargs:
+    if not true_phase:
         msg = (
             "true_phase flag will be set to True in future version of xrft.dft possibly impacting cross_phase output. "
             + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
@@ -893,7 +912,9 @@ def cross_phase(da1, da2, dim=None, **kwargs):
         )
         warnings.warn(msg, FutureWarning)
 
-    cp = xr.ufuncs.angle(cross_spectrum(da1, da2, dim=dim, **kwargs))
+    cp = xr.ufuncs.angle(
+        cross_spectrum(da1, da2, dim=dim, true_phase=true_phase, **kwargs)
+    )
 
     if da1.name and da2.name:
         cp.name = "{}_{}_phase".format(da1.name, da2.name)
@@ -957,6 +978,7 @@ def _groupby_bins_agg(
         output_core_dims=[[new_dim_name]],
         output_dtypes=[array.dtype],
         dask_gufunc_kwargs=dict(
+            allow_rechunk=True,
             output_sizes={new_dim_name: binned.categories.size},
         ),
         kwargs={
@@ -971,7 +993,7 @@ def _groupby_bins_agg(
     return result
 
 
-def isotropize(ps, fftdim, nfactor=4):
+def isotropize(ps, fftdim, nfactor=4, truncate=False):
     """
     Isotropize a 2D power spectrum or cross spectrum
     by taking an azimuthal average.
@@ -990,15 +1012,33 @@ def isotropize(ps, fftdim, nfactor=4):
     nfactor : int, optional
         Ratio of number of bins to take the azimuthal averaging with the
         data size. Default is 4.
+    truncate : bool, optional
+        If True, the spectrum will be truncated for wavenumbers larger than
+        the Nyquist wavenumber.
     """
 
     # compute radial wavenumber bins
     k = ps[fftdim[1]]
     l = ps[fftdim[0]]
+
     N = [k.size, l.size]
     nbins = int(min(N) / nfactor)
     freq_r = np.sqrt(k ** 2 + l ** 2).rename("freq_r")
     kr = _groupby_bins_agg(freq_r, freq_r, bins=nbins, func="mean")
+
+    if truncate:
+        if k.max() > l.max():
+            kmax = l.max()
+        else:
+            kmax = k.max()
+        kr = kr.where(kr <= kmax)
+    else:
+        msg = (
+            "The flag `truncate` will be set to True by default in future version "
+            + "in order to truncate the isotropic wavenumber larger than the "
+            + "Nyquist wavenumber."
+        )
+        warnings.warn(msg, FutureWarning)
 
     iso_ps = (
         _groupby_bins_agg(ps, freq_r, bins=nbins, func="mean")
@@ -1006,7 +1046,10 @@ def isotropize(ps, fftdim, nfactor=4):
         .drop_vars("freq_r")
     )
     iso_ps.coords["freq_r"] = kr.data
-    return iso_ps * iso_ps.freq_r
+    if truncate:
+        return (iso_ps * iso_ps.freq_r).dropna("freq_r")
+    else:
+        return iso_ps * iso_ps.freq_r
 
 
 def isotropic_powerspectrum(*args, **kwargs):  # pragma: no cover
@@ -1028,9 +1071,10 @@ def isotropic_power_spectrum(
     shift=True,
     detrend=None,
     scaling="density",
-    window_correction=False,
     window=None,
+    window_correction=False,
     nfactor=4,
+    truncate=False,
     **kwargs,
 ):
     """
@@ -1070,6 +1114,9 @@ def isotropic_power_spectrum(
     nfactor : int, optional
         Ratio of number of bins to take the azimuthal averaging with the
         data size. Default is 4.
+    truncate : bool, optional
+        If True, the spectrum will be truncated for wavenumbers larger than
+        the Nyquist wavenumber.
 
     Returns
     -------
@@ -1094,11 +1141,12 @@ def isotropic_power_spectrum(
         scaling=scaling,
         window_correction=window_correction,
         window=window,
+        **kwargs,
     )
 
     fftdim = ["freq_" + d for d in dim]
 
-    return isotropize(ps, fftdim, nfactor=nfactor)
+    return isotropize(ps, fftdim, nfactor=nfactor, truncate=truncate)
 
 
 def isotropic_crossspectrum(*args, **kwargs):  # pragma: no cover
@@ -1121,9 +1169,10 @@ def isotropic_cross_spectrum(
     shift=True,
     detrend=None,
     scaling="density",
-    window_correction=False,
     window=None,
+    window_correction=False,
     nfactor=4,
+    truncate=False,
     **kwargs,
 ):
     """
@@ -1165,6 +1214,9 @@ def isotropic_cross_spectrum(
     nfactor : int (optional)
         Ratio of number of bins to take the azimuthal averaging with the
         data size. Default is 4.
+    truncate : bool, optional
+        If True, the spectrum will be truncated for wavenumbers larger than
+        the Nyquist wavenumber.
 
     Returns
     -------
@@ -1193,11 +1245,12 @@ def isotropic_cross_spectrum(
         scaling=scaling,
         window_correction=window_correction,
         window=window,
+        **kwargs,
     )
 
     fftdim = ["freq_" + d for d in dim]
 
-    return isotropize(cs, fftdim, nfactor=nfactor)
+    return isotropize(cs, fftdim, nfactor=nfactor, truncate=truncate)
 
 
 def fit_loglog(x, y):

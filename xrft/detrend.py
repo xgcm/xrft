@@ -9,7 +9,8 @@ import scipy.linalg as spl
 
 
 def detrend(da, dim, detrend_type="constant"):
-    """Detrend a DataArray
+    """
+    Detrend a DataArray
 
     Parameters
     ----------
