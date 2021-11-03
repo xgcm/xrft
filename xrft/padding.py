@@ -132,6 +132,9 @@ def pad(
     padded_coords = pad_coordinates(da.coords, pad_width)
     # Assign the padded coordinates to the padded array
     padded_da = padded_da.assign_coords(padded_coords)
+    # Apply attrs of the original coords to the padded array
+    for dim in pad_width.keys():
+        padded_da.coords[dim].attrs = da.coords[dim].attrs
     # Return padded array
     return padded_da
 

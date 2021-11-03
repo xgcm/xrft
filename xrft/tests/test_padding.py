@@ -17,6 +17,15 @@ def sample_da_2d():
     x = np.linspace(0, 10, 11)
     y = np.linspace(-4, 4, 17)
     z = np.arange(11 * 17, dtype=float).reshape(17, 11)
+    # Create one xr.DataArray for each coordiante and add spacing and
+    # direct_lag attributes to them
+    dx, dy = x[1] - x[0], y[1] - y[0]
+    x = xr.DataArray(
+        x, coords={"x": x}, dims=("x",), attrs=dict(direct_lag=3.0, spacing=dx)
+    )
+    y = xr.DataArray(
+        y, coords={"y": y}, dims=("y",), attrs=dict(direct_lag=-2.1, spacing=dy)
+    )
     return xr.DataArray(z, coords={"x": x, "y": y}, dims=("y", "x"))
 
 
@@ -85,3 +94,15 @@ def test_pad_with_pad_width(sample_da_2d):
     npt.assert_allclose(padded_da.values[1:-3, 2:-3], sample_da_2d)
     npt.assert_allclose(padded_da.x, np.linspace(-2, 13, 16))
     npt.assert_allclose(padded_da.y, np.linspace(-4.5, 5.5, 21))
+
+
+@pytest.mark.parametrize(
+    "pad_width", ({"x": (2, 3), "y": (1, 3)}, {"x": (2, 3)}, {"y": (1, 3)})
+)
+def test_coordinates_attrs_after_pad(sample_da_2d, pad_width):
+    """
+    Test if the attributes of the coordinates are preserved after padding
+    """
+    padded_da = pad(sample_da_2d, pad_width)
+    assert sample_da_2d.x.attrs == padded_da.x.attrs
+    assert sample_da_2d.y.attrs == padded_da.y.attrs
