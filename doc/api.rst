@@ -28,3 +28,13 @@ You also may wish to use xrft's detrend function on its own.
 
 .. automodule:: xrft.detrend
   :members:
+
+padding
+=======
+
+Pad and unpad arrays and its coordinates so they can be used for computing
+FFTs.
+
+.. automodule:: xrft.padding
+  :members:
+
