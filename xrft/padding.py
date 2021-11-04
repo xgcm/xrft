@@ -133,7 +133,8 @@ def pad(
     Attributes:
         pad_width:  1
 
-    >>> # Asymetric padding
+    Asymmetric padding
+
     >>> da_padded = pad(da, x=(1, 4), constant_values=0)
     >>> da_padded
     <xarray.DataArray (y: 3, x: 8)>
@@ -246,9 +247,26 @@ def _pad_coordinates(vector, iaxis_pad_width, iaxis, kwargs):
     Parameters
     ----------
     vector : 1d-array
+        A rank 1 array already padded with zeros. Padded values are
+        ``vector[:iaxis_pad_width[0]]`` and ``vector[-iaxis_pad_width[1]:]``.
     iaxis_pad_width : tuple
+        A 2-tuple of ints, ``iaxis_pad_width[0]`` represents the number of
+        values padded at the beginning of vector where ``iaxis_pad_width[1]``
+        represents the number of values padded at the end of vector.
     iaxis : int
+        The axis currently being calculated. This parameter is not used, but
+        the function will check if it's equal to zero. It exists for
+        compatibility with the ``padding_func`` callback that :func:`numpy.pad`
+        needs.
     kwargs : dict
+        Any keyword arguments the function requires. The kwargs are ignored in
+        this function, they exist for compatibility with the ``padding_func``
+        callback that :func:`numpy.pad` needs.
+
+    Returns
+    -------
+    vector : 1d-array
+        Padded vector.
     """
     assert iaxis == 0
     spacing = kwargs["spacing"]
