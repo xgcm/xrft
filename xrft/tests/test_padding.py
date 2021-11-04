@@ -4,9 +4,10 @@ Unit tests for padding functions
 import pytest
 import numpy as np
 import xarray as xr
+import xarray.testing as xrt
 import numpy.testing as npt
 
-from ..padding import pad, pad_coordinates
+from ..padding import pad, pad_coordinates, unpad, _pad_width_to_slice
 
 
 @pytest.fixture
@@ -120,3 +121,46 @@ def test_coordinates_attrs_after_pad(sample_da_2d, pad_width):
     # Check if pad_width has been added to the attrs of each coordinate
     for coord, width in pad_width.items():
         assert padded_da.coords[coord].attrs["pad_width"] == width
+
+
+@pytest.mark.parametrize(
+    "pad_width",
+    (
+        {"x": 2, "y": 3},
+        {"x": 2},
+        {"y": 3},
+        {"x": (2, 3), "y": 3},
+        {"x": (2, 3), "y": (1, 3)},
+        {"x": (2, 3)},
+        {"y": (1, 3)},
+    ),
+)
+def test_pad_unpad_round_trip(sample_da_2d, pad_width):
+    """
+    Test if applying pad and then unpad returns the original array
+    """
+    xrt.assert_allclose(sample_da_2d, unpad(pad(sample_da_2d, pad_width)))
+
+
+def test_unpad_invalid_array(sample_da_2d):
+    """
+    Test if error is raised when a not padded array is passed to unpad
+    """
+    with pytest.raises(ValueError):
+        unpad(sample_da_2d)
+
+
+@pytest.mark.parametrize(
+    "pad_width, size, expected_slice",
+    (
+        [(1, 1), 4, slice(1, 3)],
+        [(1, 2), 5, slice(1, 3)],
+        [(2, 3), 10, slice(2, 7)],
+        [2, 10, slice(2, 8)],
+    ),
+)
+def test_pad_width_to_slice(pad_width, size, expected_slice):
+    """
+    Test if _pad_width_to_slice work as expected
+    """
+    assert _pad_width_to_slice(pad_width, size) == expected_slice

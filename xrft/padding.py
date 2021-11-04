@@ -257,3 +257,99 @@ def _pad_coordinates(vector, iaxis_pad_width, iaxis, kwargs):
     vector[:n_start] = np.arange(vmin - spacing * n_start, vmin, spacing)
     vector[-n_end:] = np.arange(vmax + spacing, vmax + spacing * (n_end + 1), spacing)
     return vector
+
+
+def unpad(da):
+    """
+    Unpad an array and its coordinates
+
+    The amount of padding used for each coordinate is read from its
+    ``pad_width`` attribute.
+
+    Parameters
+    ----------
+    da : :class:`xarray.DataArray`
+        Padded array. The coordinates along which the array will be
+        padded must be evenly spaced.
+
+    Returns
+    -------
+    da_unpaded : :class:`xarray.DataArray`
+        Unpadded array.
+
+    Example
+    -------
+
+    >>> import xarray as xr
+    >>> da = xr.DataArray(
+    ...     [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+    ...     coords={"x": [0, 1, 2], "y": [-5, -4, -3]},
+    ...     dims=("y", "x"),
+    ... )
+    >>> da_padded = pad(da, x=2, y=1, constant_values=0)
+    >>> da_padded
+    <xarray.DataArray (y: 5, x: 7)>
+    array([[0, 0, 0, 0, 0, 0, 0],
+           [0, 0, 1, 2, 3, 0, 0],
+           [0, 0, 4, 5, 6, 0, 0],
+           [0, 0, 7, 8, 9, 0, 0],
+           [0, 0, 0, 0, 0, 0, 0]])
+    Coordinates:
+      * x        (x) int64 -2 -1 0 1 2 3 4
+      * y        (y) int64 -6 -5 -4 -3 -2
+    >>> unpad(da_padded)
+    <xarray.DataArray (y: 3, x: 3)>
+    array([[1, 2, 3],
+           [4, 5, 6],
+           [7, 8, 9]])
+    Coordinates:
+      * x        (x) int64 0 1 2
+      * y        (y) int64 -5 -4 -3
+
+
+    """
+    # Read the pad_width from each coordinate
+    pad_width = {
+        dim: coord.attrs["pad_width"]
+        for dim, coord in da.coords.items()
+        if "pad_width" in coord.attrs
+    }
+    if not pad_width:
+        raise ValueError(
+            "The passed array doesn't seem to be a padded one: the 'pad_width' "
+            + "attribute was missing on every one of its coordinates."
+        )
+    # Transform every pad_width into a tuple with indices
+    slices = {}
+    for dim in pad_width:
+        slices[dim] = _pad_width_to_slice(pad_width[dim], da.coords[dim].size)
+    # Slice the padded array
+    unpadded_da = da.isel(indexers=slices)
+    # Remove the pad_width attribute from coords since it's no longer necessary
+    for dim in pad_width:
+        unpadded_da.coords[dim].attrs.pop("pad_width")
+    return unpadded_da
+
+
+def _pad_width_to_slice(pad_width, size):
+    """
+    Create a slice for removing the padded elements of a coordinate array
+
+    Parameters
+    ----------
+    pad_width : int or tuple
+        Integer or tuples with the width of the padding at each side of the
+        coordinate array. An integer means an equal padding at each side equal
+        to its value.
+    size : int
+        Number of elements of the coordinates array.
+
+    Returns
+    -------
+    coord_slice : slice
+        A slice object for removing the padded elements of the coordinate
+        array.
+    """
+    if type(pad_width) == int:
+        pad_width = (pad_width, pad_width)
+    return slice(pad_width[0], size - pad_width[1])
