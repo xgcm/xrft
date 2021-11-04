@@ -97,12 +97,26 @@ def test_pad_with_pad_width(sample_da_2d):
 
 
 @pytest.mark.parametrize(
-    "pad_width", ({"x": (2, 3), "y": (1, 3)}, {"x": (2, 3)}, {"y": (1, 3)})
+    "pad_width",
+    (
+        {"x": 2, "y": 3},
+        {"x": 2},
+        {"y": 3},
+        {"x": (2, 3), "y": 3},
+        {"x": (2, 3), "y": (1, 3)},
+        {"x": (2, 3)},
+        {"y": (1, 3)},
+    ),
 )
 def test_coordinates_attrs_after_pad(sample_da_2d, pad_width):
     """
     Test if the attributes of the coordinates are preserved after padding
+    and if the pad_width has been added
     """
     padded_da = pad(sample_da_2d, pad_width)
-    assert sample_da_2d.x.attrs == padded_da.x.attrs
-    assert sample_da_2d.y.attrs == padded_da.y.attrs
+    # Check if the attrs in sample_da_2d is a subset of the attrs in padded_da
+    assert sample_da_2d.x.attrs.items() <= padded_da.x.attrs.items()
+    assert sample_da_2d.y.attrs.items() <= padded_da.y.attrs.items()
+    # Check if pad_width has been added to the attrs of each coordinate
+    for coord, width in pad_width.items():
+        assert padded_da.coords[coord].attrs["pad_width"] == width

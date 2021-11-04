@@ -22,6 +22,8 @@ def pad(
 
     Wraps the :meth:`xarray.DataArray.pad` method but also pads the evenly
     spaced coordinates by extrapolation using the same coordinate spacing.
+    The ``pad_width`` used for each coordinate is stored as one of its
+    attributes.
 
     Parameters
     ----------
@@ -105,7 +107,8 @@ def pad(
     ...     coords={"x": [0, 1, 2], "y": [-5, -4, -3]},
     ...     dims=("y", "x"),
     ... )
-    >>> pad(da, x=2, y=1, constant_values=0)
+    >>> da_padded = pad(da, x=2, y=1, constant_values=0)
+    >>> da_padded
     <xarray.DataArray (y: 5, x: 7)>
     array([[0, 0, 0, 0, 0, 0, 0],
            [0, 0, 1, 2, 3, 0, 0],
@@ -115,6 +118,38 @@ def pad(
     Coordinates:
       * x        (x) int64 -2 -1 0 1 2 3 4
       * y        (y) int64 -6 -5 -4 -3 -2
+    >>> da_padded.x
+    <xarray.DataArray 'x' (x: 7)>
+    array([-2, -1,  0,  1,  2,  3,  4])
+    Coordinates:
+      * x        (x) int64 -2 -1 0 1 2 3 4
+    Attributes:
+        pad_width:  2
+    >>> da_padded.y
+    <xarray.DataArray 'y' (y: 5)>
+    array([-6, -5, -4, -3, -2])
+    Coordinates:
+      * y        (y) int64 -6 -5 -4 -3 -2
+    Attributes:
+        pad_width:  1
+
+    >>> # Asymetric padding
+    >>> da_padded = pad(da, x=(1, 4), constant_values=0)
+    >>> da_padded
+    <xarray.DataArray (y: 3, x: 8)>
+    array([[0, 1, 2, 3, 0, 0, 0, 0],
+           [0, 4, 5, 6, 0, 0, 0, 0],
+           [0, 7, 8, 9, 0, 0, 0, 0]])
+    Coordinates:
+      * x        (x) int64 -1 0 1 2 3 4 5 6
+      * y        (y) int64 -5 -4 -3
+    >>> da_padded.x
+    <xarray.DataArray 'x' (x: 8)>
+    array([-1,  0,  1,  2,  3,  4,  5,  6])
+    Coordinates:
+      * x        (x) int64 -1 0 1 2 3 4 5 6
+    Attributes:
+        pad_width:  (1, 4)
 
     """
     # Redefine pad_width if pad_width_kwargs were passed
@@ -132,9 +167,12 @@ def pad(
     padded_coords = pad_coordinates(da.coords, pad_width)
     # Assign the padded coordinates to the padded array
     padded_da = padded_da.assign_coords(padded_coords)
-    # Add attrs of the original coords to the padded array
+    # Edit the attributes of the padded array
     for dim in pad_width.keys():
+        # Add attrs of the original coords to the padded array
         padded_da.coords[dim].attrs.update(da.coords[dim].attrs)
+        # Add the pad_width used for this coordinate
+        padded_da.coords[dim].attrs.update({"pad_width": pad_width[dim]})
     # Return padded array
     return padded_da
 
