@@ -7,7 +7,7 @@ import xarray as xr
 import xarray.testing as xrt
 import numpy.testing as npt
 
-from ..padding import pad, pad_coordinates, unpad, _pad_width_to_slice
+from ..padding import pad, _pad_coordinates, unpad, _pad_width_to_slice
 
 
 @pytest.fixture
@@ -36,19 +36,19 @@ def test_pad_coordinates(sample_da_2d):
     """
     coords = sample_da_2d.coords
     # Pad a single coordinate
-    padded_coords = pad_coordinates(coords, {"x": 3})
+    padded_coords = _pad_coordinates(coords, {"x": 3})
     npt.assert_allclose(padded_coords["x"], np.linspace(-3, 13, 17))
     npt.assert_allclose(padded_coords["y"], coords["y"])
     # Pad two coordinates
-    padded_coords = pad_coordinates(coords, {"x": 2, "y": 3})
+    padded_coords = _pad_coordinates(coords, {"x": 2, "y": 3})
     npt.assert_allclose(padded_coords["x"], np.linspace(-2, 12, 15))
     npt.assert_allclose(padded_coords["y"], np.linspace(-5.5, 5.5, 23))
     # Pad a single coordinate asymmetrically
-    padded_coords = pad_coordinates(coords, {"x": (3, 2)})
+    padded_coords = _pad_coordinates(coords, {"x": (3, 2)})
     npt.assert_allclose(padded_coords["x"], np.linspace(-3, 12, 16))
     npt.assert_allclose(padded_coords["y"], coords["y"])
     # Pad two coordinates assymetrically
-    padded_coords = pad_coordinates(coords, {"x": (2, 1), "y": (3, 4)})
+    padded_coords = _pad_coordinates(coords, {"x": (2, 1), "y": (3, 4)})
     npt.assert_allclose(padded_coords["x"], np.linspace(-2, 11, 14))
     npt.assert_allclose(padded_coords["y"], np.linspace(-5.5, 6, 24))
 
@@ -61,7 +61,7 @@ def test_pad_coordinates_invalid(sample_da_2d):
     x[3] += 0.1
     sample_da_2d = sample_da_2d.assign_coords({"x": x})
     with pytest.raises(ValueError):
-        pad_coordinates(sample_da_2d.coords, pad_width={"x": 2})
+        _pad_coordinates(sample_da_2d.coords, pad_width={"x": 2})
 
 
 def test_pad_with_kwargs(sample_da_2d):

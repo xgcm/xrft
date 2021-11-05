@@ -165,7 +165,7 @@ def pad(
         reflect_type,
     )
     # Pad the coordinates selected in pad_width
-    padded_coords = pad_coordinates(da.coords, pad_width)
+    padded_coords = _pad_coordinates(da.coords, pad_width)
     # Assign the padded coordinates to the padded array
     padded_da = padded_da.assign_coords(padded_coords)
     # Edit the attributes of the padded array
@@ -178,7 +178,7 @@ def pad(
     return padded_da
 
 
-def pad_coordinates(coords, pad_width):
+def _pad_coordinates(coords, pad_width):
     """
     Pad coordinates arrays according to the passed pad_width
 
@@ -231,13 +231,13 @@ def pad_coordinates(coords, pad_width):
         padded_coords[dim] = np.pad(
             padded_coords[dim],
             pad_width=pad_width[dim],
-            mode=_pad_coordinates,
+            mode=_pad_coordinates_callback,
             spacing=spacing,  # spacing is passed as a kwarg to the callback
         )
     return padded_coords
 
 
-def _pad_coordinates(vector, iaxis_pad_width, iaxis, kwargs):
+def _pad_coordinates_callback(vector, iaxis_pad_width, iaxis, kwargs):
     """
     Callback for padding coordinates
 
