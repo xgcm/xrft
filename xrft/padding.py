@@ -308,8 +308,8 @@ def unpad(da, pad_width=None, **pad_width_kwargs):
     --------
     :func:`xrft.pad`
 
-    Example
-    -------
+    Examples
+    --------
 
     >>> import xarray as xr
     >>> da = xr.DataArray(
