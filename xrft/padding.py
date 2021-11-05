@@ -277,12 +277,12 @@ def _pad_coordinates(vector, iaxis_pad_width, iaxis, kwargs):
     return vector
 
 
-def unpad(da):
+def unpad(da, pad_width=None, **pad_width_kwargs):
     """
     Unpad an array and its coordinates
 
-    The amount of padding used for each coordinate is read from its
-    ``pad_width`` attribute.
+    Undo the padding process of the :func:`xrft.pad` function by slicing the
+    passed :class:`xarray.DataArray` and its coordinates.
 
     Parameters
     ----------
@@ -294,6 +294,19 @@ def unpad(da):
     -------
     da_unpaded : :class:`xarray.DataArray`
         Unpadded array.
+    pad_width : mapping of hashable to tuple of int (optional)
+        Mapping with the form of {dim: (pad_before, pad_after)}
+        describing the number of values padded along each dimension.
+        {dim: pad} is a shortcut for pad_before = pad_after = pad.
+        If ``None``, then the *pad_width* for each coordinate is read from
+        their ``pad_width`` attribute.
+    **pad_width_kwargs (optional)
+        The keyword arguments form of ``pad_width``.
+        Pass ``pad_width`` or ``pad_width_kwargs``.
+
+    See also
+    --------
+    :func:`xrft.pad`
 
     Example
     -------
@@ -324,19 +337,37 @@ def unpad(da):
       * x        (x) int64 0 1 2
       * y        (y) int64 -5 -4 -3
 
+    Custom ``pad_width``
+
+    >>> unpad(da_padded, x=1, y=1)
+    <xarray.DataArray (y: 3, x: 5)>
+    array([[0, 1, 2, 3, 0],
+           [0, 4, 5, 6, 0],
+           [0, 7, 8, 9, 0]])
+    Coordinates:
+      * x        (x) int64 -1 0 1 2 3
+      * y        (y) int64 -5 -4 -3
+
 
     """
-    # Read the pad_width from each coordinate
-    pad_width = {
-        dim: coord.attrs["pad_width"]
-        for dim, coord in da.coords.items()
-        if "pad_width" in coord.attrs
-    }
-    if not pad_width:
-        raise ValueError(
-            "The passed array doesn't seem to be a padded one: the 'pad_width' "
-            + "attribute was missing on every one of its coordinates."
-        )
+    # Generate the pad_width dictionary
+    if pad_width is None and not pad_width_kwargs:
+        # Read the pad_width from each coordinate if pad_width is None and
+        # no pad_width_kwargs has been passed
+        pad_width = {
+            dim: coord.attrs["pad_width"]
+            for dim, coord in da.coords.items()
+            if "pad_width" in coord.attrs
+        }
+        # Raise error if there's no pad_width attribute in the coordinates
+        if not pad_width:
+            raise ValueError(
+                "The passed array doesn't seem to be a padded one: the 'pad_width' "
+                + "attribute was missing on every one of its coordinates. "
+            )
+    else:
+        # Redefine pad_width if pad_width_kwargs were passed
+        pad_width = either_dict_or_kwargs(pad_width, pad_width_kwargs, "pad")
     # Transform every pad_width into a tuple with indices
     slices = {}
     for dim in pad_width:
@@ -345,7 +376,8 @@ def unpad(da):
     unpadded_da = da.isel(indexers=slices)
     # Remove the pad_width attribute from coords since it's no longer necessary
     for dim in pad_width:
-        unpadded_da.coords[dim].attrs.pop("pad_width")
+        if "pad_width" in unpadded_da.coords[dim].attrs:
+            unpadded_da.coords[dim].attrs.pop("pad_width")
     return unpadded_da
 
 

@@ -139,7 +139,8 @@ def test_pad_unpad_round_trip(sample_da_2d, pad_width):
     """
     Test if applying pad and then unpad returns the original array
     """
-    xrt.assert_allclose(sample_da_2d, unpad(pad(sample_da_2d, pad_width)))
+    unpadded = unpad(pad(sample_da_2d, pad_width))
+    xrt.assert_allclose(sample_da_2d, unpadded)
 
 
 def test_unpad_invalid_array(sample_da_2d):
@@ -164,3 +165,40 @@ def test_pad_width_to_slice(pad_width, size, expected_slice):
     Test if _pad_width_to_slice work as expected
     """
     assert _pad_width_to_slice(pad_width, size) == expected_slice
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    ({"x": 1, "y": 1}, {"pad_width": {"x": 1, "y": 1}}),
+    ids=["pad_width_as_kwargs", "pad_width_as_argument"],
+)
+def test_unpad_custom_path_width(sample_da_2d, kwargs):
+    """
+    Test the behaviour of unpad when passing a custom pad_width
+    """
+    unpadded = unpad(sample_da_2d, **kwargs)
+    unpadded.shape == (15, 9)
+    npt.assert_allclose(unpadded.x, np.linspace(1, 9, 9))
+    npt.assert_allclose(unpadded.y, np.linspace(-3.5, 3.5, 15))
+
+
+@pytest.mark.parametrize(
+    "pad_width_arg",
+    (None, "argument", "kwargs"),
+    ids=["pad_width_none", "pad_width_as_arg", "pad_width_as_kwargs"],
+)
+def test_unpad_pop_pad_width_attributes(sample_da_2d, pad_width_arg):
+    """
+    Check if the unpadded array has no pad_width attributes
+    """
+    pad_width = {"x": 2, "y": 1}
+    padded = pad(sample_da_2d, pad_width)
+    if pad_width_arg is None:
+        unpadded = unpad(padded)
+    elif pad_width_arg == "argument":
+        unpadded = unpad(padded, pad_width=pad_width)
+    else:
+        unpadded = unpad(padded, **pad_width)
+    # Check if unpadded doesn't have the pad_width attribtues
+    for dim in unpadded.coords:
+        assert "pad_width" not in unpadded.coords[dim].attrs
