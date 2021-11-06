@@ -12,7 +12,7 @@ def pad(
     pad_width=None,
     mode="constant",
     stat_length=None,
-    constant_values=None,
+    constant_values=0,
     end_values=None,
     reflect_type=None,
     **pad_width_kwargs,
@@ -107,7 +107,7 @@ def pad(
     ...     coords={"x": [0, 1, 2], "y": [-5, -4, -3]},
     ...     dims=("y", "x"),
     ... )
-    >>> da_padded = pad(da, x=2, y=1, constant_values=0)
+    >>> da_padded = pad(da, x=2, y=1)
     >>> da_padded
     <xarray.DataArray (y: 5, x: 7)>
     array([[0, 0, 0, 0, 0, 0, 0],
@@ -135,7 +135,7 @@ def pad(
 
     Asymmetric padding
 
-    >>> da_padded = pad(da, x=(1, 4), constant_values=0)
+    >>> da_padded = pad(da, x=(1, 4))
     >>> da_padded
     <xarray.DataArray (y: 3, x: 8)>
     array([[0, 1, 2, 3, 0, 0, 0, 0],
@@ -317,7 +317,7 @@ def unpad(da, pad_width=None, **pad_width_kwargs):
     ...     coords={"x": [0, 1, 2], "y": [-5, -4, -3]},
     ...     dims=("y", "x"),
     ... )
-    >>> da_padded = pad(da, x=2, y=1, constant_values=0)
+    >>> da_padded = pad(da, x=2, y=1)
     >>> da_padded
     <xarray.DataArray (y: 5, x: 7)>
     array([[0, 0, 0, 0, 0, 0, 0],
