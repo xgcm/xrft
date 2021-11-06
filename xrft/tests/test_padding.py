@@ -8,6 +8,7 @@ import xarray.testing as xrt
 import numpy.testing as npt
 
 from ..padding import pad, _pad_coordinates, unpad, _pad_width_to_slice
+from ..xrft import fft, ifft
 
 
 @pytest.fixture
@@ -202,3 +203,30 @@ def test_unpad_pop_pad_width_attributes(sample_da_2d, pad_width_arg):
     # Check if unpadded doesn't have the pad_width attribtues
     for dim in unpadded.coords:
         assert "pad_width" not in unpadded.coords[dim].attrs
+
+
+@pytest.mark.parametrize(
+    "pad_width",
+    (
+        {"x": 4, "y": 3},
+        {"x": 4},
+        {"y": 3},
+        {"x": (4, 3), "y": 3},
+        {"x": (4, 3), "y": (5, 3)},
+        {"x": (4, 3)},
+        {"y": (5, 3)},
+    ),
+)
+def test_unpad_ifft_fft_pad_round_trip(sample_da_2d, pad_width):
+    """
+    Test if the round trip with padding and unpadding works
+
+    This test passes a custom ``pad_width`` to the ``unpad`` function because
+    the ``fft`` doesn't support keeping the ``pad_width`` attribute on the
+    coordinates (at least for now).
+    """
+    da_padded = pad(sample_da_2d, pad_width, constant_values=0)
+    da_fft = fft(da_padded, true_phase=True)
+    da_ifft = ifft(da_fft, true_phase=True)
+    da_unpadded = unpad(da_ifft, pad_width=pad_width)
+    xrt.assert_allclose(sample_da_2d, da_unpadded)
