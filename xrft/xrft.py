@@ -1177,7 +1177,7 @@ def isotropic_cross_spectrum(
 ):
     """
     Calculates the isotropic spectrum from the
-    two-dimensional power spectrumby taking the
+    two-dimensional power spectrum by taking the
     azimuthal average.
 
     .. math::
