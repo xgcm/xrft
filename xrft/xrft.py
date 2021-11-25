@@ -241,7 +241,7 @@ def dft(
     da, dim=None, true_phase=False, true_amplitude=False, **kwargs
 ):  # pragma: no cover
     """
-    Deprecated function. See :func:`fft`.
+    Deprecated function; see :func:`fft`.
     """
     msg = (
         "This function has been renamed and will disappear in the future."
@@ -257,7 +257,7 @@ def idft(
     daft, dim=None, true_phase=False, true_amplitude=False, **kwargs
 ):  # pragma: no cover
     """
-    Deprecated function. See :func:`ifft`.
+    Deprecated function; see :func:`ifft`.
     """
     msg = (
         "This function has been renamed and will disappear in the future."
@@ -1102,7 +1102,7 @@ def isotropize(ps, fftdim, nfactor=4, truncate=False):
 
 def isotropic_powerspectrum(*args, **kwargs):  # pragma: no cover
     """
-    Deprecated function. See :func:`isotropic_power_spectrum`.
+    Deprecated function; see :func:`isotropic_power_spectrum`.
     """
     msg = (
         "This function has been renamed and will disappear in the future."
@@ -1217,7 +1217,7 @@ def isotropic_power_spectrum(
 
 def isotropic_crossspectrum(*args, **kwargs):  # pragma: no cover
     """
-    Deprecated function. See :func:`isotropic_cross_spectrum`.
+    Deprecated function; see :func:`isotropic_cross_spectrum`.
     """
     msg = (
         "This function has been renamed and will disappear in the future."
