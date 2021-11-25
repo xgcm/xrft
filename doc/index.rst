@@ -11,7 +11,7 @@ It is:
 
 - **Powerful**: It keeps the metadata and coordinates of the original xarray dataset and provides a clean workflow of DFT.
 - **Easy-to-use**: It uses the native arguments of NumPy FFT and provides a simple, high-level API.
-- **Fast**: It uses the Dask API of FFT and ``map_blocks`` to allow parallelization of DFT.
+- **Fast**: It uses the Dask FFT API and ``map_blocks`` to allow parallelization of DFT.
 
 .. note::
 
