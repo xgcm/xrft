@@ -17,11 +17,14 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-import os
-import sys
-import xrft
-
+# import os
+# import sys
+#
 # sys.path.insert(0, os.path.abspath('.'))
+
+import datetime
+
+import xrft
 
 
 # -- General configuration ------------------------------------------------
@@ -46,17 +49,11 @@ extensions = [
     "IPython.sphinxext.ipython_console_highlighting",
 ]
 
-# never execute notebooks: avoids lots of expensive imports on rtd
-# https://nbsphinx.readthedocs.io/en/0.2.14/never-execute.html
-nbsphinx_execute = "never"
-
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ["_templates"]
+# templates_path = ["_templates"]
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
-#
-# source_suffix = ['.rst', '.md']
 source_suffix = [".rst", ".md"]
 
 # The master toctree document.
@@ -64,7 +61,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "xrft"
-copyright = "2018, xrft developers"
+copyright = f"2018\u2013{datetime.datetime.now().year}, xrft developers"
 author = "xrft developers"
 
 # The version info for the project you're documenting, acts as replacement for
@@ -72,9 +69,9 @@ author = "xrft developers"
 # built documents.
 #
 # The short X.Y version.
-version = "0.1"
+version = ".".join(xrft.__version__.split(".")[:2])
 # The full version, including alpha/beta/rc tags.
-release = "0.1"
+release = xrft.__version__.split("+")[0]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -99,11 +96,30 @@ pygments_style = "sphinx"
 todo_include_todos = False
 
 
-# -- Extension configuration
+# -- Extension configuration ----------------------------------------------
 
 extlinks = {
     "issue": ("https://github.com/xgcm/xrft/issues/%s", "GH#"),
     "pull": ("https://github.com/xgcm/xrft/pull/%s", "PR#"),
+}
+
+# never execute notebooks: avoids lots of expensive imports on rtd
+# https://nbsphinx.readthedocs.io/en/0.2.14/never-execute.html
+nbsphinx_execute = "never"
+
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3/", None),
+    "xarray": ("https://xarray.pydata.org/en/stable/", None),
+    "numpy": ("https://numpy.org/doc/stable", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
+    "dask": ("https://docs.dask.org/en/latest", None),
+}
+
+numpydoc_xref_param_type = True
+numpydoc_xref_aliases = {
+    "DataArray": "xarray.DataArray",
+    "Dataset": "xarray.Dataset",
+    "scalar": ":term:`scalar`",
 }
 
 
@@ -181,9 +197,3 @@ texinfo_documents = [
         "Miscellaneous",
     ),
 ]
-
-# Example configuration for intersphinx: refer to the Python standard library.
-# intersphinx_mapping = {
-#     'python': ('https://docs.python.org/3/', None),
-#     'xarray': ('http://xarray.pydata.org/en/stable/', None)
-# }
