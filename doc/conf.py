@@ -125,6 +125,8 @@ numpydoc_xref_aliases = {
     "float64": "numpy.float64",
 }
 
+autosummary_generate = True
+
 
 # -- Options for HTML output ----------------------------------------------
 

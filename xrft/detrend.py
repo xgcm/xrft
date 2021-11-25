@@ -15,7 +15,7 @@ def detrend(da, dim, detrend_type="constant"):
     Parameters
     ----------
     da : xarray.DataArray
-        The data to detrend
+        The data to detrend.
     dim : str or sequence of str, optional
         Dimensions along which to apply detrend.
         Can be either one dimension or a list with two dimensions.
