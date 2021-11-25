@@ -343,7 +343,12 @@ def fft(
     """
 
     if not true_phase and not true_amplitude:
-        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.dft to preserve the theoretical phasing and amplitude of Fourier Transform. Consider using xrft.fft to ensure future compatibility with numpy.fft like behavior and to deactivate this warning."
+        msg = (
+            "Flags true_phase and true_amplitude will be set to True in future versions of xrft.fft "
+            "to preserve the theoretical phasing and amplitude of Inverse Fourier Transform. "
+            "Consider setting them to ensure future compatibility with numpy.fft.fft-like behavior "
+            "and to deactivate this warning."
+        )
         warnings.warn(msg, FutureWarning)
 
     if dim is None:
@@ -546,7 +551,12 @@ def ifft(
     """
 
     if not true_phase and not true_amplitude:
-        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.idft to preserve the theoretical phasing and amplitude of Inverse Fourier Transform. Consider using xrft.ifft to ensure future compatibility with numpy.ifft like behavior and to deactivate this warning."
+        msg = (
+            "Flags true_phase and true_amplitude will be set to True in future versions of xrft.ifft "
+            "to preserve the theoretical phasing and amplitude of Inverse Fourier Transform. "
+            "Consider setting them to ensure future compatibility with numpy.fft.ifft-like behavior "
+            "and to deactivate this warning."
+        )
         warnings.warn(msg, FutureWarning)
 
     if dim is None:
