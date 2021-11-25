@@ -36,6 +36,7 @@ def pad(
         {dim: pad} is a shortcut for pad_before = pad_after = pad
     mode : str, default: "constant"
         One of the following string values (taken from numpy docs).
+
         - constant: Pads with a constant value.
         - edge: Pads with the edge values of array.
         - linear_ramp: Pads with the linear ramp between end_value and the
@@ -97,6 +98,10 @@ def pad(
     Returns
     -------
     da_padded : :class:`xarray.DataArray`
+
+    See Also
+    --------
+    xrft.padding.unpad
 
     Examples
     --------
@@ -300,17 +305,16 @@ def unpad(da, pad_width=None, **pad_width_kwargs):
         {dim: pad} is a shortcut for pad_before = pad_after = pad.
         If ``None``, then the *pad_width* for each coordinate is read from
         their ``pad_width`` attribute.
-    **pad_width_kwargs (optional)
+    **pad_width_kwargs : dict, optional
         The keyword arguments form of ``pad_width``.
         Pass ``pad_width`` or ``pad_width_kwargs``.
 
-    See also
+    See Also
     --------
-    :func:`xrft.pad`
+    xrft.padding.pad
 
     Examples
     --------
-
     >>> import xarray as xr
     >>> da = xr.DataArray(
     ...     [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
