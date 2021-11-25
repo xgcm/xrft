@@ -30,4 +30,3 @@ dependencies:
     # docs
     - nbsphinx
     - sphinx-autobuild
-    - sphinxcontrib-apidoc
