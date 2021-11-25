@@ -4,7 +4,7 @@
 API reference
 #############
 
-This page provides a summary of xrft's top-level API. For more details
+This page provides a summary of **xrft's top-level API**. For more details
 and examples, refer to the relevant chapters in the main part of the
 documentation.
 
