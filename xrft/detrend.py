@@ -8,9 +8,9 @@ import scipy.signal as sps
 import scipy.linalg as spl
 
 
-def detrend(da, dim, detrend_type="constant"):
+def detrend(da, dim=None, detrend_type="constant"):
     """
-    Detrend a DataArray
+    Detrend a :class:`~xarray.DataArray`.
 
     Parameters
     ----------
@@ -18,17 +18,20 @@ def detrend(da, dim, detrend_type="constant"):
         The data to detrend.
     dim : str or sequence of str, optional
         Dimensions along which to apply detrend.
-        Can be either one dimension or a list with two dimensions.
-        Higher-dimensional detrending is not supported.
-        If Dask data are passed, the array must be chunked along `dim`.
+        Default: :attr:`da.dims <xarray.DataArray.dims>`.
+
+        .. note:: 
+           - Can be either **one** dimension or a list with **two** dimensions.
+             Higher-dimensional detrending is not supported.
+           - If Dask data are passed, the array must be chunked along `dim`.
     detrend_type : {'constant', 'linear'}
-        If ``constant``, a constant offset will be removed from each dim.
-        If ``linear``, a linear least squares fit will be estimated and removed
+        If ``'constant'``, a constant offset will be removed from each dim.
+        If ``'linear'``, a linear least squares fit will be estimated and removed
         from the data.
 
     Returns
     -------
-    da : xarray.DataArray
+    da_dt : xarray.DataArray
         The detrended data.
 
     Notes
