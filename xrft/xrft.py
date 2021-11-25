@@ -257,7 +257,7 @@ def idft(
     daft, dim=None, true_phase=False, true_amplitude=False, **kwargs
 ):  # pragma: no cover
     """
-    Deprecated function. See ifft doc
+    Deprecated function. See :func:`ifft`.
     """
     msg = (
         "This function has been renamed and will disappear in the future."
@@ -330,7 +330,7 @@ def fft(
     true_amplitude : bool, default: False
         If ``True``, output is multiplied by the spacing of the transformed variables to match theoretical FT amplitude.
 
-        If ``False``, amplitude regularisation by spacing is not applied (as in :mod:`numpy.fft`).
+        If ``False``, amplitude regularisation by spacing is not applied (as in :func:`numpy.fft.fft`).
     chunks_to_segments : bool, default: False
         Whether chunks along the axis to take FFT should be stacked (Dask).
     prefix : str
@@ -490,7 +490,7 @@ def ifft(
     lag=None,
     **kwargs,
 ):
-    """
+    r"""
     Perform inverse discrete Fourier transform of xarray data-array `daft` along the
     specified dimensions.
 
@@ -499,40 +499,49 @@ def ifft(
 
     Parameters
     ----------
-    daft : `xarray.DataArray`
-        The data to be transformed
-    spacing_tol: float, optional
+    daft : xarray.DataArray
+        The data to be transformed.
+    spacing_tol : float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
     dim : str or sequence of str, optional
-        The dimensions along which to take the transformation. If `None`, all
+        The dimensions along which to take the transformation. If ``None``, all
         dimensions will be transformed.
     real_dim : str, optional
         Real Fourier transform will be taken along this dimension.
-    shift : bool, default
-        Whether to shift the fft output. Default is `True`.
-    chunks_to_segments : bool, optional
-        Whether the data is chunked along the axis to take FFT.
-    prefix : str
-        The prefix for the new transformed dimensions.
-    true_phase : bool, optional
-        If set to False, standard ifft algorithm is applied on signal without consideration of coordinates order.
-        If set to True, coordinates are correctly taken into account to evaluate Inverse Fourier Tranforrm phase and
-        fftshift is applied on input signal prior to ifft (ifft algorithm intrinsically considers that input signal is on fftshifted grid).
-    true_amplitude : bool, optional
-        If set to True, output is divided by the spacing of the transformed variables to match theoretical IFT amplitude.
-        If set to False, amplitude regularisation by spacing is not applied (as in numpy.ifft)
-    lag : None, float or sequence of float and/or None, optional
-        Output coordinates of transformed dimensions will be shifted by corresponding lag values and correct signal phasing will be preserved if true_phase is set to True.
-        If lag is None (default), 'direct_lag' attributes of each dimension is used (or set to zero if not found).
-        If defined, lag must have same length as dim.
-        If lag is a sequence, a None element means that 'direct_lag' attribute will be used for the corresponding dimension
-        Manually set lag to zero to get output coordinates centered on zero.
+    shift : bool, default: True
+        Whether to shift the FFT output.
+    true_phase : bool, default: False
+        If ``False``, standard IFFT algorithm is applied on signal without consideration of coordinates order.
 
+        If ``False``, coordinates are correctly taken into account to evaluate Inverse Fourier Tranform phase and
+        ``fftshift`` is applied on input signal prior to IFFT
+        (IFFT algorithm intrinsically considers that input signal is on ``fftshift``\ed grid).
+    true_amplitude : bool, default: False
+        If ``True``, output is divided by the spacing of the transformed variables to match theoretical IFT amplitude.
+
+        If ``False``, amplitude regularisation by spacing is not applied (as in :func:`numpy.fft.ifft`).
+    lag : None, float, or sequence of (float or None), optional
+        Output coordinates of transformed dimensions will be shifted by corresponding lag values
+        and correct signal phasing will be preserved if `true_phase` is set to ``True``.
+
+        If `lag` is ``None`` (default), the ``'direct_lag'`` attribute of each dimension is used
+        (or set to zero if not found).
+
+        If defined, `lag` must have same length as `dim`.
+
+        If `lag` is a sequence, a ``None`` element means that the ``'direct_lag'`` attribute will be used
+        for the corresponding dimension.
+
+        Manually set `lag` to zero to get output coordinates centered on zero.
+    chunks_to_segments : bool, default: False
+        Whether chunks along the axis to take FFT should be stacked (Dask).
+    prefix : str
+        For the new transformed dimensions.
 
     Returns
     -------
-    da : `xarray.DataArray`
+    da : xarray.DataArray
         The output of the Inverse Fourier transformation, with appropriate dimensions.
     """
 
