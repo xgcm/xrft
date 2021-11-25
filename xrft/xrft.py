@@ -703,21 +703,34 @@ def power_spectrum(
     da : `xarray.DataArray`
         The data to be transformed
     dim : str or sequence of str, optional
-        The dimensions along which to take the transformation. If `None`, all
+        The dimensions along which to take the transformation. If ``None``, all
         dimensions will be transformed.
     real_dim : str, optional
         Real Fourier transform will be taken along this dimension.
     scaling : str, optional
-        If 'density', it will normalize the output to power spectral density
-        If 'spectrum', it will normalize the output to power spectrum
-    window_correction : boolean
-        If True, it will correct for the energy reduction resulting from applying a non-uniform window.
-        This is the default behaviour of many tools for computing power spectrum (e.g scipy.signal.welch and scipy.signal.periodogram).
-        If scaling = 'spectrum', correct the amplitude of peaks in the spectrum. This ensures, for example, that the peak in the one-sided power spectrum of a 10 Hz sine wave with RMS**2 = 10 has a magnitude of 10.
-        If scaling = 'density', correct for the energy (integral) of the spectrum. This ensures, for example, that the power spectral density integrates to the square of the RMS of the signal (ie that Parseval's theorem is satisfied). Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction as it assumes that the signal being windowed is independent of the window. The correction becomes more accurate as the width of the window gets large in comparison with any noticeable period in the signal.
-        If False, the spectrum gives a representation of the power in the windowed signal.
-        Note that when True, Parseval's theorem may only be approximately satisfied.
-    kwargs : dict : see xrft.dft for argument list
+        If ``'density'``, it will normalize the output to power spectral density.
+        If ``'spectrum'``, it will normalize the output to power spectrum.
+    window_correction : boolean, optional, default: False
+        If ``True``, it will correct for the energy reduction resulting from applying a non-uniform window.
+        This is the default behaviour of many tools for computing power spectrum
+        (e.g., :func:`scipy.signal.welch` and :func:`scipy.signal.periodogram`).
+
+        - If ``scaling='spectrum'``, correct the amplitude of peaks in the spectrum.
+          This ensures, for example, that the peak in the one-sided power spectrum
+          of a 10 Hz sine wave with RMS\ :sup:`2` = 10 has a magnitude of 10.
+        - If ``scaling='density'``, correct for the energy (integral) of the spectrum.
+          This ensures, for example, that the power spectral density integrates to the square
+          of the RMS of the signal (i.e., that Parseval's theorem is satisfied).
+
+        Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction
+        as it assumes that the signal being windowed is independent of the window.
+        The correction becomes more accurate as the width of the window gets large
+        in comparison with any noticeable period in the signal.
+
+        If ``False``, the spectrum gives a representation of the power in the windowed signal.
+        Note that when ``window_correction=True``, Parseval's theorem may only be approximately satisfied.
+    **kwargs : dict, optional
+        See :func:`fft` for argument list.
     """
 
     if "density" in kwargs:
@@ -836,7 +849,7 @@ def cross_spectrum(
 
         If ``False``, the spectrum gives a representation of the power in the windowed signal.
         Note that when ``window_correction=True``, Parseval's theorem may only be approximately satisfied.
-    kwargs : dict, optional
+    **kwargs : dict, optional
         See :func:`fft` for argument list.
     """
 
@@ -1029,7 +1042,7 @@ def _groupby_bins_agg(
 
 
 def isotropize(ps, fftdim, nfactor=4, truncate=False):
-    """
+    r"""
     Isotropize a 2D power spectrum or cross spectrum
     by taking an azimuthal average.
 
@@ -1040,15 +1053,15 @@ def isotropize(ps, fftdim, nfactor=4, truncate=False):
 
     Parameters
     ----------
-    ps : `xarray.DataArray`
+    ps : xarray.DataArray
         The power spectrum or cross spectrum to be isotropized.
-    fftdim : list
-        The fft dimensions overwhich the isotropization must be performed.
-    nfactor : int, optional
+    fftdim : sequence of str
+        The dimensions over which the isotropization should be performed.
+    nfactor : int, default: 4
         Ratio of number of bins to take the azimuthal averaging with the
-        data size. Default is 4.
-    truncate : bool, optional
-        If True, the spectrum will be truncated for wavenumbers larger than
+        data size.
+    truncate : bool, default: False
+        If ``True``, the spectrum will be truncated for wavenumbers larger than
         the Nyquist wavenumber.
     """
 
@@ -1089,7 +1102,7 @@ def isotropize(ps, fftdim, nfactor=4, truncate=False):
 
 def isotropic_powerspectrum(*args, **kwargs):  # pragma: no cover
     """
-    Deprecated function. See isotropic_power_spectrum doc
+    Deprecated function. See :func:`isotropic_power_spectrum`.
     """
     msg = (
         "This function has been renamed and will disappear in the future."
@@ -1112,52 +1125,70 @@ def isotropic_power_spectrum(
     truncate=False,
     **kwargs,
 ):
-    """
+    r"""
     Calculates the isotropic spectrum from the
     two-dimensional power spectrum by taking the
     azimuthal average.
 
     .. math::
-        \text{iso}_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
+       \text{iso}_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
 
     where :math:`N` is the number of azimuthal bins.
 
-    Note: the method is not lazy does trigger computations.
+    .. warning::
+       The method is not lazy, it does trigger computations.
 
     Parameters
     ----------
-    da : `xarray.DataArray`
-        The data to be transformed
-    spacing_tol: float, optional
+    da : xarray.DataArray
+        The data to be transformed.
+    spacing_tol : float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
-    dim : list, optional
-        The dimensions along which to take the transformation. If `None`, all
-        dimensions will be transformed.
-    shift : bool, optional
-        Whether to shift the fft output.
-    detrend : str, optional
-        If `constant`, the mean across the transform dimensions will be
+    dim : str or sequence of str, optional
+        The dimensions along which to take the transformation. If ``None``, all
+        dimensions will be transformed. If the inputs are Dask arrays, the
+        arrays must not be chunked along these dimensions.
+    shift : bool, default: True
+        Whether to shift the FFT output.
+
+        .. note::
+           If `real_dim` is not ``None``, `shift` will be set to ``False`` always.
+    detrend : {None, 'constant', 'linear'}
+        If ``'constant'``, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
-        If `linear`, the linear least-square fit will be subtracted before
-        the FT.
-    density : list, optional
-        If true, it will normalize the spectrum to spectral density
+
+        If ``'linear'``, the linear least squares fit will be subtracted before
+        the FT. Only dims of length 1 and 2 are supported.
+
+        Default (``None``): no detrending.
+    scaling : str, optional
+        See :func:`power_spectrum`.
     window : str, optional
         Whether to apply a window to the data before the Fourier
-        transform is taken. Please adhere to scipy.signal.windows for naming convention.
-    nfactor : int, optional
+        transform is taken. A window will be applied to all the dimensions in
+        `dim`. Please follow :mod:`scipy.signal.windows`'s naming convention.
+    window_correction
+        See :func:`power_spectrum`.
+
+        If true, it will normalize the spectrum to spectral density
+    nfactor : int, default: 4
         Ratio of number of bins to take the azimuthal averaging with the
-        data size. Default is 4.
-    truncate : bool, optional
-        If True, the spectrum will be truncated for wavenumbers larger than
+        data size.
+    truncate : bool, default: False
+        If ``True``, the spectrum will be truncated for wavenumbers larger than
         the Nyquist wavenumber.
+    density : bool
+        If ``True``, normalize the spectrum to spectral density.
+    **kwargs : dict, optional
+        Passed on to :func:`power_spectrum`.
 
     Returns
     -------
-    iso_ps : `xarray.DataArray`
-        Isotropic power spectrum
+    iso_ps : xarray.DataArray
+        Isotropic power spectrum.
     """
+    # TODO: remove `density` from docstring and let `power_spectrum` handle this with its warning
     if "density" in kwargs:
         density = kwargs.pop("density")
         scaling = "density" if density else "false_density"
@@ -1179,14 +1210,14 @@ def isotropic_power_spectrum(
         **kwargs,
     )
 
-    fftdim = ["freq_" + d for d in dim]
+    fftdim = ["freq_" + d for d in dim]  # FIXME: allow for non-default `prefix`
 
     return isotropize(ps, fftdim, nfactor=nfactor, truncate=truncate)
 
 
 def isotropic_crossspectrum(*args, **kwargs):  # pragma: no cover
     """
-    Deprecated function. See isotropic_cross_spectrum doc
+    Deprecated function. See :func:`isotropic_cross_spectrum`.
     """
     msg = (
         "This function has been renamed and will disappear in the future."
@@ -1210,7 +1241,7 @@ def isotropic_cross_spectrum(
     truncate=False,
     **kwargs,
 ):
-    """
+    r"""
     Calculates the isotropic spectrum from the
     two-dimensional power spectrum by taking the
     azimuthal average.
@@ -1220,44 +1251,63 @@ def isotropic_cross_spectrum(
 
     where :math:`N` is the number of azimuthal bins.
 
-    Note: the method is not lazy does trigger computations.
+    .. warning::
+       The method is not lazy, it does trigger computations.
 
     Parameters
     ----------
-    da1 : `xarray.DataArray`
-        The data to be transformed
-    da2 : `xarray.DataArray`
-        The data to be transformed
-    spacing_tol: float (default)
+    da1 : xarray.DataArray
+        Data to be transformed.
+    da2 : xarray.DataArray
+        Data to be transformed.
+
+    spacing_tol : float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
-    dim : list (optional)
-        The dimensions along which to take the transformation. If `None`, all
-        dimensions will be transformed.
-    shift : bool (optional)
-        Whether to shift the fft output.
-    detrend : str (optional)
-        If `constant`, the mean across the transform dimensions will be
+    dim : str or sequence of str, optional
+        The dimensions along which to take the transformation. If ``None``, all
+        dimensions will be transformed. If the inputs are Dask arrays, the
+        arrays must not be chunked along these dimensions.
+    real_dim : str, optional
+        Real Fourier transform will be taken along this dimension.
+    shift : bool, default: True
+        Whether to shift the FFT output.
+
+        .. note::
+           If `real_dim` is not ``None``, `shift` will be set to ``False`` always.
+    detrend : {None, 'constant', 'linear'}
+        If ``'constant'``, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
-        If `linear`, the linear least-square fit will be subtracted before
-        the FT.
-    density : list (optional)
-        If true, it will normalize the spectrum to spectral density
-    window : str (optional)
+
+        If ``'linear'``, the linear least squares fit will be subtracted before
+        the FT. Only dims of length 1 and 2 are supported.
+
+        Default (``None``): no detrending.
+    scaling : str, optional
+        See :func:`cross_spectrum`.
+    window : str, optional
         Whether to apply a window to the data before the Fourier
-        transform is taken. Please adhere to scipy.signal.windows for naming convention.
-    nfactor : int (optional)
+        transform is taken. A window will be applied to all the dimensions in
+        `dim`. Please follow :mod:`scipy.signal.windows`'s naming convention.
+    window_correction
+        See :func:`cross_spectrum`.
+    nfactor : int, default: 4
         Ratio of number of bins to take the azimuthal averaging with the
-        data size. Default is 4.
-    truncate : bool, optional
-        If True, the spectrum will be truncated for wavenumbers larger than
+        data size.
+    truncate : bool, default: False
+        If ``True``, the spectrum will be truncated for wavenumbers larger than
         the Nyquist wavenumber.
+    density : bool
+        If ``True``, normalize the spectrum to spectral density.
+    **kwargs : dict, optional
+        Passed on to :func:`cross_spectrum`.
 
     Returns
     -------
-    iso_cs : `xarray.DataArray`
-        Isotropic cross spectrum
+    iso_cs : xarray.DataArray
+        Isotropic cross spectrum.
     """
+    # TODO: remove `density` from docstring and let `cross_spectrum` handle this with its warning
     if "density" in kwargs:
         density = kwargs.pop("density")
         scaling = "density" if density else "false_density"
@@ -1283,7 +1333,7 @@ def isotropic_cross_spectrum(
         **kwargs,
     )
 
-    fftdim = ["freq_" + d for d in dim]
+    fftdim = ["freq_" + d for d in dim]  # FIXME: allow for non-default `prefix`
 
     return isotropize(cs, fftdim, nfactor=nfactor, truncate=truncate)
 
