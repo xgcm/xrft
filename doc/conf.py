@@ -121,6 +121,8 @@ numpydoc_xref_aliases = {
     "DataArray": "xarray.DataArray",
     "Dataset": "xarray.Dataset",
     "scalar": ":term:`scalar`",
+    "ndarray": "numpy.ndarray",
+    "float64": "numpy.float64",
 }
 
 

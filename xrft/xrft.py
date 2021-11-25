@@ -1281,26 +1281,26 @@ def isotropic_cross_spectrum(
 
 def fit_loglog(x, y):
     """
-    Fit a line to isotropic spectra in log-log space
+    Fit a line to isotropic spectra in log-log space.
 
     Parameters
     ----------
-    x : `numpy.array`
-        Coordinate of the data
-    y : `numpy.array`
-        data
+    x : ndarray
+        Coordinate of the data.
+    y : ndarray
+        Data.
 
     Returns
     -------
-    y_fit : `numpy.array`
-        The linear fit
+    y_fit : ndarray
+        The linear fit.
     a : float64
-        Slope of the fit
+        Slope of the fit.
     b : float64
-        Intercept of the fit
+        Intercept of the fit.
     """
-    # fig log vs log
     p = np.polyfit(np.log2(x), np.log2(y), 1)
-    y_fit = 2 ** (np.log2(x) * p[0] + p[1])
+    a, b = p
+    y_fit = 2 ** (np.log2(x) * a + b)
 
-    return y_fit, p[0], p[1]
+    return y_fit, a, b
