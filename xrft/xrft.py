@@ -778,7 +778,7 @@ def cross_spectrum(
     **kwargs,
 ):
     """
-    Calculates the cross spectra of da1 and da2.
+    Calculates the cross spectra of `da1` and `da2`.
 
     .. math::
         da1' = da1 - \overline{da1};\ \ da2' = da2 - \overline{da2}
@@ -787,26 +787,39 @@ def cross_spectrum(
 
     Parameters
     ----------
-    da1 : `xarray.DataArray`
-        The data to be transformed
-    da2 : `xarray.DataArray`
-        The data to be transformed
+    da1 : xarray.DataArray
+        The data to be transformed.
+    da2 : xarray.DataArray
+        The data to be transformed.
     dim : str or sequence of str, optional
-        The dimensions along which to take the transformation. If `None`, all
+        The dimensions along which to take the transformation. If ``None``, all
         dimensions will be transformed.
     real_dim : str, optional
         Real Fourier transform will be taken along this dimension.
     scaling : str, optional
-        If 'density', it will normalize the output to power spectral density
-        If 'spectrum', it will normalize the output to power spectrum
-    window_correction : boolean
-        If True, it will correct for the energy reduction resulting from applying a non-uniform window.
-        This is the default behaviour of many tools for computing power spectrum (e.g scipy.signal.welch and scipy.signal.periodogram).
-        If scaling = 'spectrum', correct the amplitude of peaks in the spectrum. This ensures, for example, that the peak in the one-sided power spectrum of a 10 Hz sine wave with RMS**2 = 10 has a magnitude of 10.
-        If scaling = 'density', correct for the energy (integral) of the spectrum. This ensures, for example, that the power spectral density integrates to the square of the RMS of the signal (ie that Parseval's theorem is satisfied). Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction as it assumes that the signal being windowed is independent of the window. The correction becomes more accurate as the width of the window gets large in comparison with any noticeable period in the signal.
-        If False, the spectrum gives a representation of the power in the windowed signal.
-        Note that when True, Parseval's theorem may only be approximately satisfied.
-    kwargs : dict : see xrft.dft for argument list
+        If ``'density'``, it will normalize the output to power spectral density.
+        If ``'spectrum'``, it will normalize the output to power spectrum.
+    window_correction : boolean, optional, default: False
+        If ``True``, it will correct for the energy reduction resulting from applying a non-uniform window.
+        This is the default behaviour of many tools for computing power spectrum
+        (e.g., :func:`scipy.signal.welch` and :func:`scipy.signal.periodogram`).
+
+        - If ``scaling='spectrum'``, correct the amplitude of peaks in the spectrum.
+          This ensures, for example, that the peak in the one-sided power spectrum
+          of a 10 Hz sine wave with RMS\ :sup:`2` = 10 has a magnitude of 10.
+        - If ``scaling='density'``, correct for the energy (integral) of the spectrum.
+          This ensures, for example, that the power spectral density integrates to the square
+          of the RMS of the signal (i.e., that Parseval's theorem is satisfied).
+
+        Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction
+        as it assumes that the signal being windowed is independent of the window.
+        The correction becomes more accurate as the width of the window gets large
+        in comparison with any noticeable period in the signal.
+
+        If ``False``, the spectrum gives a representation of the power in the windowed signal.
+        Note that when ``window_correction=True``, Parseval's theorem may only be approximately satisfied.
+    kwargs : dict, optional
+        See :func:`fft` for argument list.
     """
 
     if not true_phase:
@@ -864,6 +877,7 @@ def cross_spectrum(
                     "window_correction can only be applied when windowing is turned on."
                 )
             else:
+                # FIXME: `da` not defined
                 windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
                 cs = cs / (windows ** 2).mean()
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
@@ -875,6 +889,7 @@ def cross_spectrum(
                     "window_correction can only be applied when windowing is turned on."
                 )
             else:
+                # FIXME: `da` not defined
                 windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
                 cs = cs / windows.mean() ** 2
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
@@ -887,10 +902,10 @@ def cross_spectrum(
 
 
 def cross_phase(da1, da2, dim=None, true_phase=False, **kwargs):
-    """
-    Calculates the cross-phase between da1 and da2.
+    r"""
+    Calculates the cross-phase between `da1` and `da2`.
 
-    Returned values are in [-pi, pi].
+    Returned values are in :math:`[-\pi, -\pi]`.
 
     .. math::
         da1' = da1 - \overline{da1};\ \ da2' = da2 - \overline{da2}
@@ -899,11 +914,12 @@ def cross_phase(da1, da2, dim=None, true_phase=False, **kwargs):
 
     Parameters
     ----------
-    da1 : `xarray.DataArray`
-        The data to be transformed
-    da2 : `xarray.DataArray`
-        The data to be transformed
-    kwargs : dict : see xrft.dft for argument list
+    da1 : xarray.DataArray
+        The data to be transformed.
+    da2 : xarray.DataArray
+        The data to be transformed.
+    kwargs : dict, optional
+        See :func:`cross_spectrum` for argument list.
     """
     if not true_phase:
         msg = (
