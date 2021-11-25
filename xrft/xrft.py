@@ -241,7 +241,7 @@ def dft(
     da, dim=None, true_phase=False, true_amplitude=False, **kwargs
 ):  # pragma: no cover
     """
-    Deprecated function. See fft doc
+    Deprecated function. See :func:`fft`.
     """
     msg = (
         "This function has been renamed and will disappear in the future."
@@ -271,6 +271,7 @@ def idft(
 
 def fft(
     da,
+    *,
     spacing_tol=1e-3,
     dim=None,
     real_dim=None,
@@ -283,8 +284,8 @@ def fft(
     prefix="freq_",
     **kwargs,
 ):
-    """
-    Perform discrete Fourier transform of xarray data-array `da` along the
+    r"""
+    Perform discrete Fourier transform of :class:`xarray.DataArray` `da` along the
     specified dimensions.
 
     .. math::
@@ -292,44 +293,52 @@ def fft(
 
     Parameters
     ----------
-    da : `xarray.DataArray`
-        The data to be transformed
-    spacing_tol: float, optional
+    da : xarray.DataArray
+        The data to be transformed.
+    spacing_tol : float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
     dim : str or sequence of str, optional
-        The dimensions along which to take the transformation. If `None`, all
-        dimensions will be transformed. If the inputs are dask arrays, the
+        The dimensions along which to take the transformation. If ``None``, all
+        dimensions will be transformed. If the inputs are Dask arrays, the
         arrays must not be chunked along these dimensions.
     real_dim : str, optional
         Real Fourier transform will be taken along this dimension.
-    shift : bool, default
-        Whether to shift the fft output. Default is `True`, unless `real_dim is not None`,
-        in which case shift will be set to False always.
+    shift : bool, default: True
+        Whether to shift the FFT output.
+
+        .. note::
+           If `real_dim` is not ``None``, `shift` will be set to ``False`` always.
     detrend : {None, 'constant', 'linear'}
-        If `constant`, the mean across the transform dimensions will be
+        If ``'constant'``, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
-        If `linear`, the linear least-square fit will be subtracted before
-        the FT. For `linear`, only dims of length 1 and 2 are supported.
+
+        If ``'linear'``, the linear least squares fit will be subtracted before
+        the FT. Only dims of length 1 and 2 are supported.
+
+        Default (``None``): no detrending.
     window : str, optional
         Whether to apply a window to the data before the Fourier
         transform is taken. A window will be applied to all the dimensions in
-        dim. Please follow `scipy.signal.windows`' naming convention.
-    true_phase : bool, optional
-        If set to False, standard fft algorithm is applied on signal without consideration of coordinates.
-        If set to True, coordinates location are correctly taken into account to evaluate Fourier Tranforrm phase and
-        fftshift is applied on input signal prior to fft  (fft algorithm intrinsically considers that input signal is on fftshifted grid).
-    true_amplitude : bool, optional
-        If set to True, output is multiplied by the spacing of the transformed variables to match theoretical FT amplitude.
-        If set to False, amplitude regularisation by spacing is not applied (as in numpy.fft)
-    chunks_to_segments : bool, optional
-        Whether the data is chunked along the axis to take FFT.
+        `dim`. Please follow :mod:`scipy.signal.windows`'s naming convention.
+    true_phase : bool, default: False
+        If ``False``, standard FFT algorithm is applied on signal without consideration of coordinates.
+
+        If ``True``, coordinates' locations are correctly taken into account to evaluate Fourier Tranform phase and
+        ``fftshift`` is applied on input signal prior to FFT
+        (FFT algorithm intrinsically considers that input signal is on ``fftshift``\ed grid).
+    true_amplitude : bool, default: False
+        If ``True``, output is multiplied by the spacing of the transformed variables to match theoretical FT amplitude.
+
+        If ``False``, amplitude regularisation by spacing is not applied (as in :mod:`numpy.fft`).
+    chunks_to_segments : bool, default: False
+        Whether chunks along the axis to take FFT should be stacked (Dask).
     prefix : str
-        The prefix for the new transformed dimensions.
+        For the new transformed dimensions.
 
     Returns
     -------
-    daft : `xarray.DataArray`
+    daft : xarray.DataArray
         The output of the Fourier transformation, with appropriate dimensions.
     """
 
