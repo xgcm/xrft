@@ -30,3 +30,4 @@ dependencies:
     # docs
     - nbsphinx
     - sphinx-autobuild
+    - sphinx_rtd_theme
