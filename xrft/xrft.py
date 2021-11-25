@@ -324,7 +324,7 @@ def fft(
     true_phase : bool, default: False
         If ``False``, standard FFT algorithm is applied on signal without consideration of coordinates.
 
-        If ``True``, coordinates' locations are correctly taken into account to evaluate Fourier Tranform phase and
+        If ``True``, coordinates' locations are correctly taken into account to evaluate Fourier Transform phase and
         ``fftshift`` is applied on input signal prior to FFT
         (FFT algorithm intrinsically considers that input signal is on ``fftshift``\ed grid).
     true_amplitude : bool, default: False
@@ -370,7 +370,7 @@ def fft(
     if chunks_to_segments:
         da = _stack_chunks(da, dim)
 
-    rawdims = da.dims  # take care of segmented dimesions, if any
+    rawdims = da.dims  # take care of segmented dimensions, if any
 
     if real_dim is not None:
         da = da.transpose(
@@ -413,7 +413,7 @@ def fft(
         if not np.allclose(diff, diff[0], rtol=spacing_tol):
             raise ValueError(
                 "Can't take Fourier transform because "
-                "coodinate %s is not evenly spaced" % d
+                "coordinate %s is not evenly spaced" % d
             )
         if delta == 0.0:
             raise ValueError(
@@ -514,7 +514,7 @@ def ifft(
     true_phase : bool, default: False
         If ``False``, standard IFFT algorithm is applied on signal without consideration of coordinates order.
 
-        If ``False``, coordinates are correctly taken into account to evaluate Inverse Fourier Tranform phase and
+        If ``False``, coordinates are correctly taken into account to evaluate Inverse Fourier Transform phase and
         ``fftshift`` is applied on input signal prior to IFFT
         (IFFT algorithm intrinsically considers that input signal is on ``fftshift``\ed grid).
     true_amplitude : bool, default: False
@@ -631,7 +631,7 @@ def ifft(
             else:
                 raise ValueError(
                     "Can't take Fourier transform because "
-                    "coodinate %s is not evenly spaced" % d
+                    "coordinate %s is not evenly spaced" % d
                 )
         if np.abs(l) > spacing_tol:
             raise ValueError(
@@ -856,7 +856,7 @@ def cross_spectrum(
     if not true_phase:
         msg = (
             "true_phase flag will be set to True in future version of xrft.dft possibly impacting cross_spectrum output. "
-            + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
+            + "Set explicitly true_phase = False in cross_spectrum arguments list to ensure future compatibility "
             + "with numpy-like behavior where the coordinates are disregarded."
         )
         warnings.warn(msg, FutureWarning)
@@ -955,7 +955,7 @@ def cross_phase(da1, da2, dim=None, true_phase=False, **kwargs):
     if not true_phase:
         msg = (
             "true_phase flag will be set to True in future version of xrft.dft possibly impacting cross_phase output. "
-            + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
+            + "Set explicitly true_phase = False in cross_spectrum arguments list to ensure future compatibility "
             + "with numpy-like behavior where the coordinates are disregarded."
         )
         warnings.warn(msg, FutureWarning)
