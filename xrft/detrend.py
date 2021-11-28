@@ -20,7 +20,7 @@ def detrend(da, dim=None, detrend_type="constant"):
         Dimensions along which to apply detrend.
         Default: :attr:`da.dims <xarray.DataArray.dims>`.
 
-        .. note:: 
+        .. note::
            - Can be either **one** dimension or a list with **two** dimensions.
              Higher-dimensional detrending is not supported.
            - If Dask data are passed, the array must be chunked along `dim`.
