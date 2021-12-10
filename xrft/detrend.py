@@ -8,33 +8,35 @@ import scipy.signal as sps
 import scipy.linalg as spl
 
 
-def detrend(da, dim, detrend_type="constant"):
+def detrend(da, dim=None, detrend_type="constant"):
     """
-    Detrend a DataArray
+    Detrend a :class:`~xarray.DataArray`.
 
     Parameters
     ----------
     da : xarray.DataArray
-        The data to detrend
-    dim : str or list
+        The data to detrend.
+    dim : str or sequence of str, optional
         Dimensions along which to apply detrend.
-        Can be either one dimension or a list with two dimensions.
-        Higher-dimensional detrending is not supported.
-        If dask data are passed, the data must be chunked along dim.
+        Default: :attr:`da.dims <xarray.DataArray.dims>`.
+
+        .. note::
+           - Can be either **one** dimension or a list with **two** dimensions.
+             Higher-dimensional detrending is not supported.
+           - If Dask data are passed, the array must be chunked along `dim`.
     detrend_type : {'constant', 'linear'}
-        If ``constant``, a constant offset will be removed from each dim.
-        If ``linear``, a linear least-squares fit will be estimated and removed
+        If ``'constant'``, a constant offset will be removed from each dim.
+        If ``'linear'``, a linear least squares fit will be estimated and removed
         from the data.
 
     Returns
     -------
-    da : xarray.DataArray
+    da_dt : xarray.DataArray
         The detrended data.
 
     Notes
     -----
-    This function will act lazily in the presence of dask arrays on the
-    input.
+    This function will act lazily in the presence of Dask arrays in the input.
     """
 
     if dim is None:
@@ -46,7 +48,7 @@ def detrend(da, dim, detrend_type="constant"):
     if detrend_type not in ["constant", "linear", None]:
         raise NotImplementedError(
             "%s is not a valid detrending option. Valid "
-            "options are: 'constant','linear', or None." % detrend_type
+            "options are: 'constant', 'linear', or None." % detrend_type
         )
 
     if detrend_type is None:

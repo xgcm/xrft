@@ -1,19 +1,35 @@
-name: xrft
+name: xrft-doc
 dependencies:
-  - python=3.7
-  - pandas
-  - xarray
+  - python=3.8
+  #
+  # xrft
   - dask
-  - scipy
   - numpy
-  - pytest
+  - pandas
+  - scipy
+  - xarray
+  #
+  # xrft extras
+  - cftime
+  #
+  # docs
+  - ipython
+  - jupyterlab
+  - matplotlib
   - numpydoc
   - sphinx
-  - ipython
-  - jupyter
-  - matplotlib
-  - pandoc
+  #
+  - pip
   - pip:
-    - docrep
+    # xrft itself
+    - '-e ../'
+    #
+    # xrft extras
+    - numpy_groupies
+    #
+    # docs
     - nbsphinx
-    - sphinxcontrib-apidoc
+    - pooch
+    - sphinx-autobuild
+    - sphinx-prompt
+    - sphinx_rtd_theme

@@ -4,22 +4,22 @@ xrft: Fourier transforms for xarray data
 |pypi| |conda forge| |conda-forge| |Build Status| |codecov| |docs| |DOI| |license| |Code style|
 
 **xrft** is an open-source Python package for
-taking the discrete Fourier transform (DFT) on xarray_ and dask_ arrays.
+taking the discrete Fourier transform (DFT) on xarray_ and Dask_ arrays.
 
 .. _xarray: http://xarray.pydata.org/en/stable/
-.. _dask: https://dask.org
+.. _Dask: https://dask.org
 
 It is:
 
-- **Powerful**: It keeps the metadata and coordinates of the original xarray dataset and provides a clean work flow of DFT.
-- **Easy-to-use**: It uses the native arguments of `numpy FFT`_ and provides a simple, high-level API.
-- **Fast**: It uses the `dask API of FFT`_ and `map_blocks`_ to allow parallelization of DFT.
+- **Powerful**: It keeps the metadata and coordinates of the original xarray dataset and provides a clean workflow of DFT.
+- **Easy-to-use**: It uses the native arguments of `NumPy FFT`_ and provides a simple, high-level API.
+- **Fast**: It uses the `Dask FFT API`_ and `map_blocks`_ to allow parallelization of DFT.
 
-.. _numpy FFT: https://docs.scipy.org/doc/numpy/reference/routines.fft.html
-.. _dask API of FFT: http://docs.dask.org/en/latest/array-api.html?highlight=fft#fast-fourier-transforms
-.. _map_blocks: http://docs.dask.org/en/latest/array-api.html?highlight=map_blocks#dask.array.core.map_blocks
+.. _NumPy FFT: https://docs.scipy.org/doc/numpy/reference/routines.fft.html
+.. _Dask FFT API: https://docs.dask.org/en/latest/array-api.html#fast-fourier-transforms
+.. _map_blocks: https://docs.dask.org/en/latest/generated/dask.array.map_blocks.html#dask.array.map_blocks
 
-Please cite the `doi <https://doi.org/10.5281/zenodo.1402635>`_ if you find this
+Please cite the `DOI <https://doi.org/10.5281/zenodo.1402635>`_ if you find this
 package useful in order to support its continuous development.
 
 Get in touch

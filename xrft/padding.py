@@ -1,5 +1,5 @@
 """
-Functions to pad and unpad a N-dimensional regular grid
+Functions to pad and unpad an *N*\-dimensional regular grid.
 """
 import numpy as np
 from xarray.core.utils import either_dict_or_kwargs
@@ -18,7 +18,7 @@ def pad(
     **pad_width_kwargs,
 ):
     """
-    Pad array with evenly spaced coordinates
+    Pad array with evenly spaced coordinates.
 
     Wraps the :meth:`xarray.DataArray.pad` method but also pads the evenly
     spaced coordinates by extrapolation using the same coordinate spacing.
@@ -27,15 +27,16 @@ def pad(
 
     Parameters
     ----------
-    da : :class:`xarray.DataArray`
+    da : xarray.DataArray
         Array to be padded. The coordinates along which the array will be
         padded must be evenly spaced.
     pad_width : mapping of hashable to tuple of int
         Mapping with the form of {dim: (pad_before, pad_after)}
         describing the number of values padded along each dimension.
         {dim: pad} is a shortcut for pad_before = pad_after = pad
-    mode : str, default: "constant"
-        One of the following string values (taken from numpy docs).
+    mode : str, default: 'constant'
+        One of the following string values (taken from :func:`numpy.pad` doc).
+
         - constant: Pads with a constant value.
         - edge: Pads with the edge values of array.
         - linear_ramp: Pads with the linear ramp between end_value and the
@@ -96,7 +97,11 @@ def pad(
 
     Returns
     -------
-    da_padded : :class:`xarray.DataArray`
+    da_padded : xarray.DataArray
+
+    See Also
+    --------
+    xrft.padding.unpad
 
     Examples
     --------
@@ -279,38 +284,37 @@ def _pad_coordinates_callback(vector, iaxis_pad_width, iaxis, kwargs):
 
 def unpad(da, pad_width=None, **pad_width_kwargs):
     """
-    Unpad an array and its coordinates
+    Unpad an array and its coordinates.
 
     Undo the padding process of the :func:`xrft.pad` function by slicing the
-    passed :class:`xarray.DataArray` and its coordinates.
+    passed :class:`xarray.DataArray` `da` and its coordinates.
 
     Parameters
     ----------
-    da : :class:`xarray.DataArray`
+    da : xarray.DataArray
         Padded array. The coordinates along which the array will be
         padded must be evenly spaced.
-
-    Returns
-    -------
-    da_unpaded : :class:`xarray.DataArray`
-        Unpadded array.
     pad_width : mapping of hashable to tuple of int (optional)
         Mapping with the form of {dim: (pad_before, pad_after)}
         describing the number of values padded along each dimension.
         {dim: pad} is a shortcut for pad_before = pad_after = pad.
         If ``None``, then the *pad_width* for each coordinate is read from
         their ``pad_width`` attribute.
-    **pad_width_kwargs (optional)
+    **pad_width_kwargs : dict, optional
         The keyword arguments form of ``pad_width``.
         Pass ``pad_width`` or ``pad_width_kwargs``.
 
-    See also
+    Returns
+    -------
+    da_unpadded : xarray.DataArray
+        Unpadded array.
+
+    See Also
     --------
-    :func:`xrft.pad`
+    xrft.padding.pad
 
     Examples
     --------
-
     >>> import xarray as xr
     >>> da = xr.DataArray(
     ...     [[1, 2, 3], [4, 5, 6], [7, 8, 9]],

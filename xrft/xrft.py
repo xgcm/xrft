@@ -44,7 +44,7 @@ def _fft_module(da):
 def _apply_window(da, dims, window_type="hann"):
     """Creating windows in dimensions dims."""
 
-    if window_type == True:
+    if window_type is True:
         window_type = "hann"
         warnings.warn(
             "Please provide the name of window adhering to scipy.signal.windows. The boolean option will be deprecated in future releases.",
@@ -241,7 +241,7 @@ def dft(
     da, dim=None, true_phase=False, true_amplitude=False, **kwargs
 ):  # pragma: no cover
     """
-    Deprecated function. See fft doc
+    Deprecated function; see :func:`fft`.
     """
     msg = (
         "This function has been renamed and will disappear in the future."
@@ -257,7 +257,7 @@ def idft(
     daft, dim=None, true_phase=False, true_amplitude=False, **kwargs
 ):  # pragma: no cover
     """
-    Deprecated function. See ifft doc
+    Deprecated function; see :func:`ifft`.
     """
     msg = (
         "This function has been renamed and will disappear in the future."
@@ -271,6 +271,7 @@ def idft(
 
 def fft(
     da,
+    *,
     spacing_tol=1e-3,
     dim=None,
     real_dim=None,
@@ -283,8 +284,8 @@ def fft(
     prefix="freq_",
     **kwargs,
 ):
-    """
-    Perform discrete Fourier transform of xarray data-array `da` along the
+    r"""
+    Perform discrete Fourier transform of :class:`xarray.DataArray` `da` along the
     specified dimensions.
 
     .. math::
@@ -292,49 +293,62 @@ def fft(
 
     Parameters
     ----------
-    da : `xarray.DataArray`
-        The data to be transformed
-    spacing_tol: float, optional
+    da : xarray.DataArray
+        The data to be transformed.
+    spacing_tol : float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
     dim : str or sequence of str, optional
-        The dimensions along which to take the transformation. If `None`, all
-        dimensions will be transformed. If the inputs are dask arrays, the
+        The dimensions along which to take the transformation. If ``None``, all
+        dimensions will be transformed. If the inputs are Dask arrays, the
         arrays must not be chunked along these dimensions.
     real_dim : str, optional
         Real Fourier transform will be taken along this dimension.
-    shift : bool, default
-        Whether to shift the fft output. Default is `True`, unless `real_dim is not None`,
-        in which case shift will be set to False always.
+    shift : bool, default: True
+        Whether to shift the FFT output.
+
+        .. note::
+           If `real_dim` is not ``None``, `shift` will be set to ``False`` always.
     detrend : {None, 'constant', 'linear'}
-        If `constant`, the mean across the transform dimensions will be
+        If ``'constant'``, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
-        If `linear`, the linear least-square fit will be subtracted before
-        the FT. For `linear`, only dims of length 1 and 2 are supported.
+
+        If ``'linear'``, the linear least squares fit will be subtracted before
+        the FT. Only dims of length 1 and 2 are supported.
+
+        Default (``None``): no detrending.
     window : str, optional
         Whether to apply a window to the data before the Fourier
         transform is taken. A window will be applied to all the dimensions in
-        dim. Please follow `scipy.signal.windows`' naming convention.
-    true_phase : bool, optional
-        If set to False, standard fft algorithm is applied on signal without consideration of coordinates.
-        If set to True, coordinates location are correctly taken into account to evaluate Fourier Tranforrm phase and
-        fftshift is applied on input signal prior to fft  (fft algorithm intrinsically considers that input signal is on fftshifted grid).
-    true_amplitude : bool, optional
-        If set to True, output is multiplied by the spacing of the transformed variables to match theoretical FT amplitude.
-        If set to False, amplitude regularisation by spacing is not applied (as in numpy.fft)
-    chunks_to_segments : bool, optional
-        Whether the data is chunked along the axis to take FFT.
+        `dim`. Please follow :mod:`scipy.signal.windows`'s naming convention.
+    true_phase : bool, default: False
+        If ``False``, standard FFT algorithm is applied on signal without consideration of coordinates.
+
+        If ``True``, coordinates' locations are correctly taken into account to evaluate Fourier Transform phase and
+        ``fftshift`` is applied on input signal prior to FFT
+        (FFT algorithm intrinsically considers that input signal is on ``fftshift``\ed grid).
+    true_amplitude : bool, default: False
+        If ``True``, output is multiplied by the spacing of the transformed variables to match theoretical FT amplitude.
+
+        If ``False``, amplitude regularisation by spacing is not applied (as in :func:`numpy.fft.fft`).
+    chunks_to_segments : bool, default: False
+        Whether chunks along the axis to take FFT should be stacked (Dask).
     prefix : str
-        The prefix for the new transformed dimensions.
+        For the new transformed dimensions.
 
     Returns
     -------
-    daft : `xarray.DataArray`
+    daft : xarray.DataArray
         The output of the Fourier transformation, with appropriate dimensions.
     """
 
     if not true_phase and not true_amplitude:
-        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.dft to preserve the theoretical phasing and amplitude of Fourier Transform. Consider using xrft.fft to ensure future compatibility with numpy.fft like behavior and to deactivate this warning."
+        msg = (
+            "Flags true_phase and true_amplitude will be set to True in future versions of xrft.fft "
+            "to preserve the theoretical phasing and amplitude of Inverse Fourier Transform. "
+            "Consider setting them to ensure future compatibility with numpy.fft.fft-like behavior "
+            "and to deactivate this warning."
+        )
         warnings.warn(msg, FutureWarning)
 
     if dim is None:
@@ -361,7 +375,7 @@ def fft(
     if chunks_to_segments:
         da = _stack_chunks(da, dim)
 
-    rawdims = da.dims  # take care of segmented dimesions, if any
+    rawdims = da.dims  # take care of segmented dimensions, if any
 
     if real_dim is not None:
         da = da.transpose(
@@ -404,7 +418,7 @@ def fft(
         if not np.allclose(diff, diff[0], rtol=spacing_tol):
             raise ValueError(
                 "Can't take Fourier transform because "
-                "coodinate %s is not evenly spaced" % d
+                "coordinate %s is not evenly spaced" % d
             )
         if delta == 0.0:
             raise ValueError(
@@ -481,7 +495,7 @@ def ifft(
     lag=None,
     **kwargs,
 ):
-    """
+    r"""
     Perform inverse discrete Fourier transform of xarray data-array `daft` along the
     specified dimensions.
 
@@ -490,45 +504,59 @@ def ifft(
 
     Parameters
     ----------
-    daft : `xarray.DataArray`
-        The data to be transformed
-    spacing_tol: float, optional
+    daft : xarray.DataArray
+        The data to be transformed.
+    spacing_tol : float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
     dim : str or sequence of str, optional
-        The dimensions along which to take the transformation. If `None`, all
+        The dimensions along which to take the transformation. If ``None``, all
         dimensions will be transformed.
     real_dim : str, optional
         Real Fourier transform will be taken along this dimension.
-    shift : bool, default
-        Whether to shift the fft output. Default is `True`.
-    chunks_to_segments : bool, optional
-        Whether the data is chunked along the axis to take FFT.
-    prefix : str
-        The prefix for the new transformed dimensions.
-    true_phase : bool, optional
-        If set to False, standard ifft algorithm is applied on signal without consideration of coordinates order.
-        If set to True, coordinates are correctly taken into account to evaluate Inverse Fourier Tranforrm phase and
-        fftshift is applied on input signal prior to ifft (ifft algorithm intrinsically considers that input signal is on fftshifted grid).
-    true_amplitude : bool, optional
-        If set to True, output is divided by the spacing of the transformed variables to match theoretical IFT amplitude.
-        If set to False, amplitude regularisation by spacing is not applied (as in numpy.ifft)
-    lag : None, float or sequence of float and/or None, optional
-        Output coordinates of transformed dimensions will be shifted by corresponding lag values and correct signal phasing will be preserved if true_phase is set to True.
-        If lag is None (default), 'direct_lag' attributes of each dimension is used (or set to zero if not found).
-        If defined, lag must have same length as dim.
-        If lag is a sequence, a None element means that 'direct_lag' attribute will be used for the corresponding dimension
-        Manually set lag to zero to get output coordinates centered on zero.
+    shift : bool, default: True
+        Whether to shift the FFT output.
+    true_phase : bool, default: False
+        If ``False``, standard IFFT algorithm is applied on signal without consideration of coordinates order.
 
+        If ``False``, coordinates are correctly taken into account to evaluate Inverse Fourier Transform phase and
+        ``fftshift`` is applied on input signal prior to IFFT
+        (IFFT algorithm intrinsically considers that input signal is on ``fftshift``\ed grid).
+    true_amplitude : bool, default: False
+        If ``True``, output is divided by the spacing of the transformed variables to match theoretical IFT amplitude.
+
+        If ``False``, amplitude regularisation by spacing is not applied (as in :func:`numpy.fft.ifft`).
+    lag : None, float, or sequence of (float or None), optional
+        Output coordinates of transformed dimensions will be shifted by corresponding lag values
+        and correct signal phasing will be preserved if `true_phase` is set to ``True``.
+
+        If `lag` is ``None`` (default), the ``'direct_lag'`` attribute of each dimension is used
+        (or set to zero if not found).
+
+        If defined, `lag` must have same length as `dim`.
+
+        If `lag` is a sequence, a ``None`` element means that the ``'direct_lag'`` attribute will be used
+        for the corresponding dimension.
+
+        Manually set `lag` to zero to get output coordinates centered on zero.
+    chunks_to_segments : bool, default: False
+        Whether chunks along the axis to take FFT should be stacked (Dask).
+    prefix : str
+        For the new transformed dimensions.
 
     Returns
     -------
-    da : `xarray.DataArray`
+    da : xarray.DataArray
         The output of the Inverse Fourier transformation, with appropriate dimensions.
     """
 
     if not true_phase and not true_amplitude:
-        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.idft to preserve the theoretical phasing and amplitude of Inverse Fourier Transform. Consider using xrft.ifft to ensure future compatibility with numpy.ifft like behavior and to deactivate this warning."
+        msg = (
+            "Flags true_phase and true_amplitude will be set to True in future versions of xrft.ifft "
+            "to preserve the theoretical phasing and amplitude of Inverse Fourier Transform. "
+            "Consider setting them to ensure future compatibility with numpy.fft.ifft-like behavior "
+            "and to deactivate this warning."
+        )
         warnings.warn(msg, FutureWarning)
 
     if dim is None:
@@ -552,7 +580,12 @@ def ifft(
             ]  # real dim has to be moved or added at the end !
     if lag is None:
         lag = [daft[d].attrs.get("direct_lag", 0.0) for d in dim]
-        msg = "Default idft's behaviour (lag=None) changed! Default value of lag was zero (centered output coordinates) and is now set to transformed coordinate's attribute: 'direct_lag'."
+        msg = (
+            "Default idft's behaviour (lag=None) changed! "
+            "Default value of lag was zero (centered output coordinates) "
+            "and is now set to transformed coordinate's attribute 'direct_lag', "
+            "defaulting to zero if that attribute is not set."
+        )
         warnings.warn(msg, FutureWarning)
     else:
         if isinstance(lag, float) or isinstance(lag, int):
@@ -613,7 +646,7 @@ def ifft(
             else:
                 raise ValueError(
                     "Can't take Fourier transform because "
-                    "coodinate %s is not evenly spaced" % d
+                    "coordinate %s is not evenly spaced" % d
                 )
         if np.abs(l) > spacing_tol:
             raise ValueError(
@@ -675,30 +708,44 @@ def power_spectrum(
     Calculates the power spectrum of da.
 
     .. math::
-    da' = da - \overline{da}
+       da' = da - \overline{da}
+
     .. math::
-    ps = \mathbb{F}(da') {\mathbb{F}(da')}^*
+       ps = \mathbb{F}(da') {\mathbb{F}(da')}^*
 
     Parameters
     ----------
     da : `xarray.DataArray`
         The data to be transformed
     dim : str or sequence of str, optional
-        The dimensions along which to take the transformation. If `None`, all
+        The dimensions along which to take the transformation. If ``None``, all
         dimensions will be transformed.
     real_dim : str, optional
         Real Fourier transform will be taken along this dimension.
     scaling : str, optional
-        If 'density', it will normalize the output to power spectral density
-        If 'spectrum', it will normalize the output to power spectrum
-    window_correction : boolean
-        If True, it will correct for the energy reduction resulting from applying a non-uniform window.
-        This is the default behaviour of many tools for computing power spectrum (e.g scipy.signal.welch and scipy.signal.periodogram).
-        If scaling = 'spectrum', correct the amplitude of peaks in the spectrum. This ensures, for example, that the peak in the one-sided power spectrum of a 10 Hz sine wave with RMS**2 = 10 has a magnitude of 10.
-        If scaling = 'density', correct for the energy (integral) of the spectrum. This ensures, for example, that the power spectral density integrates to the square of the RMS of the signal (ie that Parseval's theorem is satisfied). Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction as it assumes that the signal being windowed is independent of the window. The correction becomes more accurate as the width of the window gets large in comparison with any noticeable period in the signal.
-        If False, the spectrum gives a representation of the power in the windowed signal.
-        Note that when True, Parseval's theorem may only be approximately satisfied.
-    kwargs : dict : see xrft.dft for argument list
+        If ``'density'``, it will normalize the output to power spectral density.
+        If ``'spectrum'``, it will normalize the output to power spectrum.
+    window_correction : boolean, optional, default: False
+        If ``True``, it will correct for the energy reduction resulting from applying a non-uniform window.
+        This is the default behaviour of many tools for computing power spectrum
+        (e.g., :func:`scipy.signal.welch` and :func:`scipy.signal.periodogram`).
+
+        - If ``scaling='spectrum'``, correct the amplitude of peaks in the spectrum.
+          This ensures, for example, that the peak in the one-sided power spectrum
+          of a 10 Hz sine wave with RMS\ :sup:`2` = 10 has a magnitude of 10.
+        - If ``scaling='density'``, correct for the energy (integral) of the spectrum.
+          This ensures, for example, that the power spectral density integrates to the square
+          of the RMS of the signal (i.e., that Parseval's theorem is satisfied).
+
+        Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction
+        as it assumes that the signal being windowed is independent of the window.
+        The correction becomes more accurate as the width of the window gets large
+        in comparison with any noticeable period in the signal.
+
+        If ``False``, the spectrum gives a representation of the power in the windowed signal.
+        Note that when ``window_correction=True``, Parseval's theorem may only be approximately satisfied.
+    **kwargs : dict, optional
+        See :func:`fft` for argument list.
     """
 
     if "density" in kwargs:
@@ -777,7 +824,7 @@ def cross_spectrum(
     **kwargs,
 ):
     """
-    Calculates the cross spectra of da1 and da2.
+    Calculates the cross spectra of `da1` and `da2`.
 
     .. math::
         da1' = da1 - \overline{da1};\ \ da2' = da2 - \overline{da2}
@@ -786,32 +833,45 @@ def cross_spectrum(
 
     Parameters
     ----------
-    da1 : `xarray.DataArray`
-        The data to be transformed
-    da2 : `xarray.DataArray`
-        The data to be transformed
+    da1 : xarray.DataArray
+        The data to be transformed.
+    da2 : xarray.DataArray
+        The data to be transformed.
     dim : str or sequence of str, optional
-        The dimensions along which to take the transformation. If `None`, all
+        The dimensions along which to take the transformation. If ``None``, all
         dimensions will be transformed.
     real_dim : str, optional
         Real Fourier transform will be taken along this dimension.
     scaling : str, optional
-        If 'density', it will normalize the output to power spectral density
-        If 'spectrum', it will normalize the output to power spectrum
-    window_correction : boolean
-        If True, it will correct for the energy reduction resulting from applying a non-uniform window.
-        This is the default behaviour of many tools for computing power spectrum (e.g scipy.signal.welch and scipy.signal.periodogram).
-        If scaling = 'spectrum', correct the amplitude of peaks in the spectrum. This ensures, for example, that the peak in the one-sided power spectrum of a 10 Hz sine wave with RMS**2 = 10 has a magnitude of 10.
-        If scaling = 'density', correct for the energy (integral) of the spectrum. This ensures, for example, that the power spectral density integrates to the square of the RMS of the signal (ie that Parseval's theorem is satisfied). Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction as it assumes that the signal being windowed is independent of the window. The correction becomes more accurate as the width of the window gets large in comparison with any noticeable period in the signal.
-        If False, the spectrum gives a representation of the power in the windowed signal.
-        Note that when True, Parseval's theorem may only be approximately satisfied.
-    kwargs : dict : see xrft.dft for argument list
+        If ``'density'``, it will normalize the output to power spectral density.
+        If ``'spectrum'``, it will normalize the output to power spectrum.
+    window_correction : boolean, optional, default: False
+        If ``True``, it will correct for the energy reduction resulting from applying a non-uniform window.
+        This is the default behaviour of many tools for computing power spectrum
+        (e.g., :func:`scipy.signal.welch` and :func:`scipy.signal.periodogram`).
+
+        - If ``scaling='spectrum'``, correct the amplitude of peaks in the spectrum.
+          This ensures, for example, that the peak in the one-sided power spectrum
+          of a 10 Hz sine wave with RMS\ :sup:`2` = 10 has a magnitude of 10.
+        - If ``scaling='density'``, correct for the energy (integral) of the spectrum.
+          This ensures, for example, that the power spectral density integrates to the square
+          of the RMS of the signal (i.e., that Parseval's theorem is satisfied).
+
+        Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction
+        as it assumes that the signal being windowed is independent of the window.
+        The correction becomes more accurate as the width of the window gets large
+        in comparison with any noticeable period in the signal.
+
+        If ``False``, the spectrum gives a representation of the power in the windowed signal.
+        Note that when ``window_correction=True``, Parseval's theorem may only be approximately satisfied.
+    **kwargs : dict, optional
+        See :func:`fft` for argument list.
     """
 
     if not true_phase:
         msg = (
             "true_phase flag will be set to True in future version of xrft.dft possibly impacting cross_spectrum output. "
-            + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
+            + "Set explicitly true_phase = False in cross_spectrum arguments list to ensure future compatibility "
             + "with numpy-like behavior where the coordinates are disregarded."
         )
         warnings.warn(msg, FutureWarning)
@@ -863,6 +923,7 @@ def cross_spectrum(
                     "window_correction can only be applied when windowing is turned on."
                 )
             else:
+                # FIXME: `da` not defined
                 windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
                 cs = cs / (windows ** 2).mean()
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
@@ -874,6 +935,7 @@ def cross_spectrum(
                     "window_correction can only be applied when windowing is turned on."
                 )
             else:
+                # FIXME: `da` not defined
                 windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
                 cs = cs / windows.mean() ** 2
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
@@ -886,10 +948,10 @@ def cross_spectrum(
 
 
 def cross_phase(da1, da2, dim=None, true_phase=False, **kwargs):
-    """
-    Calculates the cross-phase between da1 and da2.
+    r"""
+    Calculates the cross-phase between `da1` and `da2`.
 
-    Returned values are in [-pi, pi].
+    Returned values are in :math:`[-\pi, -\pi]`.
 
     .. math::
         da1' = da1 - \overline{da1};\ \ da2' = da2 - \overline{da2}
@@ -898,16 +960,17 @@ def cross_phase(da1, da2, dim=None, true_phase=False, **kwargs):
 
     Parameters
     ----------
-    da1 : `xarray.DataArray`
-        The data to be transformed
-    da2 : `xarray.DataArray`
-        The data to be transformed
-    kwargs : dict : see xrft.dft for argument list
+    da1 : xarray.DataArray
+        The data to be transformed.
+    da2 : xarray.DataArray
+        The data to be transformed.
+    kwargs : dict, optional
+        See :func:`cross_spectrum` for argument list.
     """
     if not true_phase:
         msg = (
             "true_phase flag will be set to True in future version of xrft.dft possibly impacting cross_phase output. "
-            + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
+            + "Set explicitly true_phase = False in cross_spectrum arguments list to ensure future compatibility "
             + "with numpy-like behavior where the coordinates are disregarded."
         )
         warnings.warn(msg, FutureWarning)
@@ -994,7 +1057,7 @@ def _groupby_bins_agg(
 
 
 def isotropize(ps, fftdim, nfactor=4, truncate=False):
-    """
+    r"""
     Isotropize a 2D power spectrum or cross spectrum
     by taking an azimuthal average.
 
@@ -1005,15 +1068,15 @@ def isotropize(ps, fftdim, nfactor=4, truncate=False):
 
     Parameters
     ----------
-    ps : `xarray.DataArray`
+    ps : xarray.DataArray
         The power spectrum or cross spectrum to be isotropized.
-    fftdim : list
-        The fft dimensions overwhich the isotropization must be performed.
-    nfactor : int, optional
+    fftdim : sequence of str
+        The dimensions over which the isotropization should be performed.
+    nfactor : int, default: 4
         Ratio of number of bins to take the azimuthal averaging with the
-        data size. Default is 4.
-    truncate : bool, optional
-        If True, the spectrum will be truncated for wavenumbers larger than
+        data size.
+    truncate : bool, default: False
+        If ``True``, the spectrum will be truncated for wavenumbers larger than
         the Nyquist wavenumber.
     """
 
@@ -1054,7 +1117,7 @@ def isotropize(ps, fftdim, nfactor=4, truncate=False):
 
 def isotropic_powerspectrum(*args, **kwargs):  # pragma: no cover
     """
-    Deprecated function. See isotropic_power_spectrum doc
+    Deprecated function; see :func:`isotropic_power_spectrum`.
     """
     msg = (
         "This function has been renamed and will disappear in the future."
@@ -1077,52 +1140,70 @@ def isotropic_power_spectrum(
     truncate=False,
     **kwargs,
 ):
-    """
+    r"""
     Calculates the isotropic spectrum from the
     two-dimensional power spectrum by taking the
     azimuthal average.
 
     .. math::
-        \text{iso}_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
+       \text{iso}_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
 
     where :math:`N` is the number of azimuthal bins.
 
-    Note: the method is not lazy does trigger computations.
+    .. warning::
+       The method is not lazy, it does trigger computations.
 
     Parameters
     ----------
-    da : `xarray.DataArray`
-        The data to be transformed
-    spacing_tol: float, optional
+    da : xarray.DataArray
+        The data to be transformed.
+    spacing_tol : float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
-    dim : list, optional
-        The dimensions along which to take the transformation. If `None`, all
-        dimensions will be transformed.
-    shift : bool, optional
-        Whether to shift the fft output.
-    detrend : str, optional
-        If `constant`, the mean across the transform dimensions will be
+    dim : str or sequence of str, optional
+        The dimensions along which to take the transformation. If ``None``, all
+        dimensions will be transformed. If the inputs are Dask arrays, the
+        arrays must not be chunked along these dimensions.
+    shift : bool, default: True
+        Whether to shift the FFT output.
+
+        .. note::
+           If `real_dim` is not ``None``, `shift` will be set to ``False`` always.
+    detrend : {None, 'constant', 'linear'}
+        If ``'constant'``, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
-        If `linear`, the linear least-square fit will be subtracted before
-        the FT.
-    density : list, optional
-        If true, it will normalize the spectrum to spectral density
+
+        If ``'linear'``, the linear least squares fit will be subtracted before
+        the FT. Only dims of length 1 and 2 are supported.
+
+        Default (``None``): no detrending.
+    scaling : str, optional
+        See :func:`power_spectrum`.
     window : str, optional
         Whether to apply a window to the data before the Fourier
-        transform is taken. Please adhere to scipy.signal.windows for naming convention.
-    nfactor : int, optional
+        transform is taken. A window will be applied to all the dimensions in
+        `dim`. Please follow :mod:`scipy.signal.windows`'s naming convention.
+    window_correction
+        See :func:`power_spectrum`.
+
+        If true, it will normalize the spectrum to spectral density
+    nfactor : int, default: 4
         Ratio of number of bins to take the azimuthal averaging with the
-        data size. Default is 4.
-    truncate : bool, optional
-        If True, the spectrum will be truncated for wavenumbers larger than
+        data size.
+    truncate : bool, default: False
+        If ``True``, the spectrum will be truncated for wavenumbers larger than
         the Nyquist wavenumber.
+    density : bool
+        If ``True``, normalize the spectrum to spectral density.
+    **kwargs : dict, optional
+        Passed on to :func:`power_spectrum`.
 
     Returns
     -------
-    iso_ps : `xarray.DataArray`
-        Isotropic power spectrum
+    iso_ps : xarray.DataArray
+        Isotropic power spectrum.
     """
+    # TODO: remove `density` from docstring and let `power_spectrum` handle this with its warning
     if "density" in kwargs:
         density = kwargs.pop("density")
         scaling = "density" if density else "false_density"
@@ -1144,14 +1225,14 @@ def isotropic_power_spectrum(
         **kwargs,
     )
 
-    fftdim = ["freq_" + d for d in dim]
+    fftdim = ["freq_" + d for d in dim]  # FIXME: allow for non-default `prefix`
 
     return isotropize(ps, fftdim, nfactor=nfactor, truncate=truncate)
 
 
 def isotropic_crossspectrum(*args, **kwargs):  # pragma: no cover
     """
-    Deprecated function. See isotropic_cross_spectrum doc
+    Deprecated function; see :func:`isotropic_cross_spectrum`.
     """
     msg = (
         "This function has been renamed and will disappear in the future."
@@ -1175,7 +1256,7 @@ def isotropic_cross_spectrum(
     truncate=False,
     **kwargs,
 ):
-    """
+    r"""
     Calculates the isotropic spectrum from the
     two-dimensional power spectrum by taking the
     azimuthal average.
@@ -1185,44 +1266,63 @@ def isotropic_cross_spectrum(
 
     where :math:`N` is the number of azimuthal bins.
 
-    Note: the method is not lazy does trigger computations.
+    .. warning::
+       The method is not lazy, it does trigger computations.
 
     Parameters
     ----------
-    da1 : `xarray.DataArray`
-        The data to be transformed
-    da2 : `xarray.DataArray`
-        The data to be transformed
-    spacing_tol: float (default)
+    da1 : xarray.DataArray
+        Data to be transformed.
+    da2 : xarray.DataArray
+        Data to be transformed.
+
+    spacing_tol : float, optional
         Spacing tolerance. Fourier transform should not be applied to uneven grid but
         this restriction can be relaxed with this setting. Use caution.
-    dim : list (optional)
-        The dimensions along which to take the transformation. If `None`, all
-        dimensions will be transformed.
-    shift : bool (optional)
-        Whether to shift the fft output.
-    detrend : str (optional)
-        If `constant`, the mean across the transform dimensions will be
+    dim : str or sequence of str, optional
+        The dimensions along which to take the transformation. If ``None``, all
+        dimensions will be transformed. If the inputs are Dask arrays, the
+        arrays must not be chunked along these dimensions.
+    real_dim : str, optional
+        Real Fourier transform will be taken along this dimension.
+    shift : bool, default: True
+        Whether to shift the FFT output.
+
+        .. note::
+           If `real_dim` is not ``None``, `shift` will be set to ``False`` always.
+    detrend : {None, 'constant', 'linear'}
+        If ``'constant'``, the mean across the transform dimensions will be
         subtracted before calculating the Fourier transform (FT).
-        If `linear`, the linear least-square fit will be subtracted before
-        the FT.
-    density : list (optional)
-        If true, it will normalize the spectrum to spectral density
-    window : str (optional)
+
+        If ``'linear'``, the linear least squares fit will be subtracted before
+        the FT. Only dims of length 1 and 2 are supported.
+
+        Default (``None``): no detrending.
+    scaling : str, optional
+        See :func:`cross_spectrum`.
+    window : str, optional
         Whether to apply a window to the data before the Fourier
-        transform is taken. Please adhere to scipy.signal.windows for naming convention.
-    nfactor : int (optional)
+        transform is taken. A window will be applied to all the dimensions in
+        `dim`. Please follow :mod:`scipy.signal.windows`'s naming convention.
+    window_correction
+        See :func:`cross_spectrum`.
+    nfactor : int, default: 4
         Ratio of number of bins to take the azimuthal averaging with the
-        data size. Default is 4.
-    truncate : bool, optional
-        If True, the spectrum will be truncated for wavenumbers larger than
+        data size.
+    truncate : bool, default: False
+        If ``True``, the spectrum will be truncated for wavenumbers larger than
         the Nyquist wavenumber.
+    density : bool
+        If ``True``, normalize the spectrum to spectral density.
+    **kwargs : dict, optional
+        Passed on to :func:`cross_spectrum`.
 
     Returns
     -------
-    iso_cs : `xarray.DataArray`
-        Isotropic cross spectrum
+    iso_cs : xarray.DataArray
+        Isotropic cross spectrum.
     """
+    # TODO: remove `density` from docstring and let `cross_spectrum` handle this with its warning
     if "density" in kwargs:
         density = kwargs.pop("density")
         scaling = "density" if density else "false_density"
@@ -1248,33 +1348,33 @@ def isotropic_cross_spectrum(
         **kwargs,
     )
 
-    fftdim = ["freq_" + d for d in dim]
+    fftdim = ["freq_" + d for d in dim]  # FIXME: allow for non-default `prefix`
 
     return isotropize(cs, fftdim, nfactor=nfactor, truncate=truncate)
 
 
 def fit_loglog(x, y):
     """
-    Fit a line to isotropic spectra in log-log space
+    Fit a line to isotropic spectra in log-log space.
 
     Parameters
     ----------
-    x : `numpy.array`
-        Coordinate of the data
-    y : `numpy.array`
-        data
+    x : ndarray
+        Coordinate of the data.
+    y : ndarray
+        Data.
 
     Returns
     -------
-    y_fit : `numpy.array`
-        The linear fit
+    y_fit : ndarray
+        The linear fit.
     a : float64
-        Slope of the fit
+        Slope of the fit.
     b : float64
-        Intercept of the fit
+        Intercept of the fit.
     """
-    # fig log vs log
     p = np.polyfit(np.log2(x), np.log2(y), 1)
-    y_fit = 2 ** (np.log2(x) * p[0] + p[1])
+    a, b = p
+    y_fit = 2 ** (np.log2(x) * a + b)
 
-    return y_fit, p[0], p[1]
+    return y_fit, a, b

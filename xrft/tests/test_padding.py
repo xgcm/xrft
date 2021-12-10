@@ -19,7 +19,7 @@ def sample_da_2d():
     x = np.linspace(0, 10, 11)
     y = np.linspace(-4, 4, 17)
     z = np.arange(11 * 17, dtype=float).reshape(17, 11)
-    # Create one xr.DataArray for each coordiante and add spacing and
+    # Create one xr.DataArray for each coordinate and add spacing and
     # direct_lag attributes to them
     dx, dy = x[1] - x[0], y[1] - y[0]
     x = xr.DataArray(
