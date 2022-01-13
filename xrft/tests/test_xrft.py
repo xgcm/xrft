@@ -12,6 +12,7 @@ import numpy.testing as npt
 import xarray.testing as xrt
 
 import xrft
+from ..xrft import _apply_window
 
 
 @pytest.fixture()
