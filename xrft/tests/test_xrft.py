@@ -542,7 +542,7 @@ class TestSpectrum(object):
             window_correction=True,
         )
         test = (daft * np.conj(daft2)).values / N ** 4
-        window, _ = xrft._apply_window(da, dim, window_type="hann")
+        window, _ = _apply_window(da, dim, window_type="hann")
         dk = np.diff(np.fft.fftfreq(N, 1.0))[0]
         test /= dk ** 2 * (window ** 2).mean()
 
