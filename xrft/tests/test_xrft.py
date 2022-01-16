@@ -544,8 +544,7 @@ class TestSpectrum(object):
         test = (daft * np.conj(daft2)) / N ** 4
         window, _ = _apply_window(da, dim, window_type="hann")
         dk = np.diff(np.fft.fftfreq(N, 1.0))[0]
-        test /= dk ** 2
-        test /= (window ** 2).mean()
+        test /= dk ** 2 * (window ** 2).mean()
 
         npt.assert_almost_equal(cs.values, test)
         npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.0)
