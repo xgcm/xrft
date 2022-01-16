@@ -863,7 +863,7 @@ def cross_spectrum(
                     "window_correction can only be applied when windowing is turned on."
                 )
             else:
-                windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
+                windows, _ = _apply_window(da1, dim, window_type=kwargs.get("window"))
                 cs = cs / (windows ** 2).mean()
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
         cs *= fs
@@ -874,7 +874,7 @@ def cross_spectrum(
                     "window_correction can only be applied when windowing is turned on."
                 )
             else:
-                windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
+                windows, _ = _apply_window(da1, dim, window_type=kwargs.get("window"))
                 cs = cs / windows.mean() ** 2
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
         cs *= fs ** 2
