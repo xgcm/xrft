@@ -758,7 +758,7 @@ def power_spectrum(
                 windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
                 ps = ps / windows.mean() ** 2
         fs = np.prod([float(ps[d].spacing) for d in updated_dims])
-        ps *= fs**2
+        ps *= fs ** 2
     elif scaling == "false_density":  # Corresponds to density=False
         pass
     else:
@@ -877,7 +877,7 @@ def cross_spectrum(
                 windows, _ = _apply_window(da1, dim, window_type=kwargs.get("window"))
                 cs = cs / windows.mean() ** 2
         fs = np.prod([float(cs[d].spacing) for d in updated_dims])
-        cs *= fs**2
+        cs *= fs ** 2
     elif scaling == "false_density":  # Corresponds to density=False
         pass
     else:
@@ -1026,7 +1026,7 @@ def isotropize(ps, fftdim, nfactor=4, truncate=False, complx=False):
 
     N = [k.size, l.size]
     nbins = int(min(N) / nfactor)
-    freq_r = np.sqrt(k**2 + l**2).rename("freq_r")
+    freq_r = np.sqrt(k ** 2 + l ** 2).rename("freq_r")
     kr = _groupby_bins_agg(freq_r, freq_r, bins=nbins, func="mean")
 
     if truncate:
