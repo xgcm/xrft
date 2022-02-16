@@ -334,7 +334,7 @@ def fft(
     """
 
     if not true_phase and not true_amplitude:
-        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.dft to preserve the theoretical phasing and amplitude of Fourier Transform. Consider using xrft.fft to ensure future compatibility with numpy.fft like behavior and to deactivate this warning."
+        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.fft to preserve the theoretical phasing and amplitude of Fourier Transform. Consider using xrft.fft to ensure future compatibility with numpy.fft like behavior and to deactivate this warning."
         warnings.warn(msg, FutureWarning)
 
     if dim is None:
@@ -345,7 +345,7 @@ def fft(
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
-        msg = "`real` flag will be deprecated in future version of xrft.dft and replaced by `real_dim` flag."
+        msg = "`real` flag will be deprecated in future version of xrft.fft and replaced by `real_dim` flag."
         warnings.warn(msg, FutureWarning)
 
     if real_dim is not None:
@@ -528,7 +528,7 @@ def ifft(
     """
 
     if not true_phase and not true_amplitude:
-        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.idft to preserve the theoretical phasing and amplitude of Inverse Fourier Transform. Consider using xrft.ifft to ensure future compatibility with numpy.ifft like behavior and to deactivate this warning."
+        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.ifft to preserve the theoretical phasing and amplitude of Inverse Fourier Transform. Consider using xrft.ifft to ensure future compatibility with numpy.ifft like behavior and to deactivate this warning."
         warnings.warn(msg, FutureWarning)
 
     if dim is None:
@@ -539,7 +539,7 @@ def ifft(
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
-        msg = "`real` flag will be deprecated in future version of xrft.idft and replaced by `real_dim` flag."
+        msg = "`real` flag will be deprecated in future version of xrft.ifft and replaced by `real_dim` flag."
         warnings.warn(msg, FutureWarning)
     if real_dim is not None:
         if real_dim not in daft.dims:
@@ -552,7 +552,7 @@ def ifft(
             ]  # real dim has to be moved or added at the end !
     if lag is None:
         lag = [daft[d].attrs.get("direct_lag", 0.0) for d in dim]
-        msg = "Default idft's behaviour (lag=None) changed! Default value of lag was zero (centered output coordinates) and is now set to transformed coordinate's attribute: 'direct_lag'."
+        msg = "Default ifft's behaviour (lag=None) changed! Default value of lag was zero (centered output coordinates) and is now set to transformed coordinate's attribute: 'direct_lag'."
         warnings.warn(msg, FutureWarning)
     else:
         if isinstance(lag, float) or isinstance(lag, int):
@@ -560,7 +560,7 @@ def ifft(
         if len(dim) != len(lag):
             raise ValueError("dim and lag must have the same length.")
         if not true_phase:
-            msg = "Setting lag with true_phase=False does not guarantee accurate idft."
+            msg = "Setting lag with true_phase=False does not guarantee accurate ifft."
             warnings.warn(msg, Warning)
         lag = [
             daft[d].attrs.get("direct_lag") if l is None else l
@@ -698,7 +698,7 @@ def power_spectrum(
         If scaling = 'density', correct for the energy (integral) of the spectrum. This ensures, for example, that the power spectral density integrates to the square of the RMS of the signal (ie that Parseval's theorem is satisfied). Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction as it assumes that the signal being windowed is independent of the window. The correction becomes more accurate as the width of the window gets large in comparison with any noticeable period in the signal.
         If False, the spectrum gives a representation of the power in the windowed signal.
         Note that when True, Parseval's theorem may only be approximately satisfied.
-    kwargs : dict : see xrft.dft for argument list
+    kwargs : dict : see xrft.fft for argument list
     """
 
     if "density" in kwargs:
@@ -805,12 +805,12 @@ def cross_spectrum(
         If scaling = 'density', correct for the energy (integral) of the spectrum. This ensures, for example, that the power spectral density integrates to the square of the RMS of the signal (ie that Parseval's theorem is satisfied). Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction as it assumes that the signal being windowed is independent of the window. The correction becomes more accurate as the width of the window gets large in comparison with any noticeable period in the signal.
         If False, the spectrum gives a representation of the power in the windowed signal.
         Note that when True, Parseval's theorem may only be approximately satisfied.
-    kwargs : dict : see xrft.dft for argument list
+    kwargs : dict : see xrft.fft for argument list
     """
 
     if not true_phase:
         msg = (
-            "true_phase flag will be set to True in future version of xrft.dft possibly impacting cross_spectrum output. "
+            "true_phase flag will be set to True in future version of xrft.fft possibly impacting cross_spectrum output. "
             + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
             + "with numpy-like behavior where the coordinates are disregarded."
         )
@@ -902,11 +902,11 @@ def cross_phase(da1, da2, dim=None, true_phase=False, **kwargs):
         The data to be transformed
     da2 : `xarray.DataArray`
         The data to be transformed
-    kwargs : dict : see xrft.dft for argument list
+    kwargs : dict : see xrft.fft for argument list
     """
     if not true_phase:
         msg = (
-            "true_phase flag will be set to True in future version of xrft.dft possibly impacting cross_phase output. "
+            "true_phase flag will be set to True in future version of xrft.fft possibly impacting cross_phase output. "
             + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
             + "with numpy-like behavior where the coordinates are disregarded."
         )
@@ -993,7 +993,7 @@ def _groupby_bins_agg(
     return result
 
 
-def isotropize(ps, fftdim, nfactor=4, truncate=False):
+def isotropize(ps, fftdim, nfactor=4, truncate=False, complx=False):
     """
     Isotropize a 2D power spectrum or cross spectrum
     by taking an azimuthal average.
@@ -1015,6 +1015,8 @@ def isotropize(ps, fftdim, nfactor=4, truncate=False):
     truncate : bool, optional
         If True, the spectrum will be truncated for wavenumbers larger than
         the Nyquist wavenumber.
+    complx : bool, optional
+        If True, isotropize allows for complex numbers.
     """
 
     # compute radial wavenumber bins
@@ -1040,11 +1042,18 @@ def isotropize(ps, fftdim, nfactor=4, truncate=False):
         )
         warnings.warn(msg, FutureWarning)
 
-    iso_ps = (
-        _groupby_bins_agg(ps, freq_r, bins=nbins, func="mean")
-        .rename({"freq_r_bins": "freq_r"})
-        .drop_vars("freq_r")
-    )
+    if complx:
+        iso_ps = (
+            _groupby_bins_agg(ps, freq_r, bins=nbins, func="mean", dtype=np.complex128)
+            .rename({"freq_r_bins": "freq_r"})
+            .drop_vars("freq_r")
+        )
+    else:
+        iso_ps = (
+            _groupby_bins_agg(ps, freq_r, bins=nbins, func="mean")
+            .rename({"freq_r_bins": "freq_r"})
+            .drop_vars("freq_r")
+        )
     iso_ps.coords["freq_r"] = kr.data
     if truncate:
         return (iso_ps * iso_ps.freq_r).dropna("freq_r")
@@ -1250,7 +1259,7 @@ def isotropic_cross_spectrum(
 
     fftdim = ["freq_" + d for d in dim]
 
-    return isotropize(cs, fftdim, nfactor=nfactor, truncate=truncate)
+    return isotropize(cs, fftdim, nfactor=nfactor, truncate=truncate, complx=True)
 
 
 def fit_loglog(x, y):
