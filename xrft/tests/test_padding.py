@@ -228,3 +228,31 @@ def test_unpad_ifft_fft_pad_round_trip(sample_da_2d, pad_width):
     da_ifft = ifft(da_fft, true_phase=True)
     da_unpadded = unpad(da_ifft, pad_width=pad_width)
     xrt.assert_allclose(sample_da_2d, da_unpadded)
+
+
+# Write tests for catching bug discovered in Issue #172
+
+
+@pytest.fixture
+def sample_no_round_coords():
+    """
+    Define sample coordinates with no round floats
+    """
+    x = np.linspace(0, 10, 7)
+    y = np.linspace(-4, 4, 13)
+    coords = {
+        "x": xr.DataArray(x, coords={"x": x}, dims=("x",)),
+        "y": xr.DataArray(y, coords={"y": y}, dims=("y",)),
+    }
+    return coords
+
+
+def test_pad_coordinates_no_round_coords(sample_no_round_coords):
+    """
+    Test _pad_coordinates on no round coordinates
+    """
+    padded_coords = _pad_coordinates(sample_no_round_coords, pad_width={"x": 3, "y": 4})
+    assert padded_coords["x"].size == 13
+    npt.assert_allclose(padded_coords["x"], np.linspace(-5, 15, 13))
+    assert padded_coords["y"].size == 21
+    npt.assert_allclose(padded_coords["y"], np.linspace(-4 - 8 / 3, 4 + 8 / 3, 21))

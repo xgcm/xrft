@@ -209,7 +209,7 @@ def _pad_coordinates(coords, pad_width):
     ... "y": xr.DataArray(y, coords={"y": y}, dims=("y",)),
     ... }
     >>> pad_width = {"x": 2}
-    >>> padded_coords = pad_coordinates(coords, pad_width)
+    >>> padded_coords = _pad_coordinates(coords, pad_width)
     >>> padded_coords["x"]
     array([-6., -5., -4., -3., -2., -1.,  0.,  1.])
     >>> padded_coords["y"]
@@ -272,8 +272,10 @@ def _pad_coordinates_callback(vector, iaxis_pad_width, iaxis, kwargs):
     spacing = kwargs["spacing"]
     n_start, n_end = iaxis_pad_width[:]
     vmin, vmax = vector[n_start], vector[-(n_end + 1)]
-    vector[:n_start] = np.arange(vmin - spacing * n_start, vmin, spacing)
-    vector[-n_end:] = np.arange(vmax + spacing, vmax + spacing * (n_end + 1), spacing)
+    vector[:n_start] = (
+        vmin - n_start * spacing + np.linspace(0, spacing * (n_start - 1), n_start)
+    )
+    vector[-n_end:] = vmax + spacing + np.linspace(0, spacing * (n_end - 1), n_end)
     return vector
 
 
