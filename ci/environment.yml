@@ -3,7 +3,6 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.6
   - xarray
   - dask
   - numpy
@@ -11,11 +10,7 @@ dependencies:
   - pytest
   - pytest-cov
   - pip
-  - black
   - cftime
-  - setuptools
   - pip:
     - codecov
     - pytest-xdist
-    - setuptools-scm
-    - toml
