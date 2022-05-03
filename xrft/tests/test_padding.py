@@ -19,7 +19,7 @@ def sample_da_2d():
     x = np.linspace(0, 10, 11)
     y = np.linspace(-4, 4, 17)
     z = np.arange(11 * 17, dtype=float).reshape(17, 11)
-    # Create one xr.DataArray for each coordiante and add spacing and
+    # Create one xr.DataArray for each coordinate and add spacing and
     # direct_lag attributes to them
     dx, dy = x[1] - x[0], y[1] - y[0]
     x = xr.DataArray(
@@ -48,7 +48,7 @@ def test_pad_coordinates(sample_da_2d):
     padded_coords = _pad_coordinates(coords, {"x": (3, 2)})
     npt.assert_allclose(padded_coords["x"], np.linspace(-3, 12, 16))
     npt.assert_allclose(padded_coords["y"], coords["y"])
-    # Pad two coordinates assymetrically
+    # Pad two coordinates asymmetrically
     padded_coords = _pad_coordinates(coords, {"x": (2, 1), "y": (3, 4)})
     npt.assert_allclose(padded_coords["x"], np.linspace(-2, 11, 14))
     npt.assert_allclose(padded_coords["y"], np.linspace(-5.5, 6, 24))
@@ -198,7 +198,7 @@ def test_unpad_pop_pad_width_attributes(sample_da_2d, pad_width_arg):
         unpadded = unpad(padded, pad_width=pad_width)
     else:
         unpadded = unpad(padded, **pad_width)
-    # Check if unpadded doesn't have the pad_width attribtues
+    # Check if unpadded doesn't have the pad_width attributes
     for dim in unpadded.coords:
         assert "pad_width" not in unpadded.coords[dim].attrs
 
