@@ -64,7 +64,7 @@ class TestFFTImag(object):
         dx = float(da.x[1] - da.x[0]) if "x" in da.dims else 1
 
         # defaults with no keyword args
-        ft = xrft.fft(da, detrend="constant")
+        ft = xrft.dft(da, detrend="constant")
         # check that the frequency dimension was created properly
         assert ft.dims == ("freq_x",)
         # check that the coords are correct
@@ -82,12 +82,12 @@ class TestFFTImag(object):
         npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
 
         # redo without removing mean
-        ft = xrft.fft(da)
+        ft = xrft.dft(da)
         ft_data_expected = np.fft.fftshift(np.fft.fft(da))
         npt.assert_allclose(ft_data_expected, ft.values)
 
         # redo with detrending linear least-square fit
-        ft = xrft.fft(da, detrend="linear")
+        ft = xrft.dft(da, detrend="linear")
         da_prime = sps.detrend(da.values)
         ft_data_expected = np.fft.fftshift(np.fft.fft(da_prime))
         npt.assert_allclose(ft_data_expected, ft.values, atol=1e-14)
@@ -103,7 +103,7 @@ class TestFFTImag(object):
         Nt = len(time)
         da = xr.DataArray(np.random.rand(Nt), coords=[time], dims=["time"])
 
-        ft = xrft.fft(da, shift=False)
+        ft = xrft.dft(da, shift=False)
 
         # check that frequencies are correct
         if pd.api.types.is_datetime64_dtype(time):
@@ -119,10 +119,10 @@ class TestFFTImag(object):
         da = xr.DataArray(
             np.random.rand(N, N), dims=["x", "y"], coords={"x": range(N), "y": range(N)}
         )
-        ft = xrft.fft(da, shift=False)
+        ft = xrft.dft(da, shift=False)
         npt.assert_almost_equal(ft.values, np.fft.fftn(da.values))
 
-        ft = xrft.fft(da, shift=False, window="hann", detrend="constant")
+        ft = xrft.dft(da, shift=False, window="hann", detrend="constant")
         dim = da.dims
         window = (
             sps.windows.hann(N, sym=False)
@@ -213,7 +213,7 @@ class TestfftReal(object):
         dx = float(da.x[1] - da.x[0]) if "x" in da.dims else 1
 
         # defaults with no keyword args
-        ft = xrft.fft(da, real_dim="x", detrend="constant")
+        ft = xrft.dft(da, real_dim="x", detrend="constant")
         # check that the frequency dimension was created properly
         assert ft.dims == ("freq_x",)
         # check that the coords are correct
@@ -248,7 +248,7 @@ class TestfftReal(object):
         dx = float(da.x[1] - da.x[0])
         dy = float(da.y[1] - da.y[0])
 
-        daft = xrft.fft(da, real_dim="x")
+        daft = xrft.dft(da, real_dim="x")
         npt.assert_almost_equal(
             daft.values, np.fft.rfftn(da.transpose("y", "x")).transpose()
         )
