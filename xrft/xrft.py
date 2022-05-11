@@ -896,7 +896,7 @@ def cross_phase(da1, da2, dim=None, true_phase=False, **kwargs):
             + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
             + "with numpy-like behavior where the coordinates are disregarded."
         )
-        warnings.warn(msg, FutureWarning)
+        warnings.warn(msg, UserWarning)
 
     cp = xr.ufuncs.angle(
         cross_spectrum(da1, da2, dim=dim, true_phase=true_phase, **kwargs)
