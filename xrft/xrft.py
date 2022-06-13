@@ -28,8 +28,6 @@ __all__ = [
     "isotropize",
     "isotropic_power_spectrum",
     "isotropic_cross_spectrum",
-    "isotropic_powerspectrum",
-    "isotropic_crossspectrum",
     "fit_loglog",
 ]
 
@@ -277,8 +275,8 @@ def fft(
     shift=True,
     detrend=None,
     window=None,
-    true_phase=False,
-    true_amplitude=False,
+    true_phase=True,
+    true_amplitude=True,
     chunks_to_segments=False,
     prefix="freq_",
     **kwargs,
@@ -332,10 +330,6 @@ def fft(
     daft : `xarray.DataArray`
         The output of the Fourier transformation, with appropriate dimensions.
     """
-
-    if not true_phase and not true_amplitude:
-        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.fft to preserve the theoretical phasing and amplitude of Fourier Transform. Consider using xrft.fft to ensure future compatibility with numpy.fft like behavior and to deactivate this warning."
-        warnings.warn(msg, FutureWarning)
 
     if dim is None:
         dim = list(da.dims)
@@ -474,8 +468,8 @@ def ifft(
     dim=None,
     real_dim=None,
     shift=True,
-    true_phase=False,
-    true_amplitude=False,
+    true_phase=True,
+    true_amplitude=True,
     chunks_to_segments=False,
     prefix="freq_",
     lag=None,
@@ -526,10 +520,6 @@ def ifft(
     da : `xarray.DataArray`
         The output of the Inverse Fourier transformation, with appropriate dimensions.
     """
-
-    if not true_phase and not true_amplitude:
-        msg = "Flags true_phase and true_amplitude will be set to True in future versions of xrft.ifft to preserve the theoretical phasing and amplitude of Inverse Fourier Transform. Consider using xrft.ifft to ensure future compatibility with numpy.ifft like behavior and to deactivate this warning."
-        warnings.warn(msg, FutureWarning)
 
     if dim is None:
         dim = list(daft.dims)
@@ -773,7 +763,7 @@ def cross_spectrum(
     real_dim=None,
     scaling="density",
     window_correction=False,
-    true_phase=False,
+    true_phase=True,
     **kwargs,
 ):
     """
@@ -805,16 +795,12 @@ def cross_spectrum(
         If scaling = 'density', correct for the energy (integral) of the spectrum. This ensures, for example, that the power spectral density integrates to the square of the RMS of the signal (ie that Parseval's theorem is satisfied). Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction as it assumes that the signal being windowed is independent of the window. The correction becomes more accurate as the width of the window gets large in comparison with any noticeable period in the signal.
         If False, the spectrum gives a representation of the power in the windowed signal.
         Note that when True, Parseval's theorem may only be approximately satisfied.
+    true_phase : boolean
+        If True, the phase information is retained.
+        Set explicitly true_phase = False in cross_spectrum arguments list to ensure future compatibility
+        with numpy-like behavior where the coordinates are disregarded.
     kwargs : dict : see xrft.fft for argument list
     """
-
-    if not true_phase:
-        msg = (
-            "true_phase flag will be set to True in future version of xrft.fft possibly impacting cross_spectrum output. "
-            + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
-            + "with numpy-like behavior where the coordinates are disregarded."
-        )
-        warnings.warn(msg, FutureWarning)
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
@@ -885,7 +871,7 @@ def cross_spectrum(
     return cs
 
 
-def cross_phase(da1, da2, dim=None, true_phase=False, **kwargs):
+def cross_phase(da1, da2, dim=None, true_phase=True, **kwargs):
     """
     Calculates the cross-phase between da1 and da2.
 
@@ -902,15 +888,15 @@ def cross_phase(da1, da2, dim=None, true_phase=False, **kwargs):
         The data to be transformed
     da2 : `xarray.DataArray`
         The data to be transformed
+    dim : str or sequence of str, optional
+        The dimensions along which to take the transformation. If `None`, all
+        dimensions will be transformed.
+    true_phase : boolean
+        If True, the phase information is retained.
+        Set explicitly true_phase = False in cross_spectrum arguments list to ensure future compatibility
+        with numpy-like behavior where the coordinates are disregarded.
     kwargs : dict : see xrft.fft for argument list
     """
-    if not true_phase:
-        msg = (
-            "true_phase flag will be set to True in future version of xrft.fft possibly impacting cross_phase output. "
-            + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
-            + "with numpy-like behavior where the coordinates are disregarded."
-        )
-        warnings.warn(msg, FutureWarning)
 
     cp = xr.ufuncs.angle(
         cross_spectrum(da1, da2, dim=dim, true_phase=true_phase, **kwargs)
@@ -993,7 +979,7 @@ def _groupby_bins_agg(
     return result
 
 
-def isotropize(ps, fftdim, nfactor=4, truncate=False, complx=False):
+def isotropize(ps, fftdim, nfactor=4, truncate=True, complx=False):
     """
     Isotropize a 2D power spectrum or cross spectrum
     by taking an azimuthal average.
@@ -1035,11 +1021,7 @@ def isotropize(ps, fftdim, nfactor=4, truncate=False, complx=False):
             kmax = k.max()
         kr = kr.where(kr <= kmax)
     else:
-        msg = (
-            "The flag `truncate` will be set to True by default in future version "
-            + "in order to truncate the isotropic wavenumber larger than the "
-            + "Nyquist wavenumber."
-        )
+        msg = "Isotropic wavenumber larger than the " + "Nyquist wavenumber may result."
         warnings.warn(msg, FutureWarning)
 
     if complx:
@@ -1059,18 +1041,6 @@ def isotropize(ps, fftdim, nfactor=4, truncate=False, complx=False):
         return (iso_ps * iso_ps.freq_r).dropna("freq_r")
     else:
         return iso_ps * iso_ps.freq_r
-
-
-def isotropic_powerspectrum(*args, **kwargs):  # pragma: no cover
-    """
-    Deprecated function. See isotropic_power_spectrum doc
-    """
-    msg = (
-        "This function has been renamed and will disappear in the future."
-        + " Please use isotropic_power_spectrum instead"
-    )
-    warnings.warn(msg, Warning)
-    return isotropic_power_spectrum(*args, **kwargs)
 
 
 def isotropic_power_spectrum(
@@ -1156,18 +1126,6 @@ def isotropic_power_spectrum(
     fftdim = ["freq_" + d for d in dim]
 
     return isotropize(ps, fftdim, nfactor=nfactor, truncate=truncate)
-
-
-def isotropic_crossspectrum(*args, **kwargs):  # pragma: no cover
-    """
-    Deprecated function. See isotropic_cross_spectrum doc
-    """
-    msg = (
-        "This function has been renamed and will disappear in the future."
-        + " Please use isotropic_cross_spectrum instead"
-    )
-    warnings.warn(msg, Warning)
-    return isotropic_cross_spectrum(*args, **kwargs)
 
 
 def isotropic_cross_spectrum(
