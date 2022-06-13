@@ -871,7 +871,7 @@ def cross_spectrum(
     return cs
 
 
-def cross_phase(da1, da2, dim=None, true_phase=False, **kwargs):
+def cross_phase(da1, da2, dim=None, true_phase=True, **kwargs):
     """
     Calculates the cross-phase between da1 and da2.
 
@@ -888,15 +888,15 @@ def cross_phase(da1, da2, dim=None, true_phase=False, **kwargs):
         The data to be transformed
     da2 : `xarray.DataArray`
         The data to be transformed
+    dim : str or sequence of str, optional
+        The dimensions along which to take the transformation. If `None`, all
+        dimensions will be transformed.
+    true_phase : boolean
+        If True, the phase information is retained.
+        Set explicitly true_phase = False in cross_spectrum arguments list to ensure future compatibility
+        with numpy-like behavior where the coordinates are disregarded.
     kwargs : dict : see xrft.fft for argument list
     """
-    if not true_phase:
-        msg = (
-            "true_phase flag will be set to True in future version of xrft.fft possibly impacting cross_phase output. "
-            + "Set explicitely true_phase = False in cross_spectrum arguments list to ensure future compatibility "
-            + "with numpy-like behavior where the coordinates are disregarded."
-        )
-        warnings.warn(msg, UserWarning)
 
     cp = xr.ufuncs.angle(
         cross_spectrum(da1, da2, dim=dim, true_phase=true_phase, **kwargs)
