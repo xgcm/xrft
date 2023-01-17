@@ -353,10 +353,10 @@ def fft(
                 real_dim
             ]  # real dim has to be moved or added at the end !
 
-    if not np.all([is_numeric_dtype(da.coords[d]) for d in dim]): # checking if coodinates are numerical
-        raise ValueError(
-            "All transformed dimensions must have numerical coordinates."
-        )
+    if not np.all(
+        [is_numeric_dtype(da.coords[d]) for d in dim]
+    ):  # checking if coodinates are numerical
+        raise ValueError("All transformed dimensions must have numerical coordinates.")
 
     if chunks_to_segments:
         da = _stack_chunks(da, dim)
@@ -548,10 +548,10 @@ def ifft(
                 real_dim
             ]  # real dim has to be moved or added at the end !
 
-    if not np.all([is_numeric_dtype(da.coords[d]) for d in dim]): # checking if coodinates are numerical
-        raise ValueError(
-            "All transformed dimensions must have numerical coordinates."
-        )
+    if not np.all(
+        [is_numeric_dtype(da.coords[d]) for d in dim]
+    ):  # checking if coodinates are numerical
+        raise ValueError("All transformed dimensions must have numerical coordinates.")
 
     if lag is None:
         lag = [daft[d].attrs.get("direct_lag", 0.0) for d in dim]
