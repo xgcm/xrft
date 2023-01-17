@@ -549,7 +549,7 @@ def ifft(
             ]  # real dim has to be moved or added at the end !
 
     if not np.all(
-        [is_numeric_dtype(da.coords[d]) for d in dim]
+        [is_numeric_dtype(daft.coords[d]) for d in dim]
     ):  # checking if coodinates are numerical
         raise ValueError("All transformed dimensions must have numerical coordinates.")
 
