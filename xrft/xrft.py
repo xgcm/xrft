@@ -15,7 +15,7 @@ import scipy.signal as sps
 import scipy.linalg as spl
 
 from .detrend import detrend as _detrend
-
+from pandas.api.types import is_numeric_dtype
 
 __all__ = [
     "fft",
@@ -330,8 +330,6 @@ def fft(
     daft : `xarray.DataArray`
         The output of the Fourier transformation, with appropriate dimensions.
     """
-    from pandas.api.types import is_numeric_dtype
-
     if dim is None:
         dim = list(da.dims)
     else:
@@ -526,8 +524,6 @@ def ifft(
     da : `xarray.DataArray`
         The output of the Inverse Fourier transformation, with appropriate dimensions.
     """
-    from pandas.api.types import is_numeric_dtype
-
     if dim is None:
         dim = list(daft.dims)
     else:
