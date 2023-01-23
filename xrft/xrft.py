@@ -898,8 +898,8 @@ def cross_phase(da1, da2, dim=None, true_phase=True, **kwargs):
     kwargs : dict : see xrft.fft for argument list
     """
 
-    cp = xr.ufuncs.angle(
-        cross_spectrum(da1, da2, dim=dim, true_phase=true_phase, **kwargs)
+    cp = xr.apply_ufunc(
+        np.angle, cross_spectrum(da1, da2, dim=dim, true_phase=true_phase, **kwargs)
     )
 
     if da1.name and da2.name:
