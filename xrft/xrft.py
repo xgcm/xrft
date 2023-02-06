@@ -15,7 +15,7 @@ import scipy.signal as sps
 import scipy.linalg as spl
 
 from .detrend import detrend as _detrend
-
+from pandas.api.types import is_numeric_dtype
 
 __all__ = [
     "fft",
@@ -330,7 +330,6 @@ def fft(
     daft : `xarray.DataArray`
         The output of the Fourier transformation, with appropriate dimensions.
     """
-
     if dim is None:
         dim = list(da.dims)
     else:
@@ -351,6 +350,11 @@ def fft(
             dim = [d for d in dim if d != real_dim] + [
                 real_dim
             ]  # real dim has to be moved or added at the end !
+
+    if not np.all(
+        [is_numeric_dtype(da.coords[d]) for d in dim]
+    ):  # checking if coodinates are numerical
+        raise ValueError("All transformed dimensions must have numerical coordinates.")
 
     if chunks_to_segments:
         da = _stack_chunks(da, dim)
@@ -520,7 +524,6 @@ def ifft(
     da : `xarray.DataArray`
         The output of the Inverse Fourier transformation, with appropriate dimensions.
     """
-
     if dim is None:
         dim = list(daft.dims)
     else:
@@ -540,6 +543,12 @@ def ifft(
             dim = [d for d in dim if d != real_dim] + [
                 real_dim
             ]  # real dim has to be moved or added at the end !
+
+    if not np.all(
+        [is_numeric_dtype(daft.coords[d]) for d in dim]
+    ):  # checking if coodinates are numerical
+        raise ValueError("All transformed dimensions must have numerical coordinates.")
+
     if lag is None:
         lag = [daft[d].attrs.get("direct_lag", 0.0) for d in dim]
         msg = "Default ifft's behaviour (lag=None) changed! Default value of lag was zero (centered output coordinates) and is now set to transformed coordinate's attribute: 'direct_lag'."
