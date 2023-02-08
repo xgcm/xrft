@@ -15,7 +15,7 @@ import scipy.signal as sps
 import scipy.linalg as spl
 
 from .detrend import detrend as _detrend
-from pandas.api.types import is_numeric_dtype
+from pandas.api.types import is_numeric_dtype, is_datetime64_any_dtype
 
 __all__ = [
     "fft",
@@ -352,9 +352,14 @@ def fft(
             ]  # real dim has to be moved or added at the end !
 
     if not np.all(
-        [is_numeric_dtype(da.coords[d]) for d in dim]
-    ):  # checking if coodinates are numerical
-        raise ValueError("All transformed dimensions must have numerical coordinates.")
+        [
+            (is_numeric_dtype(da.coords[d]) or is_datetime64_any_dtype(da.coords[d]))
+            for d in dim
+        ]
+    ):  # checking if coodinates are numerical or datetime
+        raise ValueError(
+            "All transformed dimensions coordinates must be numerical or datetime."
+        )
 
     if chunks_to_segments:
         da = _stack_chunks(da, dim)
@@ -545,9 +550,17 @@ def ifft(
             ]  # real dim has to be moved or added at the end !
 
     if not np.all(
-        [is_numeric_dtype(daft.coords[d]) for d in dim]
-    ):  # checking if coodinates are numerical
-        raise ValueError("All transformed dimensions must have numerical coordinates.")
+        [
+            (
+                is_numeric_dtype(daft.coords[d])
+                or is_datetime64_any_dtype(daft.coords[d])
+            )
+            for d in dim
+        ]
+    ):  # checking if coodinates are numerical or datetime
+        raise ValueError(
+            "All transformed dimensions coordinates must be numerical or datetime."
+        )
 
     if lag is None:
         lag = [daft[d].attrs.get("direct_lag", 0.0) for d in dim]

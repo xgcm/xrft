@@ -1344,3 +1344,21 @@ def test_nondim_coords():
         xrft.power_spectrum(da)
 
     xrft.power_spectrum(da, dim=["time", "y"])
+
+
+def test_non_numerical_or_datetime_coords():
+    """Error should be raised if there are non-numerical or non-datetime coordinate"""
+    da = xr.DataArray(
+        np.random.rand(2, 5, 3),
+        dims=["time", "x", "y"],
+        coords={
+            "time": np.array(["2019-04-18", "2019-04-19"], dtype="datetime64"),
+            "x": range(5),
+            "y": ["a", "b", "c"],
+        },
+    )
+
+    with pytest.raises(ValueError):
+        xrft.power_spectrum(da)
+
+    xrft.power_spectrum(da, dim=["time", "x"])
