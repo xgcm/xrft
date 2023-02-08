@@ -230,9 +230,9 @@ def _lag_coord(coord):
         decoded_time = cftime.date2num(lag, ref_units, calendar)
         return decoded_time
     elif pd.api.types.is_datetime64_dtype(v0):
-        return lag.astype("timedelta64[s]").astype("f8").data
+        return lag.astype("timedelta64[s]").astype("f8")
     else:
-        return lag.data
+        return lag
 
 
 def dft(
@@ -353,7 +353,11 @@ def fft(
 
     if not np.all(
         [
-            (is_numeric_dtype(da.coords[d]) or is_datetime64_any_dtype(da.coords[d]))
+            (
+                is_numeric_dtype(da.coords[d])
+                or is_datetime64_any_dtype(da.coords[d])
+                or bool(getattr(da.coords[d][0].item(), "calendar", False))
+            )
             for d in dim
         ]
     ):  # checking if coodinates are numerical or datetime
@@ -461,7 +465,7 @@ def fft(
                 dims=up_dim,
                 coords={up_dim: newcoords[up_dim]},
             )  # taking advantage of xarray broadcasting and ordered coordinates
-            daft[up_dim].attrs.update({"direct_lag": lag.obj})
+            daft[up_dim].attrs.update({"direct_lag": lag})
 
     if true_amplitude:
         daft = daft * np.prod(delta_x)
@@ -554,6 +558,7 @@ def ifft(
             (
                 is_numeric_dtype(daft.coords[d])
                 or is_datetime64_any_dtype(daft.coords[d])
+                or bool(getattr(daft.coords[d][0].item(), "calendar", False))
             )
             for d in dim
         ]
