@@ -155,6 +155,8 @@ def pad(
     """
     # Redefine pad_width if pad_width_kwargs were passed
     pad_width = either_dict_or_kwargs(pad_width, pad_width_kwargs, "pad")
+    # Check for bad coordinates
+    _check_bad_coords(da, pad_width.keys())
     # Pad the array using the xarray.DataArray.pad method
     padded_da = da.pad(
         pad_width,
@@ -176,6 +178,40 @@ def pad(
         padded_da.coords[dim].attrs.update({"pad_width": pad_width[dim]})
     # Return padded array
     return padded_da
+
+
+def _check_bad_coords(da, padding_coordinates):
+    """
+    Check if the DataArray contains bad coordinates
+
+    A bad coordinate is defined as an additional coordinate that shares at
+    least one of the dimensions along which the grid will be padded
+
+    Parameters
+    ----------
+    da : :class:`xarray.DataArray`
+        Array to be padded.
+    padding_coordinates : list of str
+        List containing the coordinates along which the grid will be padded.
+
+    Raises
+    ------
+    ValueError
+        If any bad coordinate is found in the DataArray.
+    """
+    # Initialize empty list for bad coords
+    bad_coords = []
+    # Start checking for bad coordinates in the array
+    for coord in padding_coordinates:
+        # Get dimension of the current padding coordinate
+        dim = da[coord].dims[0]
+        bad_coords += [c for c in da.coords if dim in da[c].dims and c != coord]
+    if bad_coords:
+        bad_coords = "'" + "', '".join(bad_coords) + "'"
+        raise ValueError(
+            "Please, drop the following coordinates from the passed DataArray "
+            + f"before trying to pad it: {bad_coords}."
+        )
 
 
 def _pad_coordinates(coords, pad_width):
