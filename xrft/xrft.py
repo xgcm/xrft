@@ -269,10 +269,10 @@ def idft(
 
 def _is_valid_fft_coord(coord):
     return (
-                is_numeric_dtype(coord)
-                or is_datetime64_any_dtype(coord)
-                or bool(getattr(coord[0].item(), "calendar", False))
-            )
+        is_numeric_dtype(coord)
+        or is_datetime64_any_dtype(coord)
+        or bool(getattr(coord[0].item(), "calendar", False))
+    )
 
 
 def _check_valid_fft_coords(da, dim):
@@ -377,7 +377,7 @@ def fft(
     if "real" in kwargs:
         real_dim = kwargs.get("real")
         warnings.warn(_real_flag_warning, FutureWarning)
-        
+
     if real_dim is not None:
         if real_dim not in da.dims:
             raise ValueError(
@@ -595,8 +595,8 @@ def ifft(
     axis_num = [daft.get_axis_num(d) for d in dim]
 
     N = [daft.shape[n] for n in axis_num]
-    
-    daft = daft.sortby(dim) # sort by coordinates to handle fftshifted grids
+
+    daft = daft.sortby(dim)  # sort by coordinates to handle fftshifted grids
     delta_x = [_get_coordinate_spacing(daft[d], spacing_tol) for d in dim]
     for d in dim:
         l = _lag_coord(daft[d]) if d is not real_dim else daft[d][0].data
@@ -654,7 +654,7 @@ def _window_correction_factor(da, dim, scaling, window):
         )
     windows, _ = _apply_window(da, dim, window_type=window)
     if scaling == "density":
-        return (windows**2).mean()
+        return (windows ** 2).mean()
     elif scaling == "spectrum":
         return windows.mean() ** 2
     else:
@@ -666,13 +666,15 @@ def _psd_scaling_factor(ps, dims, scaling):
     if scaling == "density":
         return fs
     elif scaling == "spectrum":
-        return fs**2
+        return fs ** 2
     else:
         raise ValueError("Unknown {} scaling flag".format(scaling))
 
 
 def _psd_real_dim_scaling(da, ps, real_dim, updated_dims):
-    real = next(d for d in updated_dims if d.endswith(real_dim))  # find transformed real dimension
+    real = next(
+        d for d in updated_dims if d.endswith(real_dim)
+    )  # find transformed real dimension
     f = np.full(ps.sizes[real], 2.0)
     if len(da[real_dim]) % 2 == 0:
         f[0], f[-1] = 1.0, 1.0
@@ -745,7 +747,7 @@ def power_spectrum(
         if window_correction:
             ps /= _window_correction_factor(da, dim, scaling, kwargs.get("window"))
         ps *= _psd_scaling_factor(ps, updated_dims, scaling)
-            
+
     return ps
 
 
@@ -976,7 +978,7 @@ def isotropize(ps, fftdim, nfactor=4, truncate=True, complx=False):
 
     N = [k.size, l.size]
     nbins = int(min(N) / nfactor)
-    freq_r = np.sqrt(k**2 + l**2).rename("freq_r")
+    freq_r = np.sqrt(k ** 2 + l ** 2).rename("freq_r")
     kr = _groupby_bins_agg(freq_r, freq_r, bins=nbins, func="mean")
 
     if truncate:

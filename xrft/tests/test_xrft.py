@@ -432,7 +432,7 @@ class TestSpectrum(object):
             ).mean("t_segment")
             # Check the amplitude correction
             # The factor of 0.5 is there because we're checking the two-sided spectrum
-            npt.assert_allclose(ps.sel(freq_t=fsig), 0.5 * A**2 / 2.0)
+            npt.assert_allclose(ps.sel(freq_t=fsig), 0.5 * A ** 2 / 2.0)
 
         da = xr.DataArray(
             np.random.rand(2, N, N),
@@ -470,9 +470,9 @@ class TestSpectrum(object):
         ### Normalized
         ps = xrft.power_spectrum(da, dim=["y", "x"], window="hann", detrend="constant")
         daft = xrft.fft(da, dim=["y", "x"], window="hann", detrend="constant")
-        test = np.real(daft * np.conj(daft)) / N**4
+        test = np.real(daft * np.conj(daft)) / N ** 4
         dk = np.diff(np.fft.fftfreq(N, 1.0))[0]
-        test /= dk**2
+        test /= dk ** 2
         npt.assert_almost_equal(ps.values, test)
         npt.assert_almost_equal(np.ma.masked_invalid(ps).mask.sum(), 0.0)
 
@@ -525,10 +525,10 @@ class TestSpectrum(object):
         cs = xrft.cross_spectrum(
             da, da2, dim=dim, shift=True, window="hann", detrend="constant"
         )
-        test = (daft * np.conj(daft2)) / N**4
+        test = (daft * np.conj(daft2)) / N ** 4
 
         dk = np.diff(np.fft.fftfreq(N, 1.0))[0]
-        test /= dk**2
+        test /= dk ** 2
         npt.assert_almost_equal(cs.values, test)
         npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.0)
 
@@ -541,10 +541,10 @@ class TestSpectrum(object):
             detrend="constant",
             window_correction=True,
         )
-        test = (daft * np.conj(daft2)) / N**4
+        test = (daft * np.conj(daft2)) / N ** 4
         window, _ = _apply_window(da, dim, window_type="hann")
         dk = np.diff(np.fft.fftfreq(N, 1.0))[0]
-        test /= dk**2 * (window**2).mean()
+        test /= dk ** 2 * (window ** 2).mean()
 
         npt.assert_almost_equal(cs.values, test)
         npt.assert_almost_equal(np.ma.masked_invalid(cs).mask.sum(), 0.0)
@@ -721,7 +721,7 @@ def test_parseval(chunks_to_segments):
     # Check that the (rectangular) integral of the spectrum matches the energy
     npt.assert_almost_equal(
         (1 / delta_xy) * ps.mean(fftdim).values,
-        (da_prime**2).mean(dim).values,
+        (da_prime ** 2).mean(dim).values,
         decimal=5,
     )
 
@@ -844,7 +844,7 @@ def synthetic_field(N, dL, amp, s):
     k = np.fft.fftshift(np.fft.fftfreq(N, dL))
     l = np.fft.fftshift(np.fft.fftfreq(N, dL))
     kk, ll = np.meshgrid(k, l)
-    K = np.sqrt(kk**2 + ll**2)
+    K = np.sqrt(kk ** 2 + ll ** 2)
 
     ########
     # amplitude
@@ -946,11 +946,11 @@ def test_isotropize(truncate, N=512):
 
     def _test_iso(theta):
         ps = xrft.power_spectrum(theta, spacing_tol=spacing_tol, dim=dims)
-        ps = np.sqrt(ps.freq_x**2 + ps.freq_y**2)
+        ps = np.sqrt(ps.freq_x ** 2 + ps.freq_y ** 2)
         ps_iso = xrft.isotropize(ps, fftdim, nfactor=nfactor, truncate=truncate)
         assert len(ps_iso.dims) == 1
         assert ps_iso.dims[0] == "freq_r"
-        npt.assert_allclose(ps_iso, ps_iso.freq_r**2, atol=0.02)
+        npt.assert_allclose(ps_iso, ps_iso.freq_r ** 2, atol=0.02)
 
     # np data
     theta = synthetic_field_xr(N, dL, amp, s)
@@ -1255,9 +1255,10 @@ def test_ifft_fft():
     npt.assert_allclose(s.data, IFTs.data)
 
     # Check unshifted fft
-    FTs = xrft.fft(s, shift=False) 
+    FTs = xrft.fft(s, shift=False)
     IFTs = xrft.ifft(FTs, shift=True)  # Shift=True is mandatory for the assestion below
     npt.assert_allclose(s.data, IFTs.data)
+
 
 def test_idft_dft():
     """
