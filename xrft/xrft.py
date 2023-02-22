@@ -289,6 +289,22 @@ def move_to_end(lst, el):
     return [i for i in lst if i != el] + [el]
 
 
+def _get_coordinate_spacing(coord, spacing_tol):
+    diff = _diff_coord(coord)
+    delta = np.abs(diff[0])
+    if not np.allclose(diff, diff[0], rtol=spacing_tol):
+        raise ValueError(
+            "Can't take Fourier transform because "
+            "coodinate %s is not evenly spaced" % coord.name
+        )
+    if delta == 0.0:
+        raise ValueError(
+            "Can't take Fourier transform because spacing in coordinate %s is zero"
+            % coord.name
+        )
+    return delta
+
+
 def fft(
     da,
     spacing_tol=1e-3,
@@ -389,9 +405,7 @@ def fft(
         fft_fn = fftm.rfftn
 
     # the axes along which to take ffts
-    axis_num = [
-        da.get_axis_num(d) for d in dim
-    ]  # if there is a real dim , it has to be the last one
+    axis_num = [da.get_axis_num(d) for d in dim]
 
     N = [da.shape[n] for n in axis_num]
 
@@ -406,25 +420,8 @@ def fft(
                 f"Please drop these coordinates (`.drop({bad_coords}`) before invoking xrft."
             )
 
-    # verify even spacing of input coordinates
-    delta_x = []
-    lag_x = []
-    for d in dim:
-        diff = _diff_coord(da[d])
-        delta = np.abs(diff[0])
-        lag = _lag_coord(da[d])
-        if not np.allclose(diff, diff[0], rtol=spacing_tol):
-            raise ValueError(
-                "Can't take Fourier transform because "
-                "coodinate %s is not evenly spaced" % d
-            )
-        if delta == 0.0:
-            raise ValueError(
-                "Can't take Fourier transform because spacing in coordinate %s is zero"
-                % d
-            )
-        delta_x.append(delta)
-        lag_x.append(lag)
+    delta_x = [_get_coordinate_spacing(da[d], spacing_tol) for d in dim]
+    lag_x = [_lag_coord(da[d]) for d in dim]
 
     if detrend is not None:
         if detrend == "linear":
@@ -598,40 +595,16 @@ def ifft(
     axis_num = [daft.get_axis_num(d) for d in dim]
 
     N = [daft.shape[n] for n in axis_num]
-
-    # verify even spacing of input coordinates (It handle fftshifted grids)
-    delta_x = []
+    
+    daft = daft.sortby(dim) # sort by coordinates to handle fftshifted grids
+    delta_x = [_get_coordinate_spacing(daft[d], spacing_tol) for d in dim]
     for d in dim:
-        diff = _diff_coord(daft[d])
-        delta = np.abs(diff[0])
         l = _lag_coord(daft[d]) if d is not real_dim else daft[d][0].data
-        if not np.allclose(
-            diff, delta, rtol=spacing_tol
-        ):  # means that input is not on regular increasing grid
-            reordered_coord = daft[d].copy()
-            reordered_coord = reordered_coord.sortby(d)
-            diff = _diff_coord(reordered_coord)
-            l = _lag_coord(reordered_coord)
-            if np.allclose(
-                diff, diff[0], rtol=spacing_tol
-            ):  # means that input is on fftshifted grid
-                daft = daft.sortby(d)  # reordering the input
-            else:
-                raise ValueError(
-                    "Can't take Fourier transform because "
-                    "coodinate %s is not evenly spaced" % d
-                )
         if np.abs(l) > spacing_tol:
             raise ValueError(
                 "Inverse Fourier Transform can not be computed because coordinate %s is not centered on zero frequency"
                 % d
             )
-        if delta == 0.0:
-            raise ValueError(
-                "Can't take Inverse Fourier transform because spacing in coordinate %s is zero"
-                % d
-            )
-        delta_x.append(delta)
 
     axis_shift = [
         daft.get_axis_num(d) for d in dim if d is not real_dim
