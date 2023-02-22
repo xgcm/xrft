@@ -266,6 +266,12 @@ def idft(
         daft, dim=dim, true_phase=true_phase, true_amplitude=true_amplitude, **kwargs
     )
 
+def _is_valid_fft_coord(coord):
+    return (
+                is_numeric_dtype(coord)
+                or is_datetime64_any_dtype(coord)
+                or bool(getattr(coord[0].item(), "calendar", False))
+            )
 
 def fft(
     da,
@@ -351,16 +357,7 @@ def fft(
                 real_dim
             ]  # real dim has to be moved or added at the end !
 
-    if not np.all(
-        [
-            (
-                is_numeric_dtype(da.coords[d])
-                or is_datetime64_any_dtype(da.coords[d])
-                or bool(getattr(da.coords[d][0].item(), "calendar", False))
-            )
-            for d in dim
-        ]
-    ):  # checking if coodinates are numerical or datetime
+    if not np.all([_is_valid_fft_coord(da.coords[d]) for d in dim]):
         raise ValueError(
             "All transformed dimensions coordinates must be numerical or datetime."
         )
