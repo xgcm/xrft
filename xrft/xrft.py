@@ -282,9 +282,7 @@ def _check_valid_fft_coords(da, dim):
         )
 
 
-def _real_flag_warning():
-    msg = "`real` flag will be deprecated in future version of xrft.fft and replaced by `real_dim` flag."
-    warnings.warn(msg, FutureWarning)
+_real_flag_warning = "`real` flag will be deprecated in future version of xrft.fft and replaced by `real_dim` flag."
 
 
 def fft(
@@ -358,7 +356,7 @@ def fft(
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
-        _real_flag_warning()
+        warnings.warn(_real_flag_warning, FutureWarning)
         
     if real_dim is not None:
         if real_dim not in da.dims:
@@ -548,7 +546,7 @@ def ifft(
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
-        _real_flag_warning()
+        warnings.warn(_real_flag_warning, FutureWarning)
 
     if real_dim is not None:
         if real_dim not in daft.dims:
@@ -759,7 +757,7 @@ def power_spectrum(
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
-        _real_flag_warning()
+        warnings.warn(_real_flag_warning, FutureWarning)
 
     kwargs.update(
         {"true_amplitude": True, "true_phase": False}
@@ -830,7 +828,7 @@ def cross_spectrum(
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
-        _real_flag_warning()
+        warnings.warn(_real_flag_warning, FutureWarning)
 
     if "density" in kwargs:
         density = kwargs.pop("density")
