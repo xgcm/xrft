@@ -682,6 +682,30 @@ def ifft(
     )  # Do nothing if daft was not transposed
 
 
+def _window_correction_factor(da, dim, scaling, window):
+    if window is None:
+        raise ValueError(
+            "window_correction can only be applied when windowing is turned on."
+        )
+    windows, _ = _apply_window(da, dim, window_type=window)
+    if scaling == "density":
+        return (windows**2).mean()
+    elif scaling == "spectrum":
+        return windows.mean() ** 2
+    else:
+        raise ValueError("Unknown {} scaling flag".format(scaling))
+
+
+def _psd_scaling_factor(ps, dims, scaling):
+    fs = np.prod([float(ps[d].spacing) for d in dims])
+    if scaling == "density":
+        return fs
+    elif scaling == "spectrum":
+        return fs**2
+    else:
+        raise ValueError("Unknown {} scaling flag".format(scaling))
+
+
 def power_spectrum(
     da, dim=None, real_dim=None, scaling="density", window_correction=False, **kwargs
 ):
@@ -751,32 +775,11 @@ def power_spectrum(
             f[0] = 1.0
         ps = ps * xr.DataArray(f, dims=real, coords=ps[real].coords)
 
-    if scaling == "density":
+    if scaling != "false_density":  # Corresponds to density=False
         if window_correction:
-            if kwargs.get("window") == None:
-                raise ValueError(
-                    "window_correction can only be applied when windowing is turned on."
-                )
-            else:
-                windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
-                ps = ps / (windows**2).mean()
-        fs = np.prod([float(ps[d].spacing) for d in updated_dims])
-        ps *= fs
-    elif scaling == "spectrum":
-        if window_correction:
-            if kwargs.get("window") == None:
-                raise ValueError(
-                    "window_correction can only be applied when windowing is turned on."
-                )
-            else:
-                windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
-                ps = ps / windows.mean() ** 2
-        fs = np.prod([float(ps[d].spacing) for d in updated_dims])
-        ps *= fs**2
-    elif scaling == "false_density":  # Corresponds to density=False
-        pass
-    else:
-        raise ValueError("Unknown {} scaling flag".format(scaling))
+            ps /= _window_correction_factor(da, dim, scaling, kwargs.get("window"))
+        ps *= _psd_scaling_factor(ps, updated_dims, scaling)
+            
     return ps
 
 
@@ -866,32 +869,11 @@ def cross_spectrum(
             f[0] = 1.0
         cs = cs * xr.DataArray(f, dims=real, coords=cs[real].coords)
 
-    if scaling == "density":
+    if scaling != "false_density":  # Corresponds to density=False
         if window_correction:
-            if kwargs.get("window") == None:
-                raise ValueError(
-                    "window_correction can only be applied when windowing is turned on."
-                )
-            else:
-                windows, _ = _apply_window(da1, dim, window_type=kwargs.get("window"))
-                cs = cs / (windows**2).mean()
-        fs = np.prod([float(cs[d].spacing) for d in updated_dims])
-        cs *= fs
-    elif scaling == "spectrum":
-        if window_correction:
-            if kwargs.get("window") == None:
-                raise ValueError(
-                    "window_correction can only be applied when windowing is turned on."
-                )
-            else:
-                windows, _ = _apply_window(da1, dim, window_type=kwargs.get("window"))
-                cs = cs / windows.mean() ** 2
-        fs = np.prod([float(cs[d].spacing) for d in updated_dims])
-        cs *= fs**2
-    elif scaling == "false_density":  # Corresponds to density=False
-        pass
-    else:
-        raise ValueError("Unknown {} scaling flag".format(scaling))
+            cs /= _window_correction_factor(da1, dim, scaling, kwargs.get("window"))
+        cs *= _psd_scaling_factor(cs, updated_dims, scaling)
+
     return cs
 
 
