@@ -285,6 +285,10 @@ def _check_valid_fft_coords(da, dim):
 _real_flag_warning = "`real` flag will be deprecated in future version of xrft.fft and replaced by `real_dim` flag."
 
 
+def move_to_end(lst, el):
+    return [i for i in lst if i != el] + [el]
+
+
 def fft(
     da,
     spacing_tol=1e-3,
@@ -364,9 +368,7 @@ def fft(
                 "The dimension along which real FT is taken must be one of the existing dimensions."
             )
         else:
-            dim = [d for d in dim if d != real_dim] + [
-                real_dim
-            ]  # real dim has to be moved or added at the end !
+            dim = move_to_end(dim, real_dim)
 
     _check_valid_fft_coords(da, dim)
 
@@ -376,9 +378,7 @@ def fft(
     rawdims = da.dims  # take care of segmented dimesions, if any
 
     if real_dim is not None:
-        da = da.transpose(
-            *[d for d in da.dims if d not in [real_dim]] + [real_dim]
-        )  # dimension for real transformed is moved at the end
+        da = da.transpose(*move_to_end(da.dims, real_dim))
 
     fftm = _fft_module(da)
 
@@ -554,9 +554,7 @@ def ifft(
                 "The dimension along which real IFT is taken must be one of the existing dimensions."
             )
         else:
-            dim = [d for d in dim if d != real_dim] + [
-                real_dim
-            ]  # real dim has to be moved or added at the end !
+            dim = move_to_end(dim, real_dim)
 
     _check_valid_fft_coords(daft, dim)
 
@@ -587,9 +585,7 @@ def ifft(
     rawdims = daft.dims  # take care of segmented dimensions, if any
 
     if real_dim is not None:
-        daft = daft.transpose(
-            *[d for d in daft.dims if d not in [real_dim]] + [real_dim]
-        )  # dimension for real transformed is moved at the end
+        daft = daft.transpose(*move_to_end(daft.dims, real_dim))
 
     fftm = _fft_module(daft)
 
