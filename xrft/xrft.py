@@ -266,12 +266,18 @@ def idft(
         daft, dim=dim, true_phase=true_phase, true_amplitude=true_amplitude, **kwargs
     )
 
+
 def _is_valid_fft_coord(coord):
     return (
                 is_numeric_dtype(coord)
                 or is_datetime64_any_dtype(coord)
                 or bool(getattr(coord[0].item(), "calendar", False))
             )
+
+def _real_flag_warning():
+    msg = "`real` flag will be deprecated in future version of xrft.fft and replaced by `real_dim` flag."
+    warnings.warn(msg, FutureWarning)
+
 
 def fft(
     da,
@@ -344,9 +350,8 @@ def fft(
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
-        msg = "`real` flag will be deprecated in future version of xrft.fft and replaced by `real_dim` flag."
-        warnings.warn(msg, FutureWarning)
-
+        _real_flag_warning()
+        
     if real_dim is not None:
         if real_dim not in da.dims:
             raise ValueError(
@@ -538,8 +543,8 @@ def ifft(
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
-        msg = "`real` flag will be deprecated in future version of xrft.ifft and replaced by `real_dim` flag."
-        warnings.warn(msg, FutureWarning)
+        _real_flag_warning()
+
     if real_dim is not None:
         if real_dim not in daft.dims:
             raise ValueError(
@@ -761,8 +766,7 @@ def power_spectrum(
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
-        msg = "`real` flag will be deprecated in future version of xrft.power_spectrum and replaced by `real_dim` flag."
-        warnings.warn(msg, FutureWarning)
+        _real_flag_warning()
 
     kwargs.update(
         {"true_amplitude": True, "true_phase": False}
@@ -833,9 +837,8 @@ def cross_spectrum(
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
-        msg = "`real` flag will be deprecated in future version of xrft.cross_spectrum and replaced by `real_dim` flag."
-        warnings.warn(msg, FutureWarning)
-
+        _real_flag_warning()
+        
     if "density" in kwargs:
         density = kwargs.pop("density")
         msg = (
