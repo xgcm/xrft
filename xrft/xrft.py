@@ -274,6 +274,14 @@ def _is_valid_fft_coord(coord):
                 or bool(getattr(coord[0].item(), "calendar", False))
             )
 
+
+def _check_valid_fft_coords(da, dim):
+    if not np.all([_is_valid_fft_coord(da.coords[d]) for d in dim]):
+        raise ValueError(
+            "All transformed dimensions coordinates must be numerical or datetime."
+        )
+
+
 def _real_flag_warning():
     msg = "`real` flag will be deprecated in future version of xrft.fft and replaced by `real_dim` flag."
     warnings.warn(msg, FutureWarning)
@@ -362,10 +370,7 @@ def fft(
                 real_dim
             ]  # real dim has to be moved or added at the end !
 
-    if not np.all([_is_valid_fft_coord(da.coords[d]) for d in dim]):
-        raise ValueError(
-            "All transformed dimensions coordinates must be numerical or datetime."
-        )
+    _check_valid_fft_coords(da, dim)
 
     if chunks_to_segments:
         da = _stack_chunks(da, dim)
@@ -555,19 +560,7 @@ def ifft(
                 real_dim
             ]  # real dim has to be moved or added at the end !
 
-    if not np.all(
-        [
-            (
-                is_numeric_dtype(daft.coords[d])
-                or is_datetime64_any_dtype(daft.coords[d])
-                or bool(getattr(daft.coords[d][0].item(), "calendar", False))
-            )
-            for d in dim
-        ]
-    ):  # checking if coodinates are numerical or datetime
-        raise ValueError(
-            "All transformed dimensions coordinates must be numerical or datetime."
-        )
+    _check_valid_fft_coords(daft, dim)
 
     if lag is None:
         lag = [daft[d].attrs.get("direct_lag", 0.0) for d in dim]
@@ -838,7 +831,7 @@ def cross_spectrum(
     if "real" in kwargs:
         real_dim = kwargs.get("real")
         _real_flag_warning()
-        
+
     if "density" in kwargs:
         density = kwargs.pop("density")
         msg = (
