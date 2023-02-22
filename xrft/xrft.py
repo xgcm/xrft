@@ -706,6 +706,16 @@ def _psd_scaling_factor(ps, dims, scaling):
         raise ValueError("Unknown {} scaling flag".format(scaling))
 
 
+def _psd_real_dim_scaling(da, ps, real_dim, updated_dims):
+    real = next(d for d in updated_dims if d.endswith(real_dim))  # find transformed real dimension
+    f = np.full(ps.sizes[real], 2.0)
+    if len(da[real_dim]) % 2 == 0:
+        f[0], f[-1] = 1.0, 1.0
+    else:
+        f[0] = 1.0
+    return xr.DataArray(f, dims=real, coords=ps[real].coords)
+
+
 def power_spectrum(
     da, dim=None, real_dim=None, scaling="density", window_correction=False, **kwargs
 ):
@@ -765,15 +775,7 @@ def power_spectrum(
     ps = np.abs(daft) ** 2
 
     if real_dim is not None:
-        real = [d for d in updated_dims if real_dim == d[-len(real_dim) :]][
-            0
-        ]  # find transformed real dimension
-        f = np.full(ps.sizes[real], 2.0)
-        if len(da[real_dim]) % 2 == 0:
-            f[0], f[-1] = 1.0, 1.0
-        else:
-            f[0] = 1.0
-        ps = ps * xr.DataArray(f, dims=real, coords=ps[real].coords)
+        ps *= _psd_real_dim_scaling(da, ps, real_dim, updated_dims)
 
     if scaling != "false_density":  # Corresponds to density=False
         if window_correction:
@@ -859,15 +861,7 @@ def cross_spectrum(
     cs = daft1 * np.conj(daft2)
 
     if real_dim is not None:
-        real = [d for d in updated_dims if real_dim == d[-len(real_dim) :]][
-            0
-        ]  # find transformed real dimension
-        f = np.full(cs.sizes[real], 2.0)
-        if len(da1[real_dim]) % 2 == 0:
-            f[0], f[-1] = 1.0, 1.0
-        else:
-            f[0] = 1.0
-        cs = cs * xr.DataArray(f, dims=real, coords=cs[real].coords)
+        cs *= _psd_real_dim_scaling(da1, cs, real_dim, updated_dims)
 
     if scaling != "false_density":  # Corresponds to density=False
         if window_correction:
