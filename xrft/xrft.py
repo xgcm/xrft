@@ -654,7 +654,7 @@ def _window_correction_factor(da, dim, scaling, window):
         )
     windows, _ = _apply_window(da, dim, window_type=window)
     if scaling == "density":
-        return (windows ** 2).mean()
+        return (windows**2).mean()
     elif scaling == "spectrum":
         return windows.mean() ** 2
     else:
@@ -666,7 +666,7 @@ def _psd_scaling_factor(ps, dims, scaling):
     if scaling == "density":
         return fs
     elif scaling == "spectrum":
-        return fs ** 2
+        return fs**2
     else:
         raise ValueError("Unknown {} scaling flag".format(scaling))
 
@@ -978,7 +978,7 @@ def isotropize(ps, fftdim, nfactor=4, truncate=True, complx=False):
 
     N = [k.size, l.size]
     nbins = int(min(N) / nfactor)
-    freq_r = np.sqrt(k ** 2 + l ** 2).rename("freq_r")
+    freq_r = np.sqrt(k**2 + l**2).rename("freq_r")
     kr = _groupby_bins_agg(freq_r, freq_r, bins=nbins, func="mean")
 
     if truncate:
