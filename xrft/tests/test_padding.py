@@ -256,3 +256,39 @@ def test_pad_coordinates_no_round_coords(sample_no_round_coords):
     npt.assert_allclose(padded_coords["x"], np.linspace(-5, 15, 13))
     assert padded_coords["y"].size == 21
     npt.assert_allclose(padded_coords["y"], np.linspace(-4 - 8 / 3, 4 + 8 / 3, 21))
+
+
+# Add tests for catching bad coordinates before padding
+
+
+@pytest.fixture
+def sample_da_2d_with_bad_coord():
+    """
+    Defines a 2D sample xarray.DataArray with a bad coordinate
+
+    A bad coordinate is an additional coordinate that holds the same dimensions
+    that will be used for padding.
+    """
+    x = np.linspace(0, 10, 11)
+    y = np.linspace(-4, 4, 17)
+    z = np.arange(11 * 17, dtype=float).reshape(17, 11)
+    height = z / 2  # bad coordinate
+    dims = ("y", "x")
+    coords = {"x": ("x", x), "y": ("y", y), "height": (dims, height)}
+    return xr.DataArray(z, coords=coords, dims=dims)
+
+
+@pytest.mark.parametrize(
+    "pad_width",
+    [{"x": 3}, {"y": 5}, {"x": 2, "y": 4}],
+)
+def test_pad_with_extra_1d_coordinate(pad_width, sample_da_2d_with_bad_coord):
+    """
+    Test pad on a grid that has an extra dimension
+    """
+    msg = (
+        "Please, drop the following coordinates from the passed DataArray "
+        + f"before trying to pad it: 'height'."
+    )
+    with pytest.raises(ValueError, match=msg):
+        pad(sample_da_2d_with_bad_coord, pad_width=pad_width)
