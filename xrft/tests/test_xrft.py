@@ -1254,6 +1254,11 @@ def test_ifft_fft():
     IFTs = xrft.ifft(FTs, shift=True)  # Shift=True is mandatory for the assestion below
     npt.assert_allclose(s.data, IFTs.data)
 
+    # Check unshifted fft
+    FTs = xrft.fft(s, shift=False)
+    IFTs = xrft.ifft(FTs, shift=True)  # Shift=True is mandatory for the assestion below
+    npt.assert_allclose(s.data, IFTs.data)
+
 
 def test_idft_dft():
     """

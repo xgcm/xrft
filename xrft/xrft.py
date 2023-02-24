@@ -267,6 +267,44 @@ def idft(
     )
 
 
+def _is_valid_fft_coord(coord):
+    return (
+        is_numeric_dtype(coord)
+        or is_datetime64_any_dtype(coord)
+        or bool(getattr(coord[0].item(), "calendar", False))
+    )
+
+
+def _check_valid_fft_coords(da, dim):
+    if not np.all([_is_valid_fft_coord(da.coords[d]) for d in dim]):
+        raise ValueError(
+            "All transformed dimensions coordinates must be numerical or datetime."
+        )
+
+
+_real_flag_warning = "`real` flag will be deprecated in future version of xrft.fft and replaced by `real_dim` flag."
+
+
+def move_to_end(lst, el):
+    return [i for i in lst if i != el] + [el]
+
+
+def _get_coordinate_spacing(coord, spacing_tol):
+    diff = _diff_coord(coord)
+    delta = np.abs(diff[0])
+    if not np.allclose(diff, diff[0], rtol=spacing_tol):
+        raise ValueError(
+            "Can't take Fourier transform because "
+            "coodinate %s is not evenly spaced" % coord.name
+        )
+    if delta == 0.0:
+        raise ValueError(
+            "Can't take Fourier transform because spacing in coordinate %s is zero"
+            % coord.name
+        )
+    return delta
+
+
 def fft(
     da,
     spacing_tol=1e-3,
@@ -338,8 +376,7 @@ def fft(
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
-        msg = "`real` flag will be deprecated in future version of xrft.fft and replaced by `real_dim` flag."
-        warnings.warn(msg, FutureWarning)
+        warnings.warn(_real_flag_warning, FutureWarning)
 
     if real_dim is not None:
         if real_dim not in da.dims:
@@ -347,23 +384,9 @@ def fft(
                 "The dimension along which real FT is taken must be one of the existing dimensions."
             )
         else:
-            dim = [d for d in dim if d != real_dim] + [
-                real_dim
-            ]  # real dim has to be moved or added at the end !
+            dim = move_to_end(dim, real_dim)
 
-    if not np.all(
-        [
-            (
-                is_numeric_dtype(da.coords[d])
-                or is_datetime64_any_dtype(da.coords[d])
-                or bool(getattr(da.coords[d][0].item(), "calendar", False))
-            )
-            for d in dim
-        ]
-    ):  # checking if coodinates are numerical or datetime
-        raise ValueError(
-            "All transformed dimensions coordinates must be numerical or datetime."
-        )
+    _check_valid_fft_coords(da, dim)
 
     if chunks_to_segments:
         da = _stack_chunks(da, dim)
@@ -371,9 +394,7 @@ def fft(
     rawdims = da.dims  # take care of segmented dimesions, if any
 
     if real_dim is not None:
-        da = da.transpose(
-            *[d for d in da.dims if d not in [real_dim]] + [real_dim]
-        )  # dimension for real transformed is moved at the end
+        da = da.transpose(*move_to_end(da.dims, real_dim))
 
     fftm = _fft_module(da)
 
@@ -384,9 +405,7 @@ def fft(
         fft_fn = fftm.rfftn
 
     # the axes along which to take ffts
-    axis_num = [
-        da.get_axis_num(d) for d in dim
-    ]  # if there is a real dim , it has to be the last one
+    axis_num = [da.get_axis_num(d) for d in dim]
 
     N = [da.shape[n] for n in axis_num]
 
@@ -401,25 +420,8 @@ def fft(
                 f"Please drop these coordinates (`.drop({bad_coords}`) before invoking xrft."
             )
 
-    # verify even spacing of input coordinates
-    delta_x = []
-    lag_x = []
-    for d in dim:
-        diff = _diff_coord(da[d])
-        delta = np.abs(diff[0])
-        lag = _lag_coord(da[d])
-        if not np.allclose(diff, diff[0], rtol=spacing_tol):
-            raise ValueError(
-                "Can't take Fourier transform because "
-                "coodinate %s is not evenly spaced" % d
-            )
-        if delta == 0.0:
-            raise ValueError(
-                "Can't take Fourier transform because spacing in coordinate %s is zero"
-                % d
-            )
-        delta_x.append(delta)
-        lag_x.append(lag)
+    delta_x = [_get_coordinate_spacing(da[d], spacing_tol) for d in dim]
+    lag_x = [_lag_coord(da[d]) for d in dim]
 
     if detrend is not None:
         if detrend == "linear":
@@ -541,31 +543,17 @@ def ifft(
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
-        msg = "`real` flag will be deprecated in future version of xrft.ifft and replaced by `real_dim` flag."
-        warnings.warn(msg, FutureWarning)
+        warnings.warn(_real_flag_warning, FutureWarning)
+
     if real_dim is not None:
         if real_dim not in daft.dims:
             raise ValueError(
                 "The dimension along which real IFT is taken must be one of the existing dimensions."
             )
         else:
-            dim = [d for d in dim if d != real_dim] + [
-                real_dim
-            ]  # real dim has to be moved or added at the end !
+            dim = move_to_end(dim, real_dim)
 
-    if not np.all(
-        [
-            (
-                is_numeric_dtype(daft.coords[d])
-                or is_datetime64_any_dtype(daft.coords[d])
-                or bool(getattr(daft.coords[d][0].item(), "calendar", False))
-            )
-            for d in dim
-        ]
-    ):  # checking if coodinates are numerical or datetime
-        raise ValueError(
-            "All transformed dimensions coordinates must be numerical or datetime."
-        )
+    _check_valid_fft_coords(daft, dim)
 
     if lag is None:
         lag = [daft[d].attrs.get("direct_lag", 0.0) for d in dim]
@@ -594,9 +582,7 @@ def ifft(
     rawdims = daft.dims  # take care of segmented dimensions, if any
 
     if real_dim is not None:
-        daft = daft.transpose(
-            *[d for d in daft.dims if d not in [real_dim]] + [real_dim]
-        )  # dimension for real transformed is moved at the end
+        daft = daft.transpose(*move_to_end(daft.dims, real_dim))
 
     fftm = _fft_module(daft)
 
@@ -610,39 +596,15 @@ def ifft(
 
     N = [daft.shape[n] for n in axis_num]
 
-    # verify even spacing of input coordinates (It handle fftshifted grids)
-    delta_x = []
+    daft = daft.sortby(dim)  # sort by coordinates to handle fftshifted grids
+    delta_x = [_get_coordinate_spacing(daft[d], spacing_tol) for d in dim]
     for d in dim:
-        diff = _diff_coord(daft[d])
-        delta = np.abs(diff[0])
         l = _lag_coord(daft[d]) if d is not real_dim else daft[d][0].data
-        if not np.allclose(
-            diff, delta, rtol=spacing_tol
-        ):  # means that input is not on regular increasing grid
-            reordered_coord = daft[d].copy()
-            reordered_coord = reordered_coord.sortby(d)
-            diff = _diff_coord(reordered_coord)
-            l = _lag_coord(reordered_coord)
-            if np.allclose(
-                diff, diff[0], rtol=spacing_tol
-            ):  # means that input is on fftshifted grid
-                daft = daft.sortby(d)  # reordering the input
-            else:
-                raise ValueError(
-                    "Can't take Fourier transform because "
-                    "coodinate %s is not evenly spaced" % d
-                )
         if np.abs(l) > spacing_tol:
             raise ValueError(
                 "Inverse Fourier Transform can not be computed because coordinate %s is not centered on zero frequency"
                 % d
             )
-        if delta == 0.0:
-            raise ValueError(
-                "Can't take Inverse Fourier transform because spacing in coordinate %s is zero"
-                % d
-            )
-        delta_x.append(delta)
 
     axis_shift = [
         daft.get_axis_num(d) for d in dim if d is not real_dim
@@ -683,6 +645,42 @@ def ifft(
     return da.transpose(
         *[swap_dims.get(d, d) for d in rawdims]
     )  # Do nothing if daft was not transposed
+
+
+def _window_correction_factor(da, dim, scaling, window):
+    if window is None:
+        raise ValueError(
+            "window_correction can only be applied when windowing is turned on."
+        )
+    windows, _ = _apply_window(da, dim, window_type=window)
+    if scaling == "density":
+        return (windows**2).mean()
+    elif scaling == "spectrum":
+        return windows.mean() ** 2
+    else:
+        raise ValueError("Unknown {} scaling flag".format(scaling))
+
+
+def _psd_scaling_factor(ps, dims, scaling):
+    fs = np.prod([float(ps[d].spacing) for d in dims])
+    if scaling == "density":
+        return fs
+    elif scaling == "spectrum":
+        return fs**2
+    else:
+        raise ValueError("Unknown {} scaling flag".format(scaling))
+
+
+def _psd_real_dim_scaling(da, ps, real_dim, updated_dims):
+    real = next(
+        d for d in updated_dims if d.endswith(real_dim)
+    )  # find transformed real dimension
+    f = np.full(ps.sizes[real], 2.0)
+    if len(da[real_dim]) % 2 == 0:
+        f[0], f[-1] = 1.0, 1.0
+    else:
+        f[0] = 1.0
+    return xr.DataArray(f, dims=real, coords=ps[real].coords)
 
 
 def power_spectrum(
@@ -730,8 +728,7 @@ def power_spectrum(
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
-        msg = "`real` flag will be deprecated in future version of xrft.power_spectrum and replaced by `real_dim` flag."
-        warnings.warn(msg, FutureWarning)
+        warnings.warn(_real_flag_warning, FutureWarning)
 
     kwargs.update(
         {"true_amplitude": True, "true_phase": False}
@@ -744,42 +741,13 @@ def power_spectrum(
     ps = np.abs(daft) ** 2
 
     if real_dim is not None:
-        real = [d for d in updated_dims if real_dim == d[-len(real_dim) :]][
-            0
-        ]  # find transformed real dimension
-        f = np.full(ps.sizes[real], 2.0)
-        if len(da[real_dim]) % 2 == 0:
-            f[0], f[-1] = 1.0, 1.0
-        else:
-            f[0] = 1.0
-        ps = ps * xr.DataArray(f, dims=real, coords=ps[real].coords)
+        ps *= _psd_real_dim_scaling(da, ps, real_dim, updated_dims)
 
-    if scaling == "density":
+    if scaling != "false_density":  # Corresponds to density=False
         if window_correction:
-            if kwargs.get("window") == None:
-                raise ValueError(
-                    "window_correction can only be applied when windowing is turned on."
-                )
-            else:
-                windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
-                ps = ps / (windows**2).mean()
-        fs = np.prod([float(ps[d].spacing) for d in updated_dims])
-        ps *= fs
-    elif scaling == "spectrum":
-        if window_correction:
-            if kwargs.get("window") == None:
-                raise ValueError(
-                    "window_correction can only be applied when windowing is turned on."
-                )
-            else:
-                windows, _ = _apply_window(da, dim, window_type=kwargs.get("window"))
-                ps = ps / windows.mean() ** 2
-        fs = np.prod([float(ps[d].spacing) for d in updated_dims])
-        ps *= fs**2
-    elif scaling == "false_density":  # Corresponds to density=False
-        pass
-    else:
-        raise ValueError("Unknown {} scaling flag".format(scaling))
+            ps /= _window_correction_factor(da, dim, scaling, kwargs.get("window"))
+        ps *= _psd_scaling_factor(ps, updated_dims, scaling)
+
     return ps
 
 
@@ -831,8 +799,7 @@ def cross_spectrum(
 
     if "real" in kwargs:
         real_dim = kwargs.get("real")
-        msg = "`real` flag will be deprecated in future version of xrft.cross_spectrum and replaced by `real_dim` flag."
-        warnings.warn(msg, FutureWarning)
+        warnings.warn(_real_flag_warning, FutureWarning)
 
     if "density" in kwargs:
         density = kwargs.pop("density")
@@ -859,42 +826,13 @@ def cross_spectrum(
     cs = daft1 * np.conj(daft2)
 
     if real_dim is not None:
-        real = [d for d in updated_dims if real_dim == d[-len(real_dim) :]][
-            0
-        ]  # find transformed real dimension
-        f = np.full(cs.sizes[real], 2.0)
-        if len(da1[real_dim]) % 2 == 0:
-            f[0], f[-1] = 1.0, 1.0
-        else:
-            f[0] = 1.0
-        cs = cs * xr.DataArray(f, dims=real, coords=cs[real].coords)
+        cs *= _psd_real_dim_scaling(da1, cs, real_dim, updated_dims)
 
-    if scaling == "density":
+    if scaling != "false_density":  # Corresponds to density=False
         if window_correction:
-            if kwargs.get("window") == None:
-                raise ValueError(
-                    "window_correction can only be applied when windowing is turned on."
-                )
-            else:
-                windows, _ = _apply_window(da1, dim, window_type=kwargs.get("window"))
-                cs = cs / (windows**2).mean()
-        fs = np.prod([float(cs[d].spacing) for d in updated_dims])
-        cs *= fs
-    elif scaling == "spectrum":
-        if window_correction:
-            if kwargs.get("window") == None:
-                raise ValueError(
-                    "window_correction can only be applied when windowing is turned on."
-                )
-            else:
-                windows, _ = _apply_window(da1, dim, window_type=kwargs.get("window"))
-                cs = cs / windows.mean() ** 2
-        fs = np.prod([float(cs[d].spacing) for d in updated_dims])
-        cs *= fs**2
-    elif scaling == "false_density":  # Corresponds to density=False
-        pass
-    else:
-        raise ValueError("Unknown {} scaling flag".format(scaling))
+            cs /= _window_correction_factor(da1, dim, scaling, kwargs.get("window"))
+        cs *= _psd_scaling_factor(cs, updated_dims, scaling)
+
     return cs
 
 
