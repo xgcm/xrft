@@ -910,7 +910,6 @@ def synthetic_field(N, dL, amp, s):
 def synthetic_field_xr(
     N, dL, amp, s, other_dim_sizes=None, dim_order=True, chunks=None
 ):
-
     theta = xr.DataArray(
         synthetic_field(N, dL, amp, s),
         dims=["y", "x"],
@@ -950,7 +949,7 @@ def test_isotropize(truncate, N=512):
         ps_iso = xrft.isotropize(ps, fftdim, nfactor=nfactor, truncate=truncate)
         assert len(ps_iso.dims) == 1
         assert ps_iso.dims[0] == "freq_r"
-        npt.assert_allclose(ps_iso, ps_iso.freq_r**2, atol=0.02)
+        npt.assert_allclose(ps_iso, ps_iso.freq_r**2 * 2 * np.pi, atol=0.02)
 
     # np data
     theta = synthetic_field_xr(N, dL, amp, s)
