@@ -208,7 +208,9 @@ def _diff_coord(coord):
         coord = xr.DataArray(decoded_time, dims=coord.dims, coords=coord.coords)
         return np.diff(coord)
     elif pd.api.types.is_datetime64_dtype(v0):
-        return np.diff(coord).astype("timedelta64[s]").astype("f8")
+        diff = np.diff(coord).astype("timedelta64[ns]").astype("f8")
+        diff = (diff/1e9) #convert back to seconds
+        return diff
     else:
         return np.diff(coord)
 
