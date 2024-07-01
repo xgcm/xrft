@@ -31,7 +31,7 @@ jobs:
           key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/environment.yml') }}
       - uses: mamba-org/setup-micromamba@v1
         with:
-          micromamba-version: '1.9'
+          micromamba-version: 'latest'
           environment-file: ci/environment.yml
           environment-name: test_env_xrft
           init-shell: >-
