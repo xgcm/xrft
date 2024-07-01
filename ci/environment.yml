@@ -12,8 +12,8 @@ dependencies:
   - pytest
   - pytest-cov
   - pytest-xdist
-  - pip
   - cftime
+  - pip
   - pip:
     - setuptools
     - virtualenv
