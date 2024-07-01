@@ -1,16 +1,15 @@
 name: test_env_xrft
 channels:
   - conda-forge
-  - defaults
 dependencies:
+  - codecov
   - xarray
   - dask
   - numpy
   - numpy_groupies
+  - scipy
   - pytest
   - pytest-cov
-  - pip
+  - pytest-xdist
   - cftime
-  - pip:
-    - codecov
-    - pytest-xdist
+  - pip

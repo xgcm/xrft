@@ -49,7 +49,7 @@ def test_data_1d(request):
 @pytest.fixture(params=["pandas", "standard", "julian", "365_day", "360_day"])
 def time_data(request):
     if request.param == "pandas":
-        return pd.date_range("2000-01-01", "2001-01-01", closed="left")
+        return pd.date_range("2000-01-01", "2001-01-01", inclusive="left")
     else:
         units = "days since 2000-01-01 00:00:00"
         return cftime.num2date(np.arange(0, 10 * 365), units, request.param)
@@ -680,7 +680,7 @@ class TestCrossPhase(object):
         phase_offset = np.arctan2(
             np.sin(phase_offset), np.cos(phase_offset)
         )  # Offset in [-pi, pi]
-        npt.assert_almost_equal(np.float(offset), phase_offset)
+        npt.assert_almost_equal(float(offset), phase_offset)
 
 
 @pytest.mark.parametrize("chunks_to_segments", [False, True])
@@ -1210,7 +1210,7 @@ def test_theoretical_matching(rtol=1e-8, atol=1e-3):
     )  # Fast Fourier Transform of original signal
     f = S.freq_x  # Frequency axis
     TF_s = xr.DataArray(
-        (T / 2 * (np.sinc(T * (f - f0)) + np.sinc(T * (f + f0)))).astype(np.complex),
+        (T / 2 * (np.sinc(T * (f - f0)) + np.sinc(T * (f + f0)))).astype(complex),
         dims=("freq_x",),
         coords={"freq_x": f},
     )  # Theoretical expression of the Fourier transform
