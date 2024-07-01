@@ -29,7 +29,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/environment.yml') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: test_env_xrft # Defined in ci/environment*.yml
           auto-update-conda: false
@@ -41,6 +41,7 @@ jobs:
         run: |
           python -m pip install -e . --no-deps
           python -m ensurepip --upgrade
+          python -m pip install --upgrade pip
           python -m pip install --upgrade setuptools
           conda list
       - name: Run Tests
