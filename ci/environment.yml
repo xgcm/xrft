@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - codecov
   - xarray
   - dask
   - numpy
@@ -10,9 +11,9 @@ dependencies:
   - scipy
   - pytest
   - pytest-cov
+  - pytest-xdist
   - pip
   - cftime
   - pip:
-    - codecov
-    - pytest-xdist
     - setuptools
+    - virtualenv
