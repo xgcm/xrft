@@ -5,7 +5,6 @@ import cftime
 import dask.array as dsar
 
 import scipy.signal as sps
-import scipy.linalg as spl
 
 import pytest
 import numpy.testing as npt
@@ -201,6 +200,14 @@ class TestFFTImag(object):
             ).values,
             np.fft.fftn(da_prime),
         )
+
+    def test_fft_raises_on_unused_kwarg(self):
+        with pytest.raises(TypeError):
+            xrft.fft(None, dims=1)
+
+    def test_ifft_raises_on_unused_kwarg(self):
+        with pytest.raises(TypeError):
+            xrft.fft(None, dims=1)
 
 
 class TestfftReal(object):
