@@ -1,6 +1,7 @@
 """
 Functions to pad and unpad a N-dimensional regular grid
 """
+
 import numpy as np
 from xarray.core.utils import either_dict_or_kwargs
 
@@ -311,7 +312,9 @@ def _pad_coordinates_callback(vector, iaxis_pad_width, iaxis, kwargs):
     vector[:n_start] = (
         vmin - n_start * spacing + np.linspace(0, spacing * (n_start - 1), n_start)
     )
-    vector[-n_end:] = vmax + spacing + np.linspace(0, spacing * (n_end - 1), n_end)
+    vector[len(vector) - n_end :] = (
+        vmax + spacing + np.linspace(0, spacing * (n_end - 1), n_end)
+    )
     return vector
 
 
@@ -438,6 +441,6 @@ def _pad_width_to_slice(pad_width, size):
         A slice object for removing the padded elements of the coordinate
         array.
     """
-    if type(pad_width) == int:
+    if isinstance(pad_width, int):
         pad_width = (pad_width, pad_width)
     return slice(pad_width[0], size - pad_width[1])
