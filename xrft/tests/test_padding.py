@@ -1,6 +1,7 @@
 """
 Unit tests for padding functions
 """
+
 import pytest
 import numpy as np
 import xarray as xr
@@ -208,11 +209,14 @@ def test_unpad_pop_pad_width_attributes(sample_da_2d, pad_width_arg):
     (
         {"x": 4, "y": 3},
         {"x": 4},
+        {"x": 0},
         {"y": 3},
+        {"x": 4, "y": 0},
         {"x": (4, 3), "y": 3},
         {"x": (4, 3), "y": (5, 3)},
         {"x": (4, 3)},
         {"y": (5, 3)},
+        {"x": (0, 3), "y": (5, 0)},
     ),
 )
 def test_unpad_ifft_fft_pad_round_trip(sample_da_2d, pad_width):
