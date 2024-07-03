@@ -1,6 +1,7 @@
 """
 Test utility functions of xrft
 """
+
 import pytest
 import numpy as np
 import pandas as pd
