@@ -1,7 +1,5 @@
 import warnings
 import operator
-import sys
-import functools as ft
 from functools import reduce
 
 import numpy as np
@@ -12,7 +10,6 @@ import dask.array as dsar
 from dask import delayed
 
 import scipy.signal as sps
-import scipy.linalg as spl
 
 from .detrend import detrend as _detrend
 from pandas.api.types import is_numeric_dtype, is_datetime64_any_dtype
@@ -319,7 +316,7 @@ def fft(
     true_amplitude=True,
     chunks_to_segments=False,
     prefix="freq_",
-    **kwargs,
+    real=None,
 ):
     """
     Perform discrete Fourier transform of xarray data-array `da` along the
@@ -376,8 +373,8 @@ def fft(
         if isinstance(dim, str):
             dim = [dim]
 
-    if "real" in kwargs:
-        real_dim = kwargs.get("real")
+    if real is not None:
+        real_dim = real
         warnings.warn(_real_flag_warning, FutureWarning)
 
     if real_dim is not None:
@@ -490,7 +487,7 @@ def ifft(
     chunks_to_segments=False,
     prefix="freq_",
     lag=None,
-    **kwargs,
+    real=None,
 ):
     """
     Perform inverse discrete Fourier transform of xarray data-array `daft` along the
@@ -543,8 +540,8 @@ def ifft(
         if isinstance(dim, str):
             dim = [dim]
 
-    if "real" in kwargs:
-        real_dim = kwargs.get("real")
+    if real is not None:
+        real_dim = real
         warnings.warn(_real_flag_warning, FutureWarning)
 
     if real_dim is not None:
