@@ -209,7 +209,7 @@ def _diff_coord(coord):
         return np.diff(coord)
     elif pd.api.types.is_datetime64_dtype(v0):
         diff = np.diff(coord).astype("timedelta64[ns]").astype("f8")
-        diff = (diff/1e9) #convert back to seconds
+        diff = diff / 1e9  # convert back to seconds
         return diff
     else:
         return np.diff(coord)

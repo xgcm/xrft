@@ -1,6 +1,7 @@
 """
 Utility functions for xrft
 """
+
 import numpy as np
 
 from .xrft import _diff_coord
