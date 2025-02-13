@@ -330,11 +330,6 @@ def unpad(da, pad_width=None, **pad_width_kwargs):
     da : :class:`xarray.DataArray`
         Padded array. The coordinates along which the array will be
         padded must be evenly spaced.
-
-    Returns
-    -------
-    da_unpaded : :class:`xarray.DataArray`
-        Unpadded array.
     pad_width : mapping of hashable to tuple of int (optional)
         Mapping with the form of {dim: (pad_before, pad_after)}
         describing the number of values padded along each dimension.
@@ -344,6 +339,11 @@ def unpad(da, pad_width=None, **pad_width_kwargs):
     **pad_width_kwargs (optional)
         The keyword arguments form of ``pad_width``.
         Pass ``pad_width`` or ``pad_width_kwargs``.
+
+    Returns
+    -------
+    da_unpaded : :class:`xarray.DataArray`
+        Unpadded array.
 
     See also
     --------
