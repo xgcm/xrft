@@ -297,7 +297,7 @@ def _pad_coordinates_callback(vector, iaxis_pad_width, iaxis, kwargs):
         the function will check if it's equal to zero. It exists for
         compatibility with the ``padding_func`` callback that :func:`numpy.pad`
         needs.
-    kwargs : dict
+    **kwargs
         Any keyword arguments the function requires. The kwargs are ignored in
         this function, they exist for compatibility with the ``padding_func``
         callback that :func:`numpy.pad` needs.
@@ -338,13 +338,13 @@ def unpad(da, pad_width=None, **pad_width_kwargs):
         {dim: pad} is a shortcut for pad_before = pad_after = pad.
         If ``None``, then the *pad_width* for each coordinate is read from
         their ``pad_width`` attribute.
-    **pad_width_kwargs (optional)
+    **pad_width_kwargs
         The keyword arguments form of ``pad_width``.
         Pass ``pad_width`` or ``pad_width_kwargs``.
 
     Returns
     -------
-    da_unpaded : :class:`xarray.DataArray`
+    da_unpadded : :class:`xarray.DataArray`
         Unpadded array.
 
     See also

@@ -712,7 +712,8 @@ def power_spectrum(
         If scaling = 'density', correct for the energy (integral) of the spectrum. This ensures, for example, that the power spectral density integrates to the square of the RMS of the signal (ie that Parseval's theorem is satisfied). Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction as it assumes that the signal being windowed is independent of the window. The correction becomes more accurate as the width of the window gets large in comparison with any noticeable period in the signal.
         If False, the spectrum gives a representation of the power in the windowed signal.
         Note that when True, Parseval's theorem may only be approximately satisfied.
-    kwargs : dict : see xrft.fft for argument list
+    **kwargs
+        See `xrft.fft` for valid arguments.
     """
 
     if "density" in kwargs:
@@ -793,7 +794,8 @@ def cross_spectrum(
         If True, the phase information is retained.
         Set explicitly true_phase = False in cross_spectrum arguments list to ensure future compatibility
         with numpy-like behavior where the coordinates are disregarded.
-    kwargs : dict : see xrft.fft for argument list
+    **kwargs
+        See `xrft.fft` for valid arguments.
     """
 
     if "real" in kwargs:
@@ -859,7 +861,8 @@ def cross_phase(da1, da2, dim=None, true_phase=True, **kwargs):
         If True, the phase information is retained.
         Set explicitly true_phase = False in cross_spectrum arguments list to ensure future compatibility
         with numpy-like behavior where the coordinates are disregarded.
-    kwargs : dict : see xrft.fft for argument list
+    **kwargs
+        See `xrft.fft` for valid arguments.
     """
 
     cp = xr.apply_ufunc(
