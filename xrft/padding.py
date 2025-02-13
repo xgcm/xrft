@@ -37,6 +37,7 @@ def pad(
         {dim: pad} is a shortcut for pad_before = pad_after = pad
     mode : str, default: "constant"
         One of the following string values (taken from numpy docs).
+
         - constant: Pads with a constant value.
         - edge: Pads with the edge values of array.
         - linear_ramp: Pads with the linear ramp between end_value and the
@@ -56,6 +57,7 @@ def pad(
         - wrap: Pads with the wrap of the vector along the axis.
           The first values are used to pad the end and the
           end values are used to pad the beginning.
+
     stat_length : int, tuple or mapping of hashable to tuple, default: None
         Used in 'maximum', 'mean', 'median', and 'minimum'.  Number of
         values at edge of each axis used to calculate the statistic value.

@@ -689,9 +689,9 @@ def power_spectrum(
     Calculates the power spectrum of da.
 
     .. math::
-    da' = da - \\overline{da}
+        da' = da - \\overline{da}
     .. math::
-    ps = \\mathbb{F}(da') {\\mathbb{F}(da')}^*
+        ps = \\mathbb{F}(da') {\\mathbb{F}(da')}^*
 
     Parameters
     ----------
