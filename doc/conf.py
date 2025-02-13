@@ -181,3 +181,8 @@ texinfo_documents = [
 #     'python': ('https://docs.python.org/3/', None),
 #     'xarray': ('http://xarray.pydata.org/en/stable/', None)
 # }
+
+
+# -- Options for extension extlinks ---------------------------------------
+
+extlinks = {"issue": ("https://github.com/xgcm/xrft/issues/%s", "Issue %s")}
