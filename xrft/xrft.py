@@ -323,7 +323,7 @@ def fft(
     specified dimensions.
 
     .. math::
-        daft = \mathbb{F}(da - \overline{da})
+        daft = \\mathbb{F}(da - \\overline{da})
 
     Parameters
     ----------
@@ -494,7 +494,7 @@ def ifft(
     specified dimensions.
 
     .. math::
-        da = \mathbb{F}(daft - \overline{daft})
+        da = \\mathbb{F}(daft - \\overline{daft})
 
     Parameters
     ----------
@@ -689,9 +689,9 @@ def power_spectrum(
     Calculates the power spectrum of da.
 
     .. math::
-    da' = da - \overline{da}
+    da' = da - \\overline{da}
     .. math::
-    ps = \mathbb{F}(da') {\mathbb{F}(da')}^*
+    ps = \\mathbb{F}(da') {\\mathbb{F}(da')}^*
 
     Parameters
     ----------
@@ -764,9 +764,9 @@ def cross_spectrum(
     Calculates the cross spectra of da1 and da2.
 
     .. math::
-        da1' = da1 - \overline{da1};\ \ da2' = da2 - \overline{da2}
+        da1' = da1 - \\overline{da1};\\ \\ da2' = da2 - \\overline{da2}
     .. math::
-        cs = \mathbb{F}(da1') {\mathbb{F}(da2')}^*
+        cs = \\mathbb{F}(da1') {\\mathbb{F}(da2')}^*
 
     Parameters
     ----------
@@ -842,9 +842,9 @@ def cross_phase(da1, da2, dim=None, true_phase=True, **kwargs):
     Returned values are in [-pi, pi].
 
     .. math::
-        da1' = da1 - \overline{da1};\ \ da2' = da2 - \overline{da2}
+        da1' = da1 - \\overline{da1};\\ \\ da2' = da2 - \\overline{da2}
     .. math::
-        cp = \text{Arg} [\mathbb{F}(da1')^*, \mathbb{F}(da2')]
+        cp = \\text{Arg} [\\mathbb{F}(da1')^*, \\mathbb{F}(da2')]
 
     Parameters
     ----------
@@ -951,7 +951,7 @@ def isotropize(ps, fftdim, nfactor=4, truncate=True, complx=False):
     by taking an azimuthal average.
 
     .. math::
-        \text{iso}_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
+        \\text{iso}_{ps} = k_r N^{-1} \\sum_{N} |\\mathbb{F}(da')|^2
 
     where :math:`N` is the number of azimuthal bins.
 
@@ -1038,7 +1038,7 @@ def isotropic_power_spectrum(
     azimuthal average.
 
     .. math::
-        \text{iso}_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
+        \\text{iso}_{ps} = k_r N^{-1} \\sum_{N} |\\mathbb{F}(da')|^2
 
     where :math:`N` is the number of azimuthal bins.
 
@@ -1124,7 +1124,7 @@ def isotropic_cross_spectrum(
     azimuthal average.
 
     .. math::
-        \text{iso}_{cs} = k_r N^{-1} \sum_{N} (\mathbb{F}(da1') {\mathbb{F}(da2')}^*)
+        \\text{iso}_{cs} = k_r N^{-1} \\sum_{N} (\\mathbb{F}(da1') {\\mathbb{F}(da2')}^*)
 
     where :math:`N` is the number of azimuthal bins.
 
