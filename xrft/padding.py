@@ -209,10 +209,11 @@ def _check_bad_coords(da, padding_coordinates):
         bad_coords += [c for c in da.coords if dim in da[c].dims and c != coord]
     if bad_coords:
         bad_coords = ", ".join(repr(c) for c in bad_coords)
-        raise ValueError(
-            "Please, drop the following coordinates from the passed DataArray "
-            + f"before trying to pad it: {bad_coords}."
+        msg = (
+            "Please, drop the following coordinates from the passed DataArray before "
+            f"trying to pad it: {bad_coords}."
         )
+        raise ValueError(msg)
 
 
 def _pad_coordinates(coords, pad_width):
