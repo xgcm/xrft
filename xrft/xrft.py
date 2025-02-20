@@ -71,7 +71,7 @@ def _apply_window(da, dims, window_type="hann"):
         "nuttall",
     ]:
         raise NotImplementedError(
-            "Window type {window_type} not supported. Please adhere to scipy.signal.windows for naming convention."
+            f"Window type {window_type} not supported. Please adhere to scipy.signal.windows for naming convention."
         )
 
     if dims is None:
