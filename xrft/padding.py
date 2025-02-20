@@ -208,7 +208,7 @@ def _check_bad_coords(da, padding_coordinates):
         dim = da[coord].dims[0]
         bad_coords += [c for c in da.coords if dim in da[c].dims and c != coord]
     if bad_coords:
-        bad_coords = "'" + "', '".join(bad_coords) + "'"
+        bad_coords = ", ".join(repr(c) for c in bad_coords)
         raise ValueError(
             "Please, drop the following coordinates from the passed DataArray "
             + f"before trying to pad it: {bad_coords}."

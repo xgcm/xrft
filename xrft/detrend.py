@@ -45,7 +45,7 @@ def detrend(da, dim, detrend_type="constant"):
 
     if detrend_type not in ["constant", "linear", None]:
         raise NotImplementedError(
-            f"{detrend_type!s} is not a valid detrending option. Valid "
+            f"{detrend_type!r} is not a valid detrending option. Valid "
             "options are: 'constant','linear', or None."
         )
 

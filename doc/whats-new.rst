@@ -11,6 +11,11 @@ Bug Fixes
 
 - The exception raised when a window name is unrecognized now specifies the name, as intended. (:issue:`213`) By `Stan West <https://github.com/stanwest>`_.
 
+Enhancements
+~~~~~~~~~~~~
+
+- Exception messages that contain variable values now use their representation through `repr()`. By `Stan West <https://github.com/stanwest>`_.
+
 .. _whats-new.0.3.0:
 
 v0.3.0 (18 February 2021)

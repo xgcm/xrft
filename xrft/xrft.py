@@ -71,7 +71,7 @@ def _apply_window(da, dims, window_type="hann"):
         "nuttall",
     ]:
         raise NotImplementedError(
-            f"Window type {window_type} not supported. Please adhere to scipy.signal.windows for naming convention."
+            f"Window type {window_type!r} not supported. Please adhere to scipy.signal.windows for naming convention."
         )
 
     if dims is None:
@@ -294,11 +294,11 @@ def _get_coordinate_spacing(coord, spacing_tol):
     if not np.allclose(diff, diff[0], rtol=spacing_tol):
         raise ValueError(
             "Can't take Fourier transform because "
-            f"coodinate {coord.name!s} is not evenly spaced"
+            f"coodinate {coord.name!r} is not evenly spaced"
         )
     if delta == 0.0:
         raise ValueError(
-            f"Can't take Fourier transform because spacing in coordinate {coord.name!s} is zero"
+            f"Can't take Fourier transform because spacing in coordinate {coord.name!r} is zero"
         )
     return delta
 
@@ -414,7 +414,7 @@ def fft(
         ]
         if bad_coords:
             raise ValueError(
-                f"The input array contains coordinate variable(s) ({bad_coords}) whose dims include the transform dimension(s) `{d}`. "
+                f"The input array contains coordinate variable(s) ({bad_coords!r}) whose dims include the transform dimension(s) {d!r}. "
                 "Please drop these coordinates before invoking xrft; see xarray.DataArray.drop_vars or xarray.Dataset.drop_vars."
             )
 
@@ -600,7 +600,7 @@ def ifft(
         l = _lag_coord(daft[d]) if d is not real_dim else daft[d][0].data
         if np.abs(l) > spacing_tol:
             raise ValueError(
-                f"Inverse Fourier Transform can not be computed because coordinate {d!s} is not centered on zero frequency"
+                f"Inverse Fourier Transform can not be computed because coordinate {d!r} is not centered on zero frequency"
             )
 
     axis_shift = [
@@ -655,7 +655,7 @@ def _window_correction_factor(da, dim, scaling, window):
     elif scaling == "spectrum":
         return windows.mean() ** 2
     else:
-        raise ValueError(f"Unknown {scaling} scaling flag")
+        raise ValueError(f"Unknown {scaling!r} scaling flag")
 
 
 def _psd_scaling_factor(ps, dims, scaling):
@@ -665,7 +665,7 @@ def _psd_scaling_factor(ps, dims, scaling):
     elif scaling == "spectrum":
         return fs**2
     else:
-        raise ValueError(f"Unknown {scaling} scaling flag")
+        raise ValueError(f"Unknown {scaling!r} scaling flag")
 
 
 def _psd_real_dim_scaling(da, ps, real_dim, updated_dims):
