@@ -294,12 +294,11 @@ def _get_coordinate_spacing(coord, spacing_tol):
     if not np.allclose(diff, diff[0], rtol=spacing_tol):
         raise ValueError(
             "Can't take Fourier transform because "
-            "coodinate %s is not evenly spaced" % coord.name
+            f"coodinate {coord.name!s} is not evenly spaced"
         )
     if delta == 0.0:
         raise ValueError(
-            "Can't take Fourier transform because spacing in coordinate %s is zero"
-            % coord.name
+            f"Can't take Fourier transform because spacing in coordinate {coord.name!s} is zero"
         )
     return delta
 
@@ -601,8 +600,7 @@ def ifft(
         l = _lag_coord(daft[d]) if d is not real_dim else daft[d][0].data
         if np.abs(l) > spacing_tol:
             raise ValueError(
-                "Inverse Fourier Transform can not be computed because coordinate %s is not centered on zero frequency"
-                % d
+                f"Inverse Fourier Transform can not be computed because coordinate {d!s} is not centered on zero frequency"
             )
 
     axis_shift = [
@@ -657,7 +655,7 @@ def _window_correction_factor(da, dim, scaling, window):
     elif scaling == "spectrum":
         return windows.mean() ** 2
     else:
-        raise ValueError("Unknown {} scaling flag".format(scaling))
+        raise ValueError(f"Unknown {scaling} scaling flag")
 
 
 def _psd_scaling_factor(ps, dims, scaling):
@@ -667,7 +665,7 @@ def _psd_scaling_factor(ps, dims, scaling):
     elif scaling == "spectrum":
         return fs**2
     else:
-        raise ValueError("Unknown {} scaling flag".format(scaling))
+        raise ValueError(f"Unknown {scaling} scaling flag")
 
 
 def _psd_real_dim_scaling(da, ps, real_dim, updated_dims):
