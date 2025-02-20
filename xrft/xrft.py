@@ -416,7 +416,7 @@ def fft(
         if bad_coords:
             raise ValueError(
                 f"The input array contains coordinate variable(s) ({bad_coords}) whose dims include the transform dimension(s) `{d}`. "
-                f"Please drop these coordinates (`.drop({bad_coords}`) before invoking xrft."
+                "Please drop these coordinates before invoking xrft; see xarray.DataArray.drop_vars or xarray.Dataset.drop_vars."
             )
 
     delta_x = [_get_coordinate_spacing(da[d], spacing_tol) for d in dim]
