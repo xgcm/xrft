@@ -186,6 +186,36 @@ def _new_dims_and_coords(da, dim, wavenm, prefix):
         new_name = prefix + d if d[: len(prefix)] != prefix else d[len(prefix) :]
         new_dim = xr.DataArray(k, dims=new_name, coords={new_name: k}, name=new_name)
         new_dim.attrs.update({"spacing": k[1] - k[0]})
+
+        try:
+            old_units = da.coords[d].attrs["units"]
+        except KeyError:
+            scalar = getattr(k, "values", k)[0]
+            if pd.api.types.is_datetime64_dtype(scalar):
+                new_dim.attrs["units"] = "Hz"
+        else:
+            if old_units.startswith("1/(") and old_units.endswith(")"):
+                new_units = old_units[3:-1]
+            else:
+                new_units = "1/({:s})".format(old_units)
+            new_dim.attrs["units"] = new_units
+
+        try:
+            old_long_name = da.coords[d].attrs["long_name"]
+        except KeyError:
+            pass
+        else:
+            scalar = getattr(k, "values", k)[0]
+            if pd.api.types.is_datetime64_dtype(scalar):
+                name_prefix = "frequency of "
+            else:
+                name_prefix = "wavenumber of "
+            if old_long_name.startswith(name_prefix):
+                new_long_name = old_long_name.removeprefix(name_prefix)
+            else:
+                new_long_name = name_prefix + old_long_name
+            new_dim.attrs["long_name"] = new_long_name
+
         new_coords[new_name] = new_dim
         swap_dims[d] = new_name
 
@@ -471,6 +501,42 @@ def fft(
     if true_amplitude:
         daft = daft * np.prod(delta_x)
 
+    try:
+        old_units = da.attrs["units"]
+    except KeyError:
+        pass
+    else:
+        if true_amplitude:
+            integration_units = " ".join(
+                "s"
+                if pd.api.types.is_datetime64_dtype(da.coords[d].values[0])
+                else da.coords[d].attrs.get("units", "")
+                for d in dim
+            ).strip()
+            units_suffix = "/ ({:s})".format(integration_units)
+            if old_units.endswith(units_suffix):
+                new_units = old_units.removesuffix(units_suffix).strip()
+            else:
+                new_units = (
+                    "{:s} {:s}".format(old_units, integration_units).strip()
+                ).strip()
+        else:
+            new_units = old_units
+        daft.attrs["units"] = new_units
+
+    try:
+        old_name = da.attrs["long_name"]
+    except KeyError:
+        pass
+    else:
+        forward_prefix = "Fourier Transform of "
+        reverse_prefix = "Inverse " + forward_prefix
+        if old_name.startswith(reverse_prefix):
+            new_name = old_name.removeprefix(reverse_prefix)
+        else:
+            new_name = forward_prefix + old_name
+        daft.attrs["long_name"] = new_name
+
     return daft.transpose(
         *[swap_dims.get(d, d) for d in rawdims]
     )  # Do nothing if da was not transposed
@@ -534,6 +600,7 @@ def ifft(
     da : `xarray.DataArray`
         The output of the Inverse Fourier transformation, with appropriate dimensions.
     """
+    daft_attrs = daft.attrs
     if dim is None:
         dim = list(daft.dims)
     else:
@@ -641,6 +708,36 @@ def ifft(
     if true_amplitude:
         da = da / np.prod([float(da[up_dim].spacing) for up_dim in swap_dims.values()])
 
+    try:
+        old_units = daft_attrs["units"]
+    except KeyError:
+        pass
+    else:
+        if true_amplitude:
+            integration_units = " ".join(da.coords[d].attrs.get("units") for d in dim).strip()
+            if old_units.endswith(integration_units):
+                new_units = old_units.removesuffix(integration_units).strip()
+            else:
+                new_units = (
+                    "{:s} / ({:s})".format(old_units, integration_units)
+                ).strip()
+        else:
+            new_units = old_units
+        da.attrs["units"] = new_units
+
+    try:
+        old_name = daft_attrs["long_name"]
+    except KeyError:
+        pass
+    else:
+        forward_prefix = "Fourier Transform of "
+        reverse_prefix = "Inverse " + forward_prefix
+        if old_name.startswith(forward_prefix):
+            new_name = old_name.removeprefix(forward_prefix)
+        else:
+            new_name = reverse_prefix + old_name
+        da.attrs["long_name"] = new_name
+
     return da.transpose(
         *[swap_dims.get(d, d) for d in rawdims]
     )  # Do nothing if daft was not transposed
@@ -747,6 +844,29 @@ def power_spectrum(
             ps /= _window_correction_factor(da, dim, scaling, kwargs.get("window"))
         ps *= _psd_scaling_factor(ps, updated_dims, scaling)
 
+    try:
+        old_units = daft.attrs["units"]
+    except KeyError:
+        pass
+    else:
+        integration_units = " ".join(
+            ps.coords[d].attrs.get("units") for d in updated_dims
+        ).strip()
+        if scaling == "false_density":
+            new_units = "({:s})^2".format(old_units)
+        elif scaling == "density":
+            new_units = "({:s})^2 {:s}".format(old_units, integration_units)
+        elif scaling == "spectrum":
+            new_units = "({:s} {:s})^2".format(old_units, integration_units)
+        ps.attrs["units"] = new_units
+
+    try:
+        old_name = da.attrs["long_name"]
+    except KeyError:
+        pass
+    else:
+        ps.attrs["long_name"] = "Power Spectrum of {:s}".format(old_name)
+
     return ps
 
 
@@ -831,6 +951,35 @@ def cross_spectrum(
         if window_correction:
             cs /= _window_correction_factor(da1, dim, scaling, kwargs.get("window"))
         cs *= _psd_scaling_factor(cs, updated_dims, scaling)
+
+    try:
+        old_units1 = daft1.attrs["units"]
+        old_units2 = daft2.attrs["units"]
+    except KeyError:
+        pass
+    else:
+        integration_units = " ".join(
+            cs.coords[d].attrs.get("units") for d in updated_dims
+        ).strip()
+        if scaling == "false_density":
+            new_units = "{:s} {:s}".format(old_units1, old_units2)
+        elif scaling == "density":
+            new_units = "{:s} {:s} {:s}".format(
+                old_units1, old_units2, integration_units
+            )
+        elif scaling == "spectrum":
+            new_units = "{:s} {:s} ({:s})^2".format(
+                old_units1, old_units2, integration_units
+            )
+        cs.attrs["units"] = new_units
+
+    try:
+        old_name1 = da1.attrs["long_name"]
+        old_name2 = da2.attrs["long_name"]
+    except KeyError:
+        pass
+    else:
+        cs.attrs["long_name"] = "Cross Spectrum of {:s} and {:s}".format(old_name1, old_name2)
 
     return cs
 
@@ -975,6 +1124,29 @@ def isotropize(ps, fftdim, nfactor=4, truncate=True, complx=False):
     k = ps[fftdim[1]]
     l = ps[fftdim[0]]
 
+    wavenumber_units = {k.attrs.get("units"), l.attrs.get("units")}
+    if len(wavenumber_units) != 1:
+        warnings.warn(
+            "Isotropizing over wavenumbers with different units:\n{:s}".format(
+                wavenumber_units
+            ),
+            stacklevel=3
+        )
+    if any(unit is not None and "degree" in unit for unit in wavenumber_units):
+        warnings.warn(
+            "It looks like you are attempting an azimuthal average of a\n"
+            "dataset on a lat-lon grid.  This is moderately sensible near the\n"
+            "equator, but gets gets increasingly less sensible as one moves\n"
+            "poleward.\n"
+            "Options: If the latitude range is small, one could set\n"
+            "dy = Rearth * cos(latitude) d(longitude)\n"
+            "dx = Rearth * d(latitude)\n"
+            "and derive coordinates from that.  Alternately, use xESMF,\n"
+            "xarray-regrid, or pyresample to reproject the data.  Preserving\n"
+            "distance is likely more relevant than preserving area or shape.",
+            stacklevel=3
+        )
+
     N = [k.size, l.size]
     nbins = int(min(N) / nfactor)
     freq_r = np.sqrt(k**2 + l**2).rename("freq_r")
@@ -1013,10 +1185,23 @@ def isotropize(ps, fftdim, nfactor=4, truncate=True, complx=False):
             * np.pi
         )
     iso_ps.coords["freq_r"] = kr.data
+
+    result = iso_ps * iso_ps.freq_r
+    try:
+        result.attrs["units"] = ps.attrs["units"]
+    except KeyError:
+        pass
+    wavenumber_unit = list(wavenumber_units)[0]
+    if wavenumber_unit is not None:
+        result.coords["freq_r"].attrs["units"] = wavenumber_unit
+    try:
+        iso_ps.attrs["long_name"] = "Isotropic " + ps.attrs["long_name"]
+    except KeyError:
+        pass
     if truncate:
-        return (iso_ps * iso_ps.freq_r).dropna("freq_r")
+        return (result).dropna("freq_r")
     else:
-        return iso_ps * iso_ps.freq_r
+        return result
 
 
 def isotropic_power_spectrum(
