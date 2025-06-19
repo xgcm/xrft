@@ -1280,6 +1280,8 @@ def test_idft_dft():
             * (np.arange(-N // 2, -N // 2 + N) + np.random.randint(-N // 2, N // 2))
         },
     )
+    s.coords["x"].attrs.update({"units": "m", "long_name": "projection_x_coordinate"})
+    s.attrs.update({"units": "W/m^2", "long_name": "OLR"})
     FTs = xrft.dft(s, true_phase=True, true_amplitude=True)
     mean_lag = float(
         s["x"][{"x": s.sizes["x"] // 2}]
