@@ -1126,6 +1126,20 @@ def isotropize(ps, fftdim, nfactor=4, truncate=True, complx=False):
             ),
             stacklevel=3
         )
+    if any(unit is not None and "degree" in unit for unit in wavenumber_units):
+        warnings.warn(
+            "It looks like you are attempting an azimuthal average of a\n"
+            "dataset on a lat-lon grid.  This is moderately sensible near the\n"
+            "equator, but gets gets increasingly less sensible as one moves\n"
+            "poleward.\n"
+            "Options: If the latitude range is small, one could set\n"
+            "dy = Rearth * cos(latitude) d(longitude)\n"
+            "dx = Rearth * d(latitude)\n"
+            "and derive coordinates from that.  Alternately, use xESMF,\n"
+            "xarray-regrid, or pyresample to reproject the data.  Preserving\n"
+            "distance is likely more relevant than preserving area or shape.",
+            stacklevel=3
+        )
 
     N = [k.size, l.size]
     nbins = int(min(N) / nfactor)
