@@ -507,7 +507,12 @@ def fft(
         pass
     else:
         if true_amplitude:
-            integration_units = " ".join(da.coords[d].attrs.get("units") for d in dim).strip()
+            integration_units = " ".join(
+                "s"
+                if pd.api.types.is_datetime64_dtype(da.coords[d].values[0])
+                else da.coords[d].attrs.get("units", "")
+                for d in dim
+            ).strip()
             units_suffix = "/ ({:s})".format(integration_units)
             if old_units.endswith(units_suffix):
                 new_units = old_units.removesuffix(units_suffix).strip()
@@ -595,6 +600,7 @@ def ifft(
     da : `xarray.DataArray`
         The output of the Inverse Fourier transformation, with appropriate dimensions.
     """
+    daft_attrs = daft.attrs
     if dim is None:
         dim = list(daft.dims)
     else:
@@ -703,7 +709,7 @@ def ifft(
         da = da / np.prod([float(da[up_dim].spacing) for up_dim in swap_dims.values()])
 
     try:
-        old_units = da.attrs["units"]
+        old_units = daft_attrs["units"]
     except KeyError:
         pass
     else:
@@ -717,10 +723,10 @@ def ifft(
                 ).strip()
         else:
             new_units = old_units
-        daft.attrs["units"] = new_units
+        da.attrs["units"] = new_units
 
     try:
-        old_name = da.attrs["long_name"]
+        old_name = daft_attrs["long_name"]
     except KeyError:
         pass
     else:
@@ -730,7 +736,7 @@ def ifft(
             new_name = old_name.removeprefix(forward_prefix)
         else:
             new_name = reverse_prefix + old_name
-        daft.attrs["long_name"] = new_name
+        da.attrs["long_name"] = new_name
 
     return da.transpose(
         *[swap_dims.get(d, d) for d in rawdims]

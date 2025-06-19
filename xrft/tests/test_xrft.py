@@ -1375,3 +1375,53 @@ def test_non_numerical_or_datetime_coords():
         xrft.power_spectrum(da)
 
     xrft.power_spectrum(da, dim=["time", "x"])
+
+
+@pytest.mark.parametrize("use_dt64", [True, False])
+def test_attrs_time(use_dt64):
+    ds = xr.Dataset(
+        coords={
+            "lon": (
+                ("lon",), np.arange(360),
+                {"units": "degrees_east", "long_name": "longitude"}
+            ),
+            "time": (
+                ("time",), pd.date_range("2021-05-01", "2022-05-01", freq="1D"),
+                {"long_name": "time"}
+            )
+        }
+    )
+    ds.coords["day"] = (
+        ("time",), ds.time.values.astype("M8[h]").astype("i8") / 24,
+        {"units": "days", "long_name": "time"}
+    )
+    ds["feature"] = np.sin(6 * np.pi / 360 * ds.lon - 2 * np.pi /7 * ds.day)
+    ds["feature"].attrs["units"] = "W/m^2"
+    ds["feature"].attrs["long_name"] = "olr"
+
+    if use_dt64:
+        ds = ds.drop_vars(["day"])
+        time_dim = "time"
+    else:
+        ds = ds.swap_dims(time="day").drop_vars(["time"])
+        time_dim = "day"
+
+    fft = xrft.fft(ds["feature"], dim=("lon", time_dim), real_dim=time_dim)
+
+    assert ds["feature"].attrs["units"] in fft.attrs["units"]
+    assert ds["feature"].attrs["long_name"] in fft.attrs["long_name"]
+
+    for coord_name in fft.coords.keys():
+        fft_coord = fft.coords[coord_name]
+        ds_coord = ds.coords[coord_name.removeprefix("freq_")]
+        assert fft_coord.attrs["long_name"].startswith("wavenumber")
+        assert fft_coord.attrs["long_name"].endswith(ds_coord.attrs["long_name"])
+        assert ds_coord.attrs.get("units", "Hz") in fft_coord.attrs["units"]
+
+    freq_dim = "freq_{:s}".format(time_dim)
+    roundtrip = xrft.ifft(fft, dim=("freq_lon", freq_dim), real_dim=freq_dim)
+
+    assert ds["feature"].attrs == roundtrip.attrs
+
+    for coord_name in roundtrip.coords.keys():
+        assert ds.coords[coord_name].attrs == roundtrip.coords[coord_name].attrs
