@@ -318,7 +318,7 @@ def fft(
     prefix="freq_",
     real=None,
 ):
-    """
+    r"""
     Perform discrete Fourier transform of xarray data-array `da` along the
     specified dimensions.
 
@@ -489,7 +489,7 @@ def ifft(
     lag=None,
     real=None,
 ):
-    """
+    r"""
     Perform inverse discrete Fourier transform of xarray data-array `daft` along the
     specified dimensions.
 
@@ -685,7 +685,7 @@ def _psd_real_dim_scaling(da, ps, real_dim, updated_dims):
 def power_spectrum(
     da, dim=None, real_dim=None, scaling="density", window_correction=False, **kwargs
 ):
-    """
+    r"""
     Calculates the power spectrum of da.
 
     .. math::
@@ -760,7 +760,7 @@ def cross_spectrum(
     true_phase=True,
     **kwargs,
 ):
-    """
+    r"""
     Calculates the cross spectra of da1 and da2.
 
     .. math::
@@ -836,7 +836,7 @@ def cross_spectrum(
 
 
 def cross_phase(da1, da2, dim=None, true_phase=True, **kwargs):
-    """
+    r"""
     Calculates the cross-phase between da1 and da2.
 
     Returned values are in [-pi, pi].
@@ -946,7 +946,7 @@ def _groupby_bins_agg(
 
 
 def isotropize(ps, fftdim, nfactor=4, truncate=True, complx=False):
-    """
+    r"""
     Isotropize a 2D power spectrum or cross spectrum
     by taking an azimuthal average.
 
@@ -1032,7 +1032,7 @@ def isotropic_power_spectrum(
     truncate=False,
     **kwargs,
 ):
-    """
+    r"""
     Calculates the isotropic spectrum from the
     two-dimensional power spectrum by taking the
     azimuthal average.
@@ -1118,7 +1118,7 @@ def isotropic_cross_spectrum(
     truncate=False,
     **kwargs,
 ):
-    """
+    r"""
     Calculates the isotropic spectrum from the
     two-dimensional power spectrum by taking the
     azimuthal average.
