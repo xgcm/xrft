@@ -352,7 +352,7 @@ def fft(
         dim. Please follow `scipy.signal.windows`' naming convention.
     true_phase : bool, optional
         If set to False, standard fft algorithm is applied on signal without consideration of coordinates.
-        If set to True, coordinates location are correctly taken into account to evaluate Fourier Tranforrm phase and
+        If set to True, coordinates location are correctly taken into account to evaluate Fourier Transform phase and
         fftshift is applied on input signal prior to fft  (fft algorithm intrinsically considers that input signal is on fftshifted grid).
     true_amplitude : bool, optional
         If set to True, output is multiplied by the spacing of the transformed variables to match theoretical FT amplitude.
@@ -516,7 +516,7 @@ def ifft(
         The prefix for the new transformed dimensions.
     true_phase : bool, optional
         If set to False, standard ifft algorithm is applied on signal without consideration of coordinates order.
-        If set to True, coordinates are correctly taken into account to evaluate Inverse Fourier Tranforrm phase and
+        If set to True, coordinates are correctly taken into account to evaluate Inverse Fourier Transform phase and
         fftshift is applied on input signal prior to ifft (ifft algorithm intrinsically considers that input signal is on fftshifted grid).
     true_amplitude : bool, optional
         If set to True, output is divided by the spacing of the transformed variables to match theoretical IFT amplitude.
