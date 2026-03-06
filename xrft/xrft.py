@@ -453,7 +453,7 @@ def fft(
         f, dims=da.dims, coords=dict([c for c in da.coords.items() if c[0] not in dim])
     )
     daft = daft.swap_dims(swap_dims).assign_coords(newcoords)
-    daft = daft.drop([d for d in dim if d in daft.coords])
+    daft = daft.drop_vars([d for d in dim if d in daft.coords])
 
     updated_dims = [
         daft.dims[i] for i in da.get_axis_num(dim)
@@ -629,7 +629,7 @@ def ifft(
         coords=dict([c for c in daft.coords.items() if c[0] not in dim]),
     )
     da = da.swap_dims(swap_dims).assign_coords(newcoords)
-    da = da.drop([d for d in dim if d in da.coords])
+    da = da.drop_vars([d for d in dim if d in da.coords])
 
     with xr.set_options(
         keep_attrs=True
