@@ -954,7 +954,9 @@ def test_isotropize(truncate, N=512):
         ps = xrft.power_spectrum(theta, spacing_tol=spacing_tol, dim=dims)
         # ps = np.sqrt(ps.freq_x**2 + ps.freq_y**2)
         ps_iso = xrft.isotropize(ps, fftdim, nfactor=nfactor, truncate=truncate)
-        dims_iso = [d for d in ps_iso.dims if d != 'd0'] # excluding 'd0' dimension if it exists
+        dims_iso = [
+            d for d in ps_iso.dims if d != "d0"
+        ]  # excluding 'd0' dimension if it exists
         assert len(dims_iso) == 1
         assert dims_iso[0] == "freq_r"
         # npt.assert_allclose(ps_iso, ps_iso.freq_r**2 * 2 * np.pi, atol=0.02)
