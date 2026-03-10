@@ -79,9 +79,19 @@ def detrend(da, dim, detrend_type="constant"):
                 vectorize=True,
                 dask="parallelized",
             )
+        elif len(dim) == 3:
+            dt = xr.apply_ufunc(
+                _detrend_3d_ufunc,
+                da,
+                input_core_dims=[dim],
+                output_core_dims=[dim],
+                output_dtypes=[da.dtype],
+                vectorize=True,
+                dask="parallelized",
+            )
         else:  # pragma: no cover
             raise NotImplementedError(
-                "Only 1D and 2D detrending are implemented so far."
+                "Only 1D, 2D, and 3D detrending are implemented so far."
             )
 
     return dt
@@ -100,4 +110,29 @@ def _detrend_2d_ufunc(arr):
     m_est = np.dot(np.dot(spl.inv(np.dot(G.T, G)), G.T), d_obs)
     d_est = np.dot(G, m_est)
     linear_fit = np.reshape(d_est, N)
+    return arr - linear_fit
+
+
+def _detrend_3d_ufunc(arr):
+    """
+    Remove linear trend along all three axes of a 3D array by fitting
+    a0 + a1*i + a2*j + a3*k in least squares sense and subtracting it.
+    """
+    assert arr.ndim == 3
+    N0, N1, N2 = arr.shape
+
+    # Build design matrix G with columns [1, i, j, k]
+    i = np.repeat(np.arange(N0), N1 * N2) + 1
+    j = np.tile(np.repeat(np.arange(N1), N2), N0) + 1
+    k = np.tile(np.arange(N2), N0 * N1) + 1
+    col0 = np.ones(N0 * N1 * N2)
+    G = np.stack([col0, i, j, k], axis=1)
+
+    d_obs = arr.reshape(-1, 1)
+
+    # Use least squares for numerical stability
+    m_est, _, _, _ = np.linalg.lstsq(G, d_obs, rcond=None)
+
+    d_est = G @ m_est
+    linear_fit = d_est.reshape(N0, N1, N2)
     return arr - linear_fit

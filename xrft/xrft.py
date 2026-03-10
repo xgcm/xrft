@@ -453,7 +453,7 @@ def fft(
         f, dims=da.dims, coords=dict([c for c in da.coords.items() if c[0] not in dim])
     )
     daft = daft.swap_dims(swap_dims).assign_coords(newcoords)
-    daft = daft.drop([d for d in dim if d in daft.coords])
+    daft = daft.drop_vars([d for d in dim if d in daft.coords])
 
     updated_dims = [
         daft.dims[i] for i in da.get_axis_num(dim)
@@ -629,7 +629,7 @@ def ifft(
         coords=dict([c for c in daft.coords.items() if c[0] not in dim]),
     )
     da = da.swap_dims(swap_dims).assign_coords(newcoords)
-    da = da.drop([d for d in dim if d in da.coords])
+    da = da.drop_vars([d for d in dim if d in da.coords])
 
     with xr.set_options(
         keep_attrs=True
@@ -992,31 +992,22 @@ def isotropize(ps, fftdim, nfactor=4, truncate=True, complx=False):
 
     if complx:
         iso_ps = (
-            (
-                _groupby_bins_agg(
-                    ps, freq_r, bins=nbins, func="mean", dtype=np.complex128
-                )
-                .rename({"freq_r_bins": "freq_r"})
-                .drop_vars("freq_r")
-            )
-            * 2
-            * np.pi
+            _groupby_bins_agg(ps, freq_r, bins=nbins, func="sum", dtype=np.complex128)
+            .rename({"freq_r_bins": "freq_r"})
+            .drop_vars("freq_r")
         )
     else:
         iso_ps = (
-            (
-                _groupby_bins_agg(ps, freq_r, bins=nbins, func="mean")
-                .rename({"freq_r_bins": "freq_r"})
-                .drop_vars("freq_r")
-            )
-            * 2
-            * np.pi
+            _groupby_bins_agg(ps, freq_r, bins=nbins, func="sum")
+            .rename({"freq_r_bins": "freq_r"})
+            .drop_vars("freq_r")
         )
     iso_ps.coords["freq_r"] = kr.data
+
     if truncate:
-        return (iso_ps * iso_ps.freq_r).dropna("freq_r")
+        return iso_ps.dropna("freq_r")
     else:
-        return iso_ps * iso_ps.freq_r
+        return iso_ps
 
 
 def isotropic_power_spectrum(
