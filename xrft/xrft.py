@@ -323,7 +323,7 @@ def fft(
     specified dimensions.
 
     .. math::
-        daft = \mathbb{F}(da - \overline{da})
+        daft = \\mathbb{F}(da - \\overline{da})
 
     Parameters
     ----------
@@ -494,7 +494,7 @@ def ifft(
     specified dimensions.
 
     .. math::
-        da = \mathbb{F}(daft - \overline{daft})
+        da = \\mathbb{F}(daft - \\overline{daft})
 
     Parameters
     ----------
@@ -689,9 +689,9 @@ def power_spectrum(
     Calculates the power spectrum of da.
 
     .. math::
-    da' = da - \overline{da}
+        da' = da - \\overline{da}
     .. math::
-    ps = \mathbb{F}(da') {\mathbb{F}(da')}^*
+        ps = \\mathbb{F}(da') {\\mathbb{F}(da')}^*
 
     Parameters
     ----------
@@ -712,7 +712,8 @@ def power_spectrum(
         If scaling = 'density', correct for the energy (integral) of the spectrum. This ensures, for example, that the power spectral density integrates to the square of the RMS of the signal (ie that Parseval's theorem is satisfied). Note that in most cases, Parseval's theorem will only be approximately satisfied with this correction as it assumes that the signal being windowed is independent of the window. The correction becomes more accurate as the width of the window gets large in comparison with any noticeable period in the signal.
         If False, the spectrum gives a representation of the power in the windowed signal.
         Note that when True, Parseval's theorem may only be approximately satisfied.
-    kwargs : dict : see xrft.fft for argument list
+    **kwargs
+        See `xrft.fft` for valid arguments.
     """
 
     if "density" in kwargs:
@@ -764,9 +765,9 @@ def cross_spectrum(
     Calculates the cross spectra of da1 and da2.
 
     .. math::
-        da1' = da1 - \overline{da1};\ \ da2' = da2 - \overline{da2}
+        da1' = da1 - \\overline{da1};\\ \\ da2' = da2 - \\overline{da2}
     .. math::
-        cs = \mathbb{F}(da1') {\mathbb{F}(da2')}^*
+        cs = \\mathbb{F}(da1') {\\mathbb{F}(da2')}^*
 
     Parameters
     ----------
@@ -793,7 +794,8 @@ def cross_spectrum(
         If True, the phase information is retained.
         Set explicitly true_phase = False in cross_spectrum arguments list to ensure future compatibility
         with numpy-like behavior where the coordinates are disregarded.
-    kwargs : dict : see xrft.fft for argument list
+    **kwargs
+        See `xrft.fft` for valid arguments.
     """
 
     if "real" in kwargs:
@@ -842,9 +844,9 @@ def cross_phase(da1, da2, dim=None, true_phase=True, **kwargs):
     Returned values are in [-pi, pi].
 
     .. math::
-        da1' = da1 - \overline{da1};\ \ da2' = da2 - \overline{da2}
+        da1' = da1 - \\overline{da1};\\ \\ da2' = da2 - \\overline{da2}
     .. math::
-        cp = \text{Arg} [\mathbb{F}(da1')^*, \mathbb{F}(da2')]
+        cp = \\text{Arg} [\\mathbb{F}(da1')^*, \\mathbb{F}(da2')]
 
     Parameters
     ----------
@@ -859,7 +861,8 @@ def cross_phase(da1, da2, dim=None, true_phase=True, **kwargs):
         If True, the phase information is retained.
         Set explicitly true_phase = False in cross_spectrum arguments list to ensure future compatibility
         with numpy-like behavior where the coordinates are disregarded.
-    kwargs : dict : see xrft.fft for argument list
+    **kwargs
+        See `xrft.fft` for valid arguments.
     """
 
     cp = xr.apply_ufunc(
@@ -951,7 +954,7 @@ def isotropize(ps, fftdim, nfactor=4, truncate=True, complx=False):
     by taking an azimuthal average.
 
     .. math::
-        \text{iso}_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
+        \\text{iso}_{ps} = k_r N^{-1} \\sum_{N} |\\mathbb{F}(da')|^2
 
     where :math:`N` is the number of azimuthal bins.
 
@@ -1029,7 +1032,7 @@ def isotropic_power_spectrum(
     azimuthal average.
 
     .. math::
-        \text{iso}_{ps} = k_r N^{-1} \sum_{N} |\mathbb{F}(da')|^2
+        \\text{iso}_{ps} = k_r N^{-1} \\sum_{N} |\\mathbb{F}(da')|^2
 
     where :math:`N` is the number of azimuthal bins.
 
@@ -1115,7 +1118,7 @@ def isotropic_cross_spectrum(
     azimuthal average.
 
     .. math::
-        \text{iso}_{cs} = k_r N^{-1} \sum_{N} (\mathbb{F}(da1') {\mathbb{F}(da2')}^*)
+        \\text{iso}_{cs} = k_r N^{-1} \\sum_{N} (\\mathbb{F}(da1') {\\mathbb{F}(da2')}^*)
 
     where :math:`N` is the number of azimuthal bins.
 
