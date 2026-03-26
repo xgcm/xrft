@@ -1,7 +1,4 @@
-try:
-    from ._version import __version__
-except ImportError:
-    __version__ = "unknown"
+from ._version import __version__
 
 from .xrft import *  # noqa
 from .detrend import detrend
