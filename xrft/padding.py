@@ -37,6 +37,7 @@ def pad(
         {dim: pad} is a shortcut for pad_before = pad_after = pad
     mode : str, default: "constant"
         One of the following string values (taken from numpy docs).
+
         - constant: Pads with a constant value.
         - edge: Pads with the edge values of array.
         - linear_ramp: Pads with the linear ramp between end_value and the
@@ -56,6 +57,7 @@ def pad(
         - wrap: Pads with the wrap of the vector along the axis.
           The first values are used to pad the end and the
           end values are used to pad the beginning.
+
     stat_length : int, tuple or mapping of hashable to tuple, default: None
         Used in 'maximum', 'mean', 'median', and 'minimum'.  Number of
         values at edge of each axis used to calculate the statistic value.
@@ -295,7 +297,7 @@ def _pad_coordinates_callback(vector, iaxis_pad_width, iaxis, kwargs):
         the function will check if it's equal to zero. It exists for
         compatibility with the ``padding_func`` callback that :func:`numpy.pad`
         needs.
-    kwargs : dict
+    **kwargs
         Any keyword arguments the function requires. The kwargs are ignored in
         this function, they exist for compatibility with the ``padding_func``
         callback that :func:`numpy.pad` needs.
@@ -330,20 +332,20 @@ def unpad(da, pad_width=None, **pad_width_kwargs):
     da : :class:`xarray.DataArray`
         Padded array. The coordinates along which the array will be
         padded must be evenly spaced.
-
-    Returns
-    -------
-    da_unpaded : :class:`xarray.DataArray`
-        Unpadded array.
     pad_width : mapping of hashable to tuple of int (optional)
         Mapping with the form of {dim: (pad_before, pad_after)}
         describing the number of values padded along each dimension.
         {dim: pad} is a shortcut for pad_before = pad_after = pad.
         If ``None``, then the *pad_width* for each coordinate is read from
         their ``pad_width`` attribute.
-    **pad_width_kwargs (optional)
+    **pad_width_kwargs
         The keyword arguments form of ``pad_width``.
         Pass ``pad_width`` or ``pad_width_kwargs``.
+
+    Returns
+    -------
+    da_unpadded : :class:`xarray.DataArray`
+        Unpadded array.
 
     See also
     --------
