@@ -14,6 +14,9 @@ import scipy.signal as sps
 from .detrend import detrend as _detrend
 from pandas.api.types import is_numeric_dtype, is_datetime64_any_dtype
 
+import cupy as cp
+import cupy_xarray
+
 __all__ = [
     "fft",
     "ifft",
@@ -32,6 +35,8 @@ __all__ = [
 def _fft_module(da):
     if da.chunks:
         return dsar.fft
+    elif da.cupy.is_cupy:
+        return cp.fft
     else:
         return np.fft
 
@@ -436,10 +441,20 @@ def fft(
         reversed_axis = [
             da.get_axis_num(d) for d in dim if da[d][-1] < da[d][0]
         ]  # handling decreasing coordinates
-        f = fft_fn(
-            fftm.ifftshift(np.flip(da, axis=reversed_axis), axes=axis_num),
-            axes=axis_num,
-        )
+        if da.cupy.is_cupy:
+            f = fft_fn(
+                xr.apply_ufunc(
+                    fftm.ifftshift,
+                    np.flip(da, axis=reversed_axis),
+                    kwargs={"axes": axis_num},
+                ).data,
+                axes=axis_num,
+            )
+        else:
+            f = fft_fn(
+                fftm.ifftshift(np.flip(da, axis=reversed_axis), axes=axis_num),
+                axes=axis_num,
+            )
     else:
         f = fft_fn(da.data, axes=axis_num)
 
@@ -461,10 +476,15 @@ def fft(
 
     if true_phase:
         for up_dim, lag in zip(updated_dims, lag_x):
-            daft = daft * xr.DataArray(
+            mult = xr.DataArray(
                 np.exp(-1j * 2.0 * np.pi * newcoords[up_dim] * lag),
                 dims=up_dim,
                 coords={up_dim: newcoords[up_dim]},
+            )
+            if daft.cupy.is_cupy:
+                mult = mult.cupy.as_cupy()
+            daft = (
+                daft * mult
             )  # taking advantage of xarray broadcasting and ordered coordinates
             daft[up_dim].attrs.update({"direct_lag": lag})
 
