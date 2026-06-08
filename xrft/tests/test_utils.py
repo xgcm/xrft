@@ -48,7 +48,7 @@ def test_get_spacing_unvenly_spaced(sample_da_2d):
     Check if error is raised after unvenly spaced coordinates
     """
     # Make the x coordinate unevenly spaced
-    x = sample_da_2d.x.values
+    x = sample_da_2d.x.values.copy()
     x[0] += 0.2
     da = sample_da_2d.assign_coords({"x": x})
     # Check if error is raised

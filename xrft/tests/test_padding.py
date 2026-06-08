@@ -59,7 +59,7 @@ def test_pad_coordinates_invalid(sample_da_2d):
     """
     Test if pad_coordinates raises error after unevenly spaced coords
     """
-    x = sample_da_2d.coords["x"].values
+    x = sample_da_2d.coords["x"].values.copy()
     x[3] += 0.1
     sample_da_2d = sample_da_2d.assign_coords({"x": x})
     with pytest.raises(ValueError):
