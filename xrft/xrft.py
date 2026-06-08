@@ -593,7 +593,10 @@ def ifft(
 
     if true_phase:
         for d, l in zip(dim, lag):
-            daft = daft * np.exp(1j * 2.0 * np.pi * daft[d] * l)
+            mult = np.exp(1j * 2.0 * np.pi * daft[d] * l)
+            if daft.cupy.is_cupy:
+                mult = cp.array(mult)
+            daft = daft * mult
 
     if chunks_to_segments:
         daft = _stack_chunks(daft, dim)
