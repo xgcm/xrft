@@ -1309,6 +1309,26 @@ def test_ifft_fft():
     npt.assert_allclose(s.data, IFTs.data)
 
 
+def test_ifft_fft_cp():
+    """
+    Testing ifft(fft(s.data)) == s.data
+    """
+    N = 20
+    s = xr.DataArray(
+        np.random.rand(N) + 1j * np.random.rand(N),
+        dims="x",
+        coords={"x": np.arange(0, N)},
+    ).cupy.as_cupy()
+    FTs = xrft.fft(s)
+    IFTs = xrft.ifft(FTs, shift=True)  # Shift=True is mandatory for the assestion below
+    npt.assert_allclose(s.as_numpy().data, IFTs.as_numpy().data)
+
+    # Check unshifted fft
+    FTs = xrft.fft(s, shift=False)
+    IFTs = xrft.ifft(FTs, shift=True)  # Shift=True is mandatory for the assestion below
+    npt.assert_allclose(s.as_numpy().data, IFTs.as_numpy().data)
+
+
 def test_idft_dft():
     """
     Testing idft(dft(s)) == s
