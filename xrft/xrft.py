@@ -438,23 +438,13 @@ def fft(
         _, da = _apply_window(da, dim, window_type=window)
 
     if true_phase:
-        reversed_axis = [
+        reversed_axis = tuple(
             da.get_axis_num(d) for d in dim if da[d][-1] < da[d][0]
-        ]  # handling decreasing coordinates
-        if da.cupy.is_cupy:
-            f = fft_fn(
-                xr.apply_ufunc(
-                    fftm.ifftshift,
-                    np.flip(da, axis=reversed_axis),
-                    kwargs={"axes": axis_num},
-                ).data,
-                axes=axis_num,
-            )
-        else:
-            f = fft_fn(
-                fftm.ifftshift(np.flip(da, axis=reversed_axis), axes=axis_num),
-                axes=axis_num,
-            )
+        )  # handling decreasing coordinates
+        f = fft_fn(
+            fftm.ifftshift(np.flip(da.data, axis=reversed_axis), axes=axis_num),
+            axes=axis_num,
+        )
     else:
         f = fft_fn(da.data, axes=axis_num)
 
