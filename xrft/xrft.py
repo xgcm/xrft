@@ -585,7 +585,7 @@ def ifft(
         for d, l in zip(dim, lag):
             mult = np.exp(1j * 2.0 * np.pi * daft[d] * l)
             if daft.cupy.is_cupy:
-                mult = cp.array(mult)
+                mult = mult.cupy.as_cupy()
             daft = daft * mult
 
     if chunks_to_segments:
