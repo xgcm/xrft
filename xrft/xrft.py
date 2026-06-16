@@ -70,9 +70,11 @@ def _apply_window(da, dims, window_type="hann"):
         "triang",
         "nuttall",
     ]:
-        raise NotImplementedError(
-            "Window type {window_type} not supported. Please adhere to scipy.signal.windows for naming convention."
+        msg = (
+            f"Window type {window_type!r} not supported. Please adhere to "
+            "scipy.signal.windows for naming convention."
         )
+        raise NotImplementedError(msg)
 
     if dims is None:
         dims = list(da.dims)
@@ -292,15 +294,17 @@ def _get_coordinate_spacing(coord, spacing_tol):
     diff = _diff_coord(coord)
     delta = np.abs(diff[0])
     if not np.allclose(diff, diff[0], rtol=spacing_tol):
-        raise ValueError(
-            "Can't take Fourier transform because "
-            "coodinate %s is not evenly spaced" % coord.name
+        msg = (
+            f"Can't take Fourier transform because coordinate {coord.name!r} is not "
+            "evenly spaced"
         )
+        raise ValueError(msg)
     if delta == 0.0:
-        raise ValueError(
-            "Can't take Fourier transform because spacing in coordinate %s is zero"
-            % coord.name
+        msg = (
+            "Can't take Fourier transform because spacing in coordinate "
+            f"{coord.name!r} is zero"
         )
+        raise ValueError(msg)
     return delta
 
 
@@ -414,10 +418,13 @@ def fft(
             cname for cname in da.coords if cname != d and d in da[cname].dims
         ]
         if bad_coords:
-            raise ValueError(
-                f"The input array contains coordinate variable(s) ({bad_coords}) whose dims include the transform dimension(s) `{d}`. "
-                f"Please drop these coordinates (`.drop({bad_coords}`) before invoking xrft."
+            msg = (
+                f"The input array contains coordinate variable(s) ({bad_coords!r}) "
+                f"whose dims include the transform dimension(s) {d!r}. Please drop "
+                "these coordinates before invoking xrft; see xarray.DataArray.drop_vars "
+                "or xarray.Dataset.drop_vars."
             )
+            raise ValueError(msg)
 
     delta_x = [_get_coordinate_spacing(da[d], spacing_tol) for d in dim]
     lag_x = [_lag_coord(da[d]) for d in dim]
@@ -600,10 +607,11 @@ def ifft(
     for d in dim:
         l = _lag_coord(daft[d]) if d is not real_dim else daft[d][0].data
         if np.abs(l) > spacing_tol:
-            raise ValueError(
-                "Inverse Fourier Transform can not be computed because coordinate %s is not centered on zero frequency"
-                % d
+            msg = (
+                "Inverse Fourier Transform can not be computed because coordinate "
+                f"{d!r} is not centered on zero frequency"
             )
+            raise ValueError(msg)
 
     axis_shift = [
         daft.get_axis_num(d) for d in dim if d is not real_dim
@@ -657,7 +665,8 @@ def _window_correction_factor(da, dim, scaling, window):
     elif scaling == "spectrum":
         return windows.mean() ** 2
     else:
-        raise ValueError("Unknown {} scaling flag".format(scaling))
+        msg = f"Unknown {scaling!r} scaling flag"
+        raise ValueError(msg)
 
 
 def _psd_scaling_factor(ps, dims, scaling):
@@ -667,7 +676,8 @@ def _psd_scaling_factor(ps, dims, scaling):
     elif scaling == "spectrum":
         return fs**2
     else:
-        raise ValueError("Unknown {} scaling flag".format(scaling))
+        msg = f"Unknown {scaling!r} scaling flag"
+        raise ValueError(msg)
 
 
 def _psd_real_dim_scaling(da, ps, real_dim, updated_dims):

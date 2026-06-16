@@ -13,8 +13,9 @@ def get_spacing(coord):
     """
     diff = _diff_coord(coord)
     if not np.allclose(diff, diff[0]):
-        raise ValueError(
-            f"Found unevenly spaced coordinates '{coord.name}'. "
-            "These coordinates should be evenly spaced."
+        msg = (
+            f"Found unevenly spaced coordinates {coord.name!r}. These coordinates "
+            "should be evenly spaced."
         )
+        raise ValueError(msg)
     return diff[0]
