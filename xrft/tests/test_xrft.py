@@ -4,6 +4,9 @@ import xarray as xr
 import cftime
 import dask.array as dsar
 
+import cupy as cp
+import cupy_xarray
+
 import scipy.signal as sps
 
 import pytest
@@ -175,6 +178,31 @@ class TestFFTImag(object):
             npt.assert_almost_equal(daft.values, np.fft.fftn(da_prime, axes=[0]))
             npt.assert_array_equal(
                 daft.values, xrft.fft(da, dim="time", shift=False, detrend="linear")
+            )
+
+    @pytest.mark.parametrize("cupy", [False, True])
+    def test_fft_3d_cupy(self, cupy):
+        """Test the discrete Fourier transform on 3D cupy array data"""
+        N = 16
+        da = xr.DataArray(
+            np.random.rand(N, N, N),
+            dims=["time", "x", "y"],
+            coords={"time": range(N), "x": range(N), "y": range(N)},
+        )
+        if cupy:
+            da = da.cupy.as_cupy()
+            daft = xrft.fft(da, dim=["x", "y"], shift=False)
+            npt.assert_almost_equal(
+                daft.as_numpy().values, np.fft.fftn(da.as_numpy().values, axes=[1, 2])
+            )
+            daft = xrft.fft(da, dim=["time"], shift=False, detrend="linear")
+            da_prime = sps.detrend(da.as_numpy(), axis=0)
+            npt.assert_almost_equal(
+                daft.as_numpy().values, np.fft.fftn(da_prime, axes=[0])
+            )
+            npt.assert_array_equal(
+                daft.as_numpy().values,
+                xrft.fft(da, dim="time", shift=False, detrend="linear").as_numpy(),
             )
 
     @pytest.mark.skip(reason="3D detrending not implemented")
@@ -1279,6 +1307,26 @@ def test_ifft_fft():
     FTs = xrft.fft(s, shift=False)
     IFTs = xrft.ifft(FTs, shift=True)  # Shift=True is mandatory for the assestion below
     npt.assert_allclose(s.data, IFTs.data)
+
+
+def test_ifft_fft_cp():
+    """
+    Testing ifft(fft(s.data)) == s.data
+    """
+    N = 20
+    s = xr.DataArray(
+        np.random.rand(N) + 1j * np.random.rand(N),
+        dims="x",
+        coords={"x": np.arange(0, N)},
+    ).cupy.as_cupy()
+    FTs = xrft.fft(s)
+    IFTs = xrft.ifft(FTs, shift=True)  # Shift=True is mandatory for the assestion below
+    npt.assert_allclose(s.as_numpy().data, IFTs.as_numpy().data)
+
+    # Check unshifted fft
+    FTs = xrft.fft(s, shift=False)
+    IFTs = xrft.ifft(FTs, shift=True)  # Shift=True is mandatory for the assestion below
+    npt.assert_allclose(s.as_numpy().data, IFTs.as_numpy().data)
 
 
 def test_idft_dft():
